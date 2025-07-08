@@ -1,0 +1,3 @@
+Nesse teste, o robô preencherá apenas os Campos Não Obrigatórios e clicará em Salvar
+Mensagem de alerta: O campo "Nome *" é obrigatório.
+Teste executado com sucesso!
