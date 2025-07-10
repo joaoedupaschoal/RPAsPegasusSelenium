@@ -337,7 +337,7 @@ try:
     ))
 
     # Salvamento
-    safe_action_enhanced(driver, doc, "Cancelaando cadastro", 
+    safe_action_enhanced(driver, doc, "Cancelando cadastro", 
         lambda: safe_click_enhanced(driver, "#fmod_6 > div.wdTelas > div.telaCadastro.clearfix.TelaCadastroQuadra > div.btnHolder > a.btModel.btGray.btcancel"))
 
     safe_action_enhanced(driver, doc, "Fechando modal após cancelamento", 

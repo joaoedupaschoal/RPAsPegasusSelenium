@@ -197,6 +197,34 @@ def safe_action_enhanced(driver, doc, descricao, func, max_tentativas=3):
                 take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
                 return False
 
+
+def encontrar_mensagem_alerta():
+    seletores = [
+        (".alerts.salvo", "✅ Sucesso"),
+        (".alerts.alerta", "⚠️ Alerta"),
+        (".alerts.erro", "❌ Erro"),
+    ]
+
+    for seletor, tipo in seletores:
+        try:
+            elemento = driver.find_element(By.CSS_SELECTOR, seletor)
+            if elemento.is_displayed():
+                log(doc, f"📢 {tipo}: {elemento.text}")
+                return elemento
+        except:
+            continue
+
+    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
+    return None
+
+def ajustar_zoom():
+    try:
+        driver.execute_script("document.body.style.zoom='90%'")
+        log(doc, "🔍 Zoom ajustado para 90%.")
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao ajustar zoom: {e}")
+
+
 def selecionar_item_tabela_melhorado_cemiterio(driver, texto_busca, timeout=20):
     """Função para seleção de cemitério na tabela"""
     estrategias = [
@@ -320,37 +348,8 @@ try:
     safe_action_enhanced(driver, doc, "Fechando modal após salvamento", 
         lambda: safe_click_enhanced(driver, "#fmod_6 > div.wdTop.ui-draggable-handle > div.wdClose > a"))
     
-
-    try:
-        # Verifica se há mensagens de sucesso/erro
-        seletores = [
-            (".alerts.salvo", "sucesso"),
-            (".alerts.alerta", "alerta"),
-            (".alerts.erro", "erro"),
-            (".alerts", "geral")
-        ]
-
-        for seletor, tipo in seletores:
-            try:
-                elemento = driver.find_element(By.CSS_SELECTOR, seletor)
-                if elemento.is_displayed():
-                    log(doc, f"📢 Mensagem de {tipo}: {elemento.text}")
-                    break
-            except NoSuchElementException:
-                continue
-        else:
-            log(doc, "📢 Nenhuma mensagem de sistema encontrada")
-    except Exception as e:
-        log(doc, f"⚠️ Erro ao verificar mensagens: {e}")
-
-    log(doc, "✅ Teste de cadastro de quadras concluído com sucesso!")
-
-except Exception as e:
-    log(doc, f"❌ ERRO FATAL: {str(e)}")
-    try:
-        take_screenshot(driver, doc, "erro_fatal")
-    except:
-        pass
+    encontrar_mensagem_alerta()
+    log(doc, '✅ Teste executado com sucesso!')
 
 finally:
     try:
