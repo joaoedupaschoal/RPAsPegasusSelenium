@@ -1,188 +1,207 @@
+# Refatorado e organizado: cadastrodeescalamotorista2ºcenario.py
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait, Select
+from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver import ActionChains
 from webdriver_manager.chrome import ChromeDriverManager
-import time
-from faker import Faker  
-from validate_docbr import CPF
-from faker.providers import BaseProvider
-import random
+from docx import Document
+from docx.shared import Inches
 from faker import Faker
-import string
-from selenium.common.exceptions import TimeoutException
-import sys
+from faker.providers import BaseProvider
+from validate_docbr import CPF
+from datetime import datetime, timedelta
 import subprocess
-from selenium import webdriver
-# Redireciona saída padrão e erros para o arquivo log.txt
-sys.stdout = open("log.txt", "w", encoding="utf-8")
-sys.stderr = sys.stdout  # Erros também vão para o mesmo arquivo
+import os
+import time
+import random
 
-
-faker = Faker()
-numero_aleatorio = random.randint(1, 100)  # Gera um número aleatório entre 1 e 100
-letra_aleatoria = random.choice(string.ascii_uppercase)  # Gera uma letra maiúscula aleatória
-
-cemetery_name = f"Cemitério {faker.last_name()} {faker.random.choice(['Eterno', 'da Paz', 'Memorial', 'Descanso'])}"
-
-qtd_parcelas_em_atraso = int(faker.random.choice(['1', '2', '3', '4', '5']))
-
-
-dias_para_exumar = int(faker.random.choice(['365', '730', '1095', '1460', '1825']))
-
-def gerar_jazigos():
-    quantidade_ruas = random.randint(1, 10)  # Ex: entre 1 e 10 ruas
-    max_jazigos_por_rua = random.randint(1, 20)  # Ex: entre 1 e 20 jazigos por rua
-    quantidade_total_jazigos = quantidade_ruas * max_jazigos_por_rua
-    return quantidade_ruas, max_jazigos_por_rua, quantidade_total_jazigos
-
-ruas, jazigos_por_rua, total_jazigos = gerar_jazigos()
-altura_cm = random.randint(100, 200)
-largura_cm = random.randint(100, 200)
-comprimento_cm = random.randint(100, 200)
-# Gera valor aleatório com centavos
-valor_taxa_adesao = round(random.uniform(2000, 10000), 2)
-cemetery_name = f"Cemitério {faker.last_name()} {faker.random.choice(['Eterno', 'da Paz', 'Memorial', 'Descanso'])}"
-
-qtd_parcelas_em_atraso = int(faker.random.choice(['1', '2', '3', '4', '5']))
-
-
-dias_para_exumar = int(faker.random.choice(['365', '730', '1095', '1460', '1825']))
-
-'''Nesse teste, o robô preencherá apenas os Campos Não Obrigatórios e clicará em Salvar'''
-
-print('Nesse teste, o robô preencherá apenas os Campos Não Obrigatórios e clicará em Salvar')
-
-
-
+# ==== PROVIDERS CUSTOMIZADOS ====
 class BrasilProvider(BaseProvider):
     def rg(self):
         numeros = [str(random.randint(0, 9)) for _ in range(8)]
         return ''.join(numeros) + '-' + str(random.randint(0, 9))
 
 fake = Faker("pt_BR")
-fake.add_provider(BrasilProvider)  # Adiciona o provedor
+fake.add_provider(BrasilProvider)
 
+def gerar_datas_validas():
+    """Gera datas coerentes para admissão, início e fim da escala, e vencimento da CNH."""
+    hoje = datetime.today().date()
+    
+    # Data de admissão entre 10 anos atrás e hoje
+    data_admissao = fake.date_between(start_date=hoje - timedelta(days=3650), end_date=hoje)
+    
+    # Data de início da escala entre hoje e 1 ano no futuro
+    data_inicio = fake.date_between(start_date=hoje, end_date=hoje + timedelta(days=365))
+    
+    # Data fim entre 1 e 180 dias após a data de início
+    data_fim = data_inicio + timedelta(days=random.randint(1, 180))
+    
+    # Vencimento CNH entre hoje e 10 anos no futuro
+    vencimento_cnh = fake.date_between(start_date=hoje, end_date=hoje + timedelta(days=3650))
+    
+    return (data_admissao.strftime('%d/%m/%Y'), 
+            data_inicio.strftime('%d/%m/%Y'), 
+            data_fim.strftime('%d/%m/%Y'), 
+            vencimento_cnh.strftime('%d/%m/%Y'))
 
+def gerar_dados_Gravidezs():
+    """Gera Gravidezs fictícios para o cadastro."""
+    carteira_trabalho = str(random.randint(10000000, 99999999))
+    pis = fake.cpf().replace('.', '').replace('-', '')[:11]
+    cnh = str(random.randint(10000000000, 99999999999))
+    cpf = CPF().generate()
+    
+    return carteira_trabalho, pis, cnh, cpf
+
+# Gera os dados necessários
+data_admissao, data_inicio, data_fim, vencimento_cnh = gerar_datas_validas()
+carteira_trabalho, pis, cnh, cpf_valido = gerar_dados_Gravidezs()
+
+# ==== CONFIGURAÇÕES ====
 URL = "http://localhost:8080/gs/index.xhtml"
+LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
+LOGIN_PASSWORD = "071999gs"
 
-def ajustar_zoom(driver):
-    """ Ajusta o zoom da página sem interferir em outras guias. """
-    driver.execute_script("document.body.style.zoom='90%'")
+doc = Document()
+doc.add_heading("RELATÓRIO DO TESTE", 0)
+doc.add_paragraph("Cadastro de Tipo Venda – Cenário 3: Preenchimento dos campos NÃO obrigatórios e salvamento.")
+doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
-# Configuração do ChromeDriver
-chrome_options = Options()
-chrome_options.add_argument("--start-maximized")  # Maximiza a janela
+screenshot_registradas = set()
 
-# Inicializando o driver
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+# ==== FUNÇÕES DE UTILITÁRIO ====
+def log(doc, msg):
+    print(msg)
+    doc.add_paragraph(msg)
 
-# Acessa a URL
-driver.get(URL)
+def take_screenshot(driver, doc, nome):
+    if nome not in screenshot_registradas:
+        path = f"screenshots/{nome}.png"
+        os.makedirs("screenshots", exist_ok=True)
+        driver.save_screenshot(path)
+        doc.add_paragraph(f"Screenshot: {nome}")
+        doc.add_picture(path, width=Inches(5.5))
+        screenshot_registradas.add(nome)
 
-# Espera até que o campo de login esteja presente
-wait = WebDriverWait(driver, 10)
-email_input = wait.until(EC.presence_of_element_located((By.ID, "j_id15:email")))
-email_input.send_keys('joaoeduardo.gold@outlook.com')
+def safe_action(doc, descricao, func):
+    try:
+        log(doc, f"🔄 {descricao}...")
+        func()
+        log(doc, f"✅ {descricao} realizada com sucesso.")
+        take_screenshot(driver, doc, descricao.lower().replace(" ", "_"))
+    except Exception as e:
+        log(doc, f"❌ Erro ao {descricao.lower()}: {e}")
+        take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
 
-password_input = wait.until(EC.presence_of_element_located((By.ID, "j_id15:senha")))
-password_input.send_keys("071999gs", Keys.ENTER)
-
-# Aguarda a página carregar
-time.sleep(5)
-
-ajustar_zoom(driver)
-
-
-# Simula o pressionamento da tecla F2
-driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2)
-time.sleep(1)
-
-time.sleep(5)
-
-# Navegação inicial
-campo_pesquisa = driver.find_element(By.XPATH, "//input[@placeholder='Busque um cadastro']")
-campo_pesquisa.click()
-
-# Digita um texto na pesquisa
-campo_pesquisa.send_keys("Tipo Venda", Keys.ENTER)
-
-
-
-time.sleep(3)
-
-cadastrar = driver.find_element(By.CSS_SELECTOR, "#fmod_10019 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span")
-cadastrar.click()
-
-time.sleep(2)
-
-
-
-
-# Clique no botão "Salvar"
-Salvar = driver.find_element(By.CSS_SELECTOR, "#fmod_10019 > div.wdTelas > div.telaCadastro.clearfix > div.btnHolder > a.btModel.btGray.btsave")
-Salvar.click()
-time.sleep(1)
-
-# Fechar modal
-X = driver.find_element(By.CSS_SELECTOR, "#fmod_10019 > div.wdTop.ui-draggable-handle > div.wdClose > a")
-X.click()
-time.sleep(1)
-
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+def finalizar_relatorio():
+    nome_arquivo = f"relatorio_tipo_venda_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    doc.save(nome_arquivo)
+    log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
+    subprocess.run(["start", "winword", nome_arquivo], shell=True)
+    driver.quit()
 
 def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.salvo", "sucesso"),
-        (".alerts.alerta", "alerta"),
-        (".alerts.erro", "erro"),
+        (".alerts.salvo", "✅ Sucesso"),
+        (".alerts.alerta", "⚠️ Alerta"),
+        (".alerts.erro", "❌ Erro"),
     ]
 
     for seletor, tipo in seletores:
         try:
             elemento = driver.find_element(By.CSS_SELECTOR, seletor)
-            if elemento.is_displayed():  # garante que está visível
-                print(f"Mensagem de {tipo}:", elemento.text)
+            if elemento.is_displayed():
+                log(doc, f"📢 {tipo}: {elemento.text}")
                 return elemento
-        except NoSuchElementException:
+        except:
             continue
 
-    print("Nenhuma mensagem encontrada.")
+    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
 
-# Espera apenas pelo container de alertas como um todo (melhora desempenho)
+def ajustar_zoom():
+    try:
+        driver.execute_script("document.body.style.zoom='90%'")
+        log(doc, "🔍 Zoom ajustado para 90%.")
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao ajustar zoom: {e}")
+
+def preencher_campo_data(selector, valor):
+    def acao():
+        campo = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+        campo.click()
+        campo.clear()
+        campo.send_keys(valor)
+        time.sleep(0.2)
+    return acao
+
+def selecionar_opcao(selector, texto):
+    def acao():
+        select_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+        Select(select_element).select_by_visible_text(texto)
+    return acao
+
+# ==== INICIALIZAÇÃO DO DRIVER ====
+options = Options()
+options.add_argument("--start-maximized")
+driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+wait = WebDriverWait(driver, 20)
+
+# ==== EXECUÇÃO DO TESTE ====
 try:
-    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".alerts")))
+    safe_action(doc, "Acessando sistema", lambda: driver.get(URL))
+
+    safe_action(doc, "Realizando login", lambda: (
+        wait.until(EC.presence_of_element_located((By.ID, "j_id15:email"))).send_keys(LOGIN_EMAIL),
+        wait.until(EC.presence_of_element_located((By.ID, "j_id15:senha"))).send_keys(LOGIN_PASSWORD, Keys.ENTER),
+        wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+    ))
+
+    safe_action(doc, "Esperando sistema carregar e ajustando zoom", lambda: (
+        time.sleep(5),
+        ajustar_zoom()
+    ))
+
+    safe_action(doc, "Abrindo menu Tipo Venda", lambda: (
+        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2),
+        time.sleep(1),
+        wait.until(EC.visibility_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']"))).send_keys("Tipo Venda", Keys.ENTER)
+    ))
+
+    safe_action(doc, "Clicando em Cadastrar", lambda: (
+        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10019 > div.wdTelas > div > ul > li:nth-child(1) > a > span"))).click()
+    ))
+
+    time.sleep(2)
+
+    safe_action(doc, "Salvando cadastro", lambda: driver.find_element(
+        By.CSS_SELECTOR, "#fmod_10019 > div.wdTelas > div.telaCadastro.clearfix > div.btnHolder > a.btModel.btGray.btsave"
+    ).click())
+
+
+
+
+
+    safe_action(doc, "Fechando modal após salvamento", lambda: wait.until(EC.element_to_be_clickable((
+        By.CSS_SELECTOR, "#fmod_10019 > div.wdTop.ui-draggable-handle > div.wdClose > a"
+        ))
+    ).click())
+
+
+
     encontrar_mensagem_alerta()
-except TimeoutException:
-    print("Nenhum alerta apareceu dentro do tempo limite.")
 
-print('Teste executado com sucesso!')
-import sys
-import subprocess
-from selenium import webdriver
-# Redireciona saída padrão e erros para o arquivo log.txt
-sys.stdout = open("log.txt", "w", encoding="utf-8")
-sys.stderr = sys.stdout  # Erros também vão para o mesmo arquivo
+except Exception as e:
+    log(doc, f"❌ ERRO FATAL: {e}")
+    take_screenshot(driver, doc, "erro_fatal")
 
-sys.stdout.close()
-subprocess.run(["notepad", "log.txt"])
-# Aguarda o usuário pressionar "." para fechar o navegador
-print('Pressione "." para fechar o navegador...')
-while True:
-    if input() == ".":
-        break  
+finally:
 
-# Espera 10 segundos antes de fechar (opcional)
-time.sleep(3)
+    log(doc, "✅ Teste concluído com sucesso.")
 
-# Fecha o navegador
-driver.quit()
-
-
-
-
+    finalizar_relatorio()

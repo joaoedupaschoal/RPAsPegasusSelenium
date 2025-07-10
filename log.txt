@@ -1,3 +1,45 @@
 Nesse teste, o robô preencherá apenas os Campos Não Obrigatórios e clicará em Salvar
-Mensagem de alerta: O campo "Nome *" é obrigatório.
-Teste executado com sucesso!
+Traceback (most recent call last):
+  File "C:\RPASelenium\venv\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosTiposDeDocumento\cadastrodetiposdedocumento3ºcenario.py", line 90, in <module>
+    screenshot_registradas.add(nome)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\RPASelenium\.venv\Lib\site-packages\selenium\webdriver\remote\webelement.py", line 304, in send_keys
+    self._execute(
+    ~~~~~~~~~~~~~^
+        Command.SEND_KEYS_TO_ELEMENT, {"text": "".join(keys_to_typing(value)), "value": keys_to_typing(value)}
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\RPASelenium\.venv\Lib\site-packages\selenium\webdriver\remote\webelement.py", line 573, in _execute
+    return self._parent.execute(command, params)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\RPASelenium\.venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 454, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\RPASelenium\.venv\Lib\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.InvalidSessionIdException: Message: invalid session id: session deleted as the browser has closed the connection
+from disconnected: not connected to DevTools
+  (Session info: chrome=138.0.7204.97); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidsessionidexception
+Stacktrace:
+	GetHandleVerifier [0x0x11144a3+62419]
+	GetHandleVerifier [0x0x11144e4+62484]
+	(No symbol) [0x0xf52133]
+	(No symbol) [0x0xf41b40]
+	(No symbol) [0x0xf5eb43]
+	(No symbol) [0x0xfe0789]
+	(No symbol) [0x0xfbf266]
+	(No symbol) [0x0xf8e852]
+	(No symbol) [0x0xf8f6f4]
+	GetHandleVerifier [0x0x1384793+2619075]
+	GetHandleVerifier [0x0x137fbaa+2599642]
+	GetHandleVerifier [0x0x113b04a+221050]
+	GetHandleVerifier [0x0x112b2c8+156152]
+	GetHandleVerifier [0x0x1131c7d+183213]
+	GetHandleVerifier [0x0x111c388+94904]
+	GetHandleVerifier [0x0x111c512+95298]
+	GetHandleVerifier [0x0x110766a+9626]
+	BaseThreadInitThunk [0x0x75a8fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x779e82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x779e827e+238]
+
