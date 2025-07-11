@@ -1,198 +1,286 @@
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from docx import Document
 from docx.shared import Inches
-from datetime import datetime
 from faker import Faker
 from faker.providers import BaseProvider
+from selenium.webdriver import ActionChains
+from datetime import datetime, timedelta
 import subprocess
-import random
-import time
 import os
+import time
+import random
+import string
 
-# Relatório
+# ==== PROVIDERS CUSTOMIZADOS ====
+class BrasilProvider(BaseProvider):
+    def rg(self):
+        numeros = [str(random.randint(0, 9)) for _ in range(8)]
+        return ''.join(numeros) + '-' + str(random.randint(0, 9))
 
+fake = Faker("pt_BR")
+fake.add_provider(BrasilProvider)
+
+# ==== CONFIGURAÇÕES ====
+URL = "http://localhost:8080/gs/index.xhtml"
+LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
+LOGIN_PASSWORD = "071999gs"
+
+# ==== DOCUMENTO ====
 doc = Document()
-doc.add_heading('RELATÓRIO DO TESTE', 0)
-doc.add_paragraph("Cadastro de Velórios.")
-doc.add_paragraph(f"🗕️ Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-doc.add_paragraph("Nesse teste, o robô preencherá todos os dados e clicará em Salvar.")
+doc.add_heading("RELATÓRIO DO TESTE", 0)
+doc.add_paragraph("Cadastro de Velórios - Cenário 1: Preenchimento completo e salvamento")
+doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
-SCREENSHOT_DIR = "screenshots"
-os.makedirs(SCREENSHOT_DIR, exist_ok=True)
+screenshot_registradas = set()
 
-# Funções utilitárias
-def log(msg):
+# ==== FUNÇÕES DE UTILITÁRIO ====
+def log(doc, msg):
     print(msg)
     doc.add_paragraph(msg)
 
-def take_screenshot(driver, filename):
-    path = os.path.join(SCREENSHOT_DIR, f"{filename}_{datetime.now().strftime('%H%M%S')}.png")
-    driver.save_screenshot(path)
-    log(f"🖼️ Screenshot saved: {path}")
-    doc.add_picture(path, width=Inches(5.5))
-    return path
+def take_screenshot(driver, doc, nome):
+    if nome not in screenshot_registradas:
+        path = f"screenshots/{nome}.png"
+        os.makedirs("screenshots", exist_ok=True)
+        driver.save_screenshot(path)
+        doc.add_paragraph(f"Screenshot: {nome}")
+        try:
+            doc.add_picture(path, width=Inches(5.5))
+        except:
+            doc.add_paragraph("Erro ao adicionar imagem ao relatório")
+        screenshot_registradas.add(nome)
 
-# Dados simulados
-faker = Faker('pt_BR')
-class BrasilProvider(BaseProvider):
-    def rg(self):
-        return ''.join([str(random.randint(0, 9)) for _ in range(8)]) + '-' + str(random.randint(0, 9))
-faker.add_provider(BrasilProvider)
+def safe_action(doc, descricao, func):
+    try:
+        log(doc, f"🔄 {descricao}...")
+        func()
+        log(doc, f"✅ {descricao} realizada com sucesso.")
+        take_screenshot(driver, doc, descricao.lower().replace(" ", "_"))
+    except Exception as e:
+        log(doc, f"❌ Erro ao {descricao.lower()}: {e}")
+        take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
 
-def generate_velorio_data():
-    return {
-        "name": "TESTE VELÓRIO SELENIUM AUTOMATIZADO",
-        "cidade_uf": "SÃO JOSÉ DO RIO PRETO - SP",
-        "cemetery_name": f"Cemitério {faker.last_name()} {faker.random.choice(['Eterno', 'da Paz', 'Memorial', 'Descanso'])}",
-        "qtd_parcelas_em_atraso": int(faker.random.choice(['1', '2', '3', '4', '5'])),
-        "dias_para_exumar": int(faker.random.choice(['365', '730', '1095', '1460', '1825'])),
-        "ruas": random.randint(1, 10),
-        "jazigos_por_rua": random.randint(1, 20),
-        "altura_cm": random.randint(100, 200),
-        "largura_cm": random.randint(100, 200),
-        "comprimento_cm": random.randint(100, 200),
-        "valor_taxa_adesao": round(random.uniform(2000, 10000), 2)
-    }
+def finalizar_relatorio():
+    nome_arquivo = f"relatorio_velorio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    doc.save(nome_arquivo)
+    log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
+    try:
+        subprocess.run(["start", "winword", nome_arquivo], shell=True)
+    except:
+        log(doc, "⚠️ Não foi possível abrir o Word automaticamente")
 
-# Ações e interação
-URL = "http://localhost:8080/gs/index.xhtml"
-LOGIN_EMAIL = 'joaoeduardo.gold@outlook.com'
-LOGIN_PASSWORD = '071999gs'
-
-def ajustar_zoom(driver):
-    driver.execute_script("document.body.style.zoom='90%'")
-
-def encontrar_mensagem_alerta(driver):
+def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.salvo", "sucesso"),
-        (".alerts.alerta", "alerta"),
-        (".alerts.erro", "erro"),
+        (".alerts.salvo", "✅ Sucesso"),
+        (".alerts.alerta", "⚠️ Alerta"),
+        (".alerts.erro", "❌ Erro"),
     ]
 
     for seletor, tipo in seletores:
         try:
             elemento = driver.find_element(By.CSS_SELECTOR, seletor)
             if elemento.is_displayed():
-                try:
-                    texto = elemento.find_element(By.TAG_NAME, "p").text.strip()
-                except NoSuchElementException:
-                    texto = elemento.text.strip()
-                log(f"⚠️ Mensagem de {tipo}: {texto}")
-                take_screenshot(driver, f"mensagem_{tipo}")
-                return elemento, tipo
-        except NoSuchElementException:
+                log(doc, f"📢 {tipo}: {elemento.text}")
+                return elemento
+        except:
             continue
 
-    log("❌ Nenhuma mensagem de alerta encontrada.")
-    take_screenshot(driver, "mensagem_nao_encontrada")
-    return None, None
+    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
+    return None
 
-def safe_action(action_name, action_func, driver, error_msg=None):
-    log(f"🔄 {action_name}...")
+def click_element_safely(driver, wait, selector, by=By.CSS_SELECTOR, timeout=10):
+    """Clica em um elemento de forma segura, tentando diferentes métodos"""
     try:
-        result = action_func()
-        log(f"✅ {action_name} realizado com sucesso.")
-        take_screenshot(driver, action_name.lower().replace(' ', '_'))
-        return True, result
-    except (TimeoutException, NoSuchElementException) as e:
-        log(error_msg or f"❌ Erro ao tentar {action_name.lower()}: {str(e)}")
-        take_screenshot(driver, f"erro_{action_name.lower().replace(' ', '_')}")
-        return False, None
-
-def main():
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=Options())
-    driver.maximize_window()
-    wait = WebDriverWait(driver, 10)
-    velorio_data = generate_velorio_data()
-    error_status = {key: False for key in ["login", "encontrar_menu", "abrir_cadastro", "preencher_nome", "preencher_cidade_uf", "salvar", "fechar_modal"]}
-
-    success, _ = safe_action("Acessar URL", lambda: driver.get(URL), driver)
-    error_status["login"] = not success
-
-    if not error_status["login"]:
-        def login():
-            wait.until(EC.presence_of_element_located((By.ID, "j_id15:email"))).send_keys(LOGIN_EMAIL)
-            wait.until(EC.presence_of_element_located((By.ID, "j_id15:senha"))).send_keys(LOGIN_PASSWORD, Keys.ENTER)
-            wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-            time.sleep(3)
-        success, _ = safe_action("Login", login, driver)
-        error_status["login"] = not success
-
-    if not error_status["login"]:
-        safe_action("Ajustar Zoom", lambda: ajustar_zoom(driver), driver)
-        safe_action("Abrir menu Velórios", lambda: driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2), driver)
-
-        def buscar_menu():
-            campo = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']")))
-            campo.click()
-            campo.send_keys("Velórios", Keys.ENTER)
-            time.sleep(3)
-        success, _ = safe_action("Buscar menu Velórios", buscar_menu, driver)
-        error_status["encontrar_menu"] = not success
-
-    if not error_status["encontrar_menu"]:
-        success, _ = safe_action("Clicar em Cadastrar", lambda: wait.until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10036 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span"))).click() or time.sleep(2), driver)
-        error_status["abrir_cadastro"] = not success
-
-    if not error_status["abrir_cadastro"]:
-        success, _ = safe_action("Preencher nome", lambda: wait.until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10036 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(2) > input"))).send_keys(velorio_data["name"]), driver)
-        error_status["preencher_nome"] = not success
-
-        success, _ = safe_action("Preencher cidade-UF", lambda: wait.until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10036 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(3) > input"))).send_keys(velorio_data["cidade_uf"]), driver)
-        error_status["preencher_cidade_uf"] = not success
-
-        success, _ = safe_action("Selecionar cidade-UF", lambda: wait.until(EC.visibility_of_element_located((
-            By.CSS_SELECTOR, "ul.ui-autocomplete"))) and wait.until(EC.element_to_be_clickable((
-            By.XPATH, "//li[text()='São José do Rio Preto - SP']"))).click(), driver)
-
-        success, _ = safe_action("Clicar em Salvar", lambda: wait.until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10036 > div.wdTelas > div.telaCadastro.clearfix > div.btnHolder > a.btModel.btGray.btsave"))).click() or time.sleep(2), driver)
-        error_status["salvar"] = not success
-
-        # Verificar mensagens
-        encontrar_mensagem_alerta(driver)
-        error_status["salvar"] = not success
-
-
-        _, tipo_alerta = encontrar_mensagem_alerta(driver)
-        if not tipo_alerta:
-            error_status["salvar"] = True
-
-
-        success, _ = safe_action("Fechar modal", lambda: wait.until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10036 > div.wdTop.ui-draggable-handle > div.wdClose > a"))).click() or time.sleep(2), driver)
-        error_status["fechar_modal"] = not success
-
-    log("\n=== RELATÓRIO FINAL ===")
-    if any(error_status.values()):
-        falhas = [k for k, v in error_status.items() if v]
-        log(f"❌ Teste concluído com falhas nas etapas: {', '.join(falhas)}")
-    else:
-        log("✅ Teste concluído com sucesso! Todos os passos foram executados sem erros.")
-
-    nome_doc = f"relatorio_capelas_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
-    doc.save(nome_doc)
-    log(f"📄 Relatório salvo como: {nome_doc}")
-
-    try:
-        subprocess.run(["start", "winword", nome_doc], shell=True)
+        element = wait.until(EC.presence_of_element_located((by, selector)))
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
+        time.sleep(0.5)
+        
+        element = wait.until(EC.element_to_be_clickable((by, selector)))
+        
+        try:
+            element.click()
+            return True
+        except:
+            try:
+                ActionChains(driver).move_to_element(element).click().perform()
+                return True
+            except:
+                driver.execute_script("arguments[0].click();", element)
+                return True
+                
     except Exception as e:
-        log(f"Erro ao abrir Word: {e}")
+        print(f"Erro ao clicar no elemento {selector}: {e}")
+        return False
 
-    input("Pressione '.' e ENTER para encerrar...")
+def gerar_dados_velorio():
+    """Gera dados fictícios para o cadastro de velório"""
+    cemiterios = [
+        "Cemitério da Paz",
+        "Cemitério Memorial",
+        "Cemitério Eterno Descanso",
+        "Cemitério São José",
+        "Cemitério Municipal",
+        "Cemitério Parque das Flores",
+        "Cemitério Jardim da Saudade",
+        "Cemitério Campo Santo"
+    ]
+    
+    return {
+        'nome': 'TESTE VELÓRIO SELENIUM AUTOMATIZADO',
+        'cidade_uf': 'SÃO JOSÉ DO RIO PRETO - SP',
+        'cemiterio': random.choice(cemiterios),
+        'qtd_parcelas_atraso': random.randint(1, 5),
+        'dias_exumar': random.choice([365, 730, 1095, 1460, 1825]),
+        'ruas': random.randint(1, 10),
+        'jazigos_por_rua': random.randint(1, 20),
+        'altura_cm': random.randint(100, 200),
+        'largura_cm': random.randint(100, 200),
+        'comprimento_cm': random.randint(100, 200),
+        'valor_taxa_adesao': round(random.uniform(2000, 10000), 2)
+    }
+
+def preencher_campo_com_retry(driver, wait, seletor, valor, max_tentativas=3):
+    """Tenta preencher o campo com diferentes métodos até conseguir"""
+    for tentativa in range(max_tentativas):
+        try:
+            campo = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, seletor)))
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", campo)
+            time.sleep(0.5)
+            
+            if tentativa == 0:
+                campo.click()
+                campo.clear()
+                campo.send_keys(valor)
+                campo.send_keys(Keys.TAB)
+            elif tentativa == 1:
+                ActionChains(driver).move_to_element(campo).click().perform()
+                time.sleep(0.2)
+                ActionChains(driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
+                ActionChains(driver).send_keys(valor).perform()
+                ActionChains(driver).send_keys(Keys.TAB).perform()
+            else:
+                driver.execute_script("""
+                    var element = arguments[0];
+                    var valor = arguments[1];
+                    element.focus();
+                    element.value = '';
+                    element.value = valor;
+                    element.dispatchEvent(new Event('input', { bubbles: true }));
+                    element.dispatchEvent(new Event('change', { bubbles: true }));
+                    element.blur();
+                """, campo, valor)
+            
+            time.sleep(0.5)
+            valor_atual = campo.get_attribute('value')
+            if valor_atual == str(valor):
+                return True
+                
+        except Exception as e:
+            print(f"Tentativa {tentativa + 1} falhou: {e}")
+            time.sleep(1)
+    
+    return False
+
+def selecionar_opcao_autocomplete(driver, wait, campo_selector, valor_busca, opcao_xpath):
+    """Seleciona uma opção de autocomplete"""
+    def acao():
+        campo = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, campo_selector)))
+        campo.clear()
+        campo.send_keys(valor_busca)
+        time.sleep(1)
+        
+        # Aguarda aparecer o autocomplete
+        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "ul.ui-autocomplete")))
+        
+        # Clica na opção
+        opcao = wait.until(EC.element_to_be_clickable((By.XPATH, opcao_xpath)))
+        opcao.click()
+        
+    return acao
+
+def ajustar_zoom():
+    try:
+        driver.execute_script("document.body.style.zoom='90%'")
+        log(doc, "🔍 Zoom ajustado para 90%.")
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao ajustar zoom: {e}")
+
+# ==== INICIALIZAÇÃO DO DRIVER ====
+options = Options()
+options.add_argument("--start-maximized")
+options.add_argument("--disable-blink-features=AutomationControlled")
+options.add_experimental_option("excludeSwitches", ["enable-automation"])
+options.add_experimental_option('useAutomationExtension', False)
+
+driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+wait = WebDriverWait(driver, 20)
+
+# Gerar dados do velório
+dados_velorio = gerar_dados_velorio()
+
+# ==== EXECUÇÃO DO TESTE ====
+try:
+    safe_action(doc, "Acessando sistema", lambda: driver.get(URL))
+
+    safe_action(doc, "Realizando login", lambda: (
+        wait.until(EC.presence_of_element_located((By.ID, "j_id15:email"))).send_keys(LOGIN_EMAIL),
+        wait.until(EC.presence_of_element_located((By.ID, "j_id15:senha"))).send_keys(LOGIN_PASSWORD, Keys.ENTER),
+        wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+    ))
+
+    safe_action(doc, "Esperando sistema carregar e ajustando zoom", lambda: (
+        time.sleep(5),
+        ajustar_zoom()
+    ))
+
+    safe_action(doc, "Abrindo menu Velórios", lambda: (
+        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2),
+        time.sleep(1),
+        wait.until(EC.visibility_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']"))).send_keys("Velórios", Keys.ENTER),
+        time.sleep(3)
+    ))
+
+    safe_action(doc, "Clicando em Cadastrar", lambda: (
+        time.sleep(2),
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10036 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span"))).click()
+    ))
+
+    safe_action(doc, "Preenchendo o Nome do Velório", lambda: (
+        time.sleep(2),
+        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10036 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(2) > input"))).send_keys(dados_velorio['nome'])
+    ))
+
+    safe_action(doc, "Preenchendo e selecionando Cidade-UF", selecionar_opcao_autocomplete(
+        driver, wait,
+        "#fmod_10036 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(3) > input",
+        dados_velorio['cidade_uf'],
+        "//li[text()='São José do Rio Preto - SP']"
+    ))
+
+    safe_action(doc, "Salvando cadastro", lambda: (
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10036 > div.wdTelas > div.telaCadastro.clearfix > div.btnHolder > a.btModel.btGray.btsave"))).click(),
+        time.sleep(1)
+    ))
+
+    safe_action(doc, "Fechando modal após salvamento", lambda: wait.until(EC.element_to_be_clickable((
+        By.CSS_SELECTOR, "#fmod_10036 > div.wdTop.ui-draggable-handle > div.wdClose > a"
+    ))).click())
+
+    encontrar_mensagem_alerta()
+
+except Exception as e:
+    log(doc, f"❌ ERRO FATAL: {e}")
+    take_screenshot(driver, doc, "erro_fatal")
+
+finally:
+    log(doc, "✅ Teste concluído.")
+    finalizar_relatorio()
     driver.quit()
-
-if __name__ == "__main__":
-    main()

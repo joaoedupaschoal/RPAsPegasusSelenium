@@ -102,7 +102,7 @@ def safe_action(doc, descricao, func):
 def finalizar_relatorio():
     nome_arquivo = f"relatorio_formulario_digital_alternativa_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     doc.save(nome_arquivo)
-    log(doc, f"📄 Relatório cancelo como: {nome_arquivo}")
+    log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
     subprocess.run(["start", "winword", nome_arquivo], shell=True)
     driver.quit()
 

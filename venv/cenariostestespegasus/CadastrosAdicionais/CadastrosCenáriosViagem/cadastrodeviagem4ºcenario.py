@@ -1,56 +1,90 @@
+# Refatorado e organizado: cadastrodeescalamotorista2ºcenario.py
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait, Select
+from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver import ActionChains
 from webdriver_manager.chrome import ChromeDriverManager
-import time
-from faker import Faker  
-from validate_docbr import CPF
-from faker.providers import BaseProvider
-import random
+from docx import Document
+from docx.shared import Inches
 from faker import Faker
-import string
-from selenium.common.exceptions import TimeoutException
-import sys
+from faker.providers import BaseProvider
+from validate_docbr import CPF
 from datetime import datetime, timedelta
-import random
 import subprocess
-from selenium import webdriver
-# Redireciona saída padrão e erros para o arquivo log.txt
-sys.stdout = open("log.txt", "w", encoding="utf-8")
-sys.stderr = sys.stdout  # Erros também vão para o mesmo arquivo
+import os
+import time
+import random
 
 
-faker = Faker()
-numero_aleatorio = random.randint(1, 100)  # Gera um número aleatório entre 1 e 100
-letra_aleatoria = random.choice(string.ascii_uppercase)  # Gera uma letra maiúscula aleatória
 
-cemetery_name = f"Cemitério {faker.last_name()} {faker.random.choice(['Eterno', 'da Paz', 'Memorial', 'Descanso'])}"
+# ==== PROVIDERS CUSTOMIZADOS ====
+class BrasilProvider(BaseProvider):
+    def rg(self):
+        numeros = [str(random.randint(0, 9)) for _ in range(8)]
+        return ''.join(numeros) + '-' + str(random.randint(0, 9))
 
-qtd_parcelas_em_atraso = int(faker.random.choice(['1', '2', '3', '4', '5']))
+fake = Faker("pt_BR")
+faker = Faker("pt_BR")
 
+fake.add_provider(BrasilProvider)
 
-dias_para_exumar = int(faker.random.choice(['365', '730', '1095', '1460', '1825']))
+def gerar_datas_validas():
+    """Gera datas coerentes para admissão, início e fim da escala, e vencimento da CNH."""
+    hoje = datetime.today().date()
+    
+    # Data de admissão entre 10 anos atrás e hoje
+    data_admissao = fake.date_between(start_date=hoje - timedelta(days=3650), end_date=hoje)
+    
+    # Data de início da escala entre hoje e 1 ano no futuro
+    data_inicio = fake.date_between(start_date=hoje, end_date=hoje + timedelta(days=365))
+    
+    # Data fim entre 1 e 180 dias após a data de início
+    data_fim = data_inicio + timedelta(days=random.randint(1, 180))
+    
+    # Vencimento CNH entre hoje e 10 anos no futuro
+    vencimento_cnh = fake.date_between(start_date=hoje, end_date=hoje + timedelta(days=3650))
+    
+    return (data_admissao.strftime('%d/%m/%Y'), 
+            data_inicio.strftime('%d/%m/%Y'), 
+            data_fim.strftime('%d/%m/%Y'), 
+            vencimento_cnh.strftime('%d/%m/%Y'))
 
-def gerar_jazigos():
-    quantidade_ruas = random.randint(1, 10)  # Ex: entre 1 e 10 ruas
-    max_jazigos_por_rua = random.randint(1, 20)  # Ex: entre 1 e 20 jazigos por rua
-    quantidade_total_jazigos = quantidade_ruas * max_jazigos_por_rua
-    return quantidade_ruas, max_jazigos_por_rua, quantidade_total_jazigos
+def gerar_dados_documentos():
+    """Gera documentos fictícios para o cadastro."""
+    carteira_trabalho = str(random.randint(10000000, 99999999))
+    pis = fake.cpf().replace('.', '').replace('-', '')[:11]
+    cnh = str(random.randint(10000000000, 99999999999))
+    cpf = CPF().generate()
+    
+    return carteira_trabalho, pis, cnh, cpf
 
-ruas, jazigos_por_rua, total_jazigos = gerar_jazigos()
-altura_cm = random.randint(100, 200)
-largura_cm = random.randint(100, 200)
-comprimento_cm = random.randint(100, 200)
-# Gera valor aleatório com centavos
-valor_taxa_adesao = round(random.uniform(2000, 10000), 2)
-cemetery_name = f"Cemitério {faker.last_name()} {faker.random.choice(['Eterno', 'da Paz', 'Memorial', 'Descanso'])}"
+# Gera os dados necessários
+data_admissao, data_inicio, data_fim, vencimento_cnh = gerar_datas_validas()
+carteira_trabalho, pis, cnh, cpf_valido = gerar_dados_documentos()
 
-qtd_parcelas_em_atraso = int(faker.random.choice(['1', '2', '3', '4', '5']))
+# ==== CONFIGURAÇÕES ====
+URL = "http://localhost:8080/gs/index.xhtml"
+LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
+LOGIN_PASSWORD = "071999gs"
+
+# ==== DOCUMENTO ====
+doc = Document()
+doc.add_heading("RELATÓRIO DO TESTE", 0)
+doc.add_paragraph("Cadastro de Viagens – Cenário 1: Preenchimento completo e salvamento.")
+doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+
+screenshot_registradas = set()
+
+# ==== FUNÇÕES DE UTILITÁRIO ====
+def log(doc, msg):
+    print(msg)
+    doc.add_paragraph(msg)
+
 
 
 dias_para_exumar = int(faker.random.choice(['365', '730', '1095', '1460', '1825']))
@@ -105,182 +139,337 @@ km_inicial, km_final, km_percorridos = gerar_kms()
 
 
 
+def take_screenshot(driver, doc, nome):
+    if nome not in screenshot_registradas:
+        path = f"screenshots/{nome}.png"
+        os.makedirs("screenshots", exist_ok=True)
+        driver.save_screenshot(path)
+        doc.add_paragraph(f"Screenshot: {nome}")
+        doc.add_picture(path, width=Inches(5.5))
+        screenshot_registradas.add(nome)
 
-'''Nesse teste, o robô preencherá apenas os Campos Não Obrigatórios e clicará em Salvar'''
+def safe_action(doc, descricao, func):
+    try:
+        log(doc, f"🔄 {descricao}...")
+        func()
+        log(doc, f"✅ {descricao} realizada com sucesso.")
+        take_screenshot(driver, doc, descricao.lower().replace(" ", "_"))
+    except Exception as e:
+        log(doc, f"❌ Erro ao {descricao.lower()}: {e}")
+        take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
 
-print('Nesse teste, o robô preencherá apenas os Campos Não Obrigatórios e clicará em Salvar')
-
-
-
-class BrasilProvider(BaseProvider):
-    def rg(self):
-        numeros = [str(random.randint(0, 9)) for _ in range(8)]
-        return ''.join(numeros) + '-' + str(random.randint(0, 9))
-
-fake = Faker("pt_BR")
-fake.add_provider(BrasilProvider)  # Adiciona o provedor
-
-
-URL = "http://localhost:8080/gs/index.xhtml"
-
-def ajustar_zoom(driver):
-    """ Ajusta o zoom da página sem interferir em outras guias. """
-    driver.execute_script("document.body.style.zoom='90%'")
-
-# Configuração do ChromeDriver
-chrome_options = Options()
-chrome_options.add_argument("--start-maximized")  # Maximiza a janela
-
-# Inicializando o driver
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-
-# Acessa a URL
-driver.get(URL)
-
-# Espera até que o campo de login esteja presente
-wait = WebDriverWait(driver, 10)
-email_input = wait.until(EC.presence_of_element_located((By.ID, "j_id15:email")))
-email_input.send_keys('joaoeduardo.gold@outlook.com')
-
-password_input = wait.until(EC.presence_of_element_located((By.ID, "j_id15:senha")))
-password_input.send_keys("071999gs", Keys.ENTER)
-
-# Aguarda a página carregar
-time.sleep(5)
-
-ajustar_zoom(driver)
-
-
-# Simula o pressionamento da tecla F2
-driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2)
-time.sleep(1)
-
-time.sleep(5)
-
-# Navegação inicial
-campo_pesquisa = driver.find_element(By.XPATH, "//input[@placeholder='Busque um cadastro']")
-campo_pesquisa.click()
-
-# Digita um texto na pesquisa
-campo_pesquisa.send_keys("Viagem", Keys.ENTER)
+def finalizar_relatorio():
+    nome_arquivo = f"relatorio_viagens_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    doc.save(nome_arquivo)
+    log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
+    subprocess.run(["start", "winword", nome_arquivo], shell=True)
+    driver.quit()
 
 
 
-time.sleep(3)
+def click_element_safely(driver, wait, selector, by=By.CSS_SELECTOR, timeout=10):
+    """Clica em um elemento de forma segura, tentando diferentes métodos"""
+    try:
+        element = wait.until(EC.presence_of_element_located((by, selector)))
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
+        time.sleep(0.5)
+        
+        element = wait.until(EC.element_to_be_clickable((by, selector)))
+        
+        try:
+            element.click()
+            return True
+        except:
+            try:
+                ActionChains(driver).move_to_element(element).click().perform()
+                return True
+            except:
+                driver.execute_script("arguments[0].click();", element)
+                return True
+                
+    except Exception as e:
+        print(f"Erro ao clicar no elemento {selector}: {e}")
+        return False
 
-cadastrar = driver.find_element(By.CSS_SELECTOR, "#fmod_10094 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span")
-cadastrar.click()
+def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, btn_pesquisar_selector, resultado_xpath):
+    def acao():
+        wait = WebDriverWait(driver, 20)
+        
+        if not click_element_safely(driver, wait, btn_selector):
+            raise Exception("Não foi possível abrir o modal")
+        
+        time.sleep(1)
+        
+        campo_pesquisa = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, pesquisa_selector)))
+        campo_pesquisa.clear()
+        campo_pesquisa.send_keys(termo_pesquisa)
+        
+        if not click_element_safely(driver, wait, btn_pesquisar_selector):
+            raise Exception("Não foi possível clicar no botão pesquisar")
+        
+        time.sleep(2)
+        
+        wait.until(EC.presence_of_element_located((By.XPATH, resultado_xpath)))
+        wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))
+        
+        resultado = driver.find_element(By.XPATH, resultado_xpath)
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", resultado)
+        time.sleep(0.5)
+        
+        if not click_element_safely(driver, wait, resultado_xpath, By.XPATH):
+            raise Exception("Não foi possível selecionar o resultado")
+    
+    return acao
 
-time.sleep(2)
-
-
-campo_data_retorno = WebDriverWait(driver, 10).until(
-    EC.visibility_of_element_located((
-        By.XPATH,
-        '//input[contains(@class, "hasDatepicker dataRetorno")]'
-    ))
-)
-campo_data_retorno.click()
-campo_data_retorno.send_keys(data_retorno)
-
-campo_hora_retorno = WebDriverWait(driver, 10).until(
-    EC.visibility_of_element_located((
-        By.CSS_SELECTOR,
-        '#fmod_10094 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.catWrapper > div > div.cat_categoriaDadosExame.categoriaHolder > div > div > div > div:nth-child(8) > input'  # ajuste o 'ref'
-    ))
-)
-campo_hora_retorno.click()
-campo_hora_retorno.send_keys(hora_retorno)
-
-campo_km_inicial = WebDriverWait(driver, 10).until(
-    EC.visibility_of_element_located((
-        By.CSS_SELECTOR,
-        '#fmod_10094 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.catWrapper > div > div.cat_categoriaDadosExame.categoriaHolder > div > div > div > div:nth-child(12) > input'  # ajuste o 'ref'
-    ))
-)
-campo_km_inicial.click()
-campo_km_inicial.send_keys(km_inicial)
-
-campo_km_final = WebDriverWait(driver, 10).until(
-    EC.visibility_of_element_located((
-        By.CSS_SELECTOR,
-        '#fmod_10094 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.catWrapper > div > div.cat_categoriaDadosExame.categoriaHolder > div > div > div > div:nth-child(13) > input'  # ajuste o 'ref'
-    ))
-)
-campo_km_final.click()
-campo_km_final.send_keys(km_final)
-
-
-campo_descrição = WebDriverWait(driver, 10).until(
-    EC.visibility_of_element_located((
-        By.CSS_SELECTOR,
-        '#fmod_10094 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.catWrapper > div > div.cat_categoriaDadosExame.categoriaHolder > div > div > div > div:nth-child(15) > textarea'  # ajuste o 'ref'
-    ))
-)
-campo_descrição.send_keys('TESTE DESCRIÇÃO VIAGEM SELENIUM AUTOMATIZADO: CORREU TUDO BEM FOI EFETUADO A VIAGEM COM SEGURANÇA, PAREI NO POSTO, ABASTECI, E FUI MUITO BEM HOSPEDADO PELO HOTEL, A VIAGEM FOI MUITO BOA, E O MOTORISTA FOI MUITO ATENCIOSO, E O VEÍCULO ESTAVA EM PERFEITAS CONDIÇÕES DE USO, NÃO TEVE NENHUM PROBLEMA DURANTE A VIAGEM, TUDO CORREU BEM, E VOLTEI PARA CASA COM SEGURANÇA.')
-
-
-# Clique no botão "Salvar"
-Salvar = driver.find_element(By.CSS_SELECTOR, "#fmod_10094 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.btnHolder > a.btModel.btGray.btsave")
-Salvar.click()
-
-
-
-# Fechar modal
-X = driver.find_element(By.CSS_SELECTOR, "#fmod_10094 > div.wdTop.ui-draggable-handle > div.wdClose > a")
-X.click()
-time.sleep(1)
-
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.salvo", "sucesso"),
-        (".alerts.alerta", "alerta"),
-        (".alerts.erro", "erro"),
+        (".alerts.salvo", "✅ Sucesso"),
+        (".alerts.alerta", "⚠️ Alerta"),
+        (".alerts.erro", "❌ Erro"),
     ]
 
     for seletor, tipo in seletores:
         try:
             elemento = driver.find_element(By.CSS_SELECTOR, seletor)
-            if elemento.is_displayed():  # garante que está visível
-                print(f"Mensagem de {tipo}:", elemento.text)
+            if elemento.is_displayed():
+                log(doc, f"📢 {tipo}: {elemento.text}")
                 return elemento
-        except NoSuchElementException:
+        except:
             continue
 
-    print("Nenhuma mensagem encontrada.")
+    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
 
-# Espera apenas pelo container de alertas como um todo (melhora desempenho)
+def ajustar_zoom():
+    try:
+        driver.execute_script("document.body.style.zoom='90%'")
+        log(doc, "🔍 Zoom ajustado para 90%.")
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao ajustar zoom: {e}")
+
+
+def preencher_campo_com_retry(driver, wait, seletor, valor, max_tentativas=3):
+    """Tenta preencher o campo com diferentes métodos até conseguir"""
+    for tentativa in range(max_tentativas):
+        try:
+            campo = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, seletor)))
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", campo)
+            time.sleep(0.5)
+            
+            if tentativa == 0:
+                campo.click()
+                campo.clear()
+                campo.send_keys(valor)
+                campo.send_keys(Keys.TAB)
+            elif tentativa == 1:
+                ActionChains(driver).move_to_element(campo).click().perform()
+                time.sleep(0.2)
+                ActionChains(driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
+                ActionChains(driver).send_keys(valor).perform()
+                ActionChains(driver).send_keys(Keys.TAB).perform()
+            else:
+                driver.execute_script("""
+                    var element = arguments[0];
+                    var valor = arguments[1];
+                    element.focus();
+                    element.value = '';
+                    element.value = valor;
+                    element.dispatchEvent(new Event('input', { bubbles: true }));
+                    element.dispatchEvent(new Event('change', { bubbles: true }));
+                    element.blur();
+                """, campo, valor)
+            
+            time.sleep(0.5)
+            valor_atual = campo.get_attribute('value')
+            if valor_atual == str(valor):
+                return True
+                
+        except Exception as e:
+            print(f"Tentativa {tentativa + 1} falhou: {e}")
+            time.sleep(1)
+    
+    return False
+
+def preencher_campo_data_xpath(xpath, valor):
+    def acao():
+        campo = wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
+        campo.send_keys(valor)
+        driver.execute_script("arguments[0].value = arguments[1];", campo, valor)
+        campo.send_keys(Keys.TAB)
+        time.sleep(0.2)
+    return acao
+
+
+def preencher_campo_data(selector, valor):
+    def acao():
+        campo = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+        campo.click()
+        campo.clear()
+        campo.send_keys(valor)
+        time.sleep(0.2)
+    return acao
+
+def selecionar_opcao(selector, texto):
+    def acao():
+        select_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+        Select(select_element).select_by_visible_text(texto)
+    return acao
+
+# ==== INICIALIZAÇÃO DO DRIVER ====
+options = Options()
+options.add_argument("--start-maximized")
+driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+wait = WebDriverWait(driver, 20)
+
+# ==== EXECUÇÃO DO TESTE ====
 try:
-    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".alerts")))
+    safe_action(doc, "Acessando sistema", lambda: driver.get(URL))
+
+    safe_action(doc, "Realizando login", lambda: (
+        wait.until(EC.presence_of_element_located((By.ID, "j_id15:email"))).send_keys(LOGIN_EMAIL),
+        wait.until(EC.presence_of_element_located((By.ID, "j_id15:senha"))).send_keys(LOGIN_PASSWORD, Keys.ENTER),
+        wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+    ))
+
+    safe_action(doc, "Esperando sistema carregar e ajustando zoom", lambda: (
+        time.sleep(5),
+        ajustar_zoom()
+    ))
+
+    safe_action(doc, "Abrindo menu Viagens", lambda: (
+        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2),
+        time.sleep(1),
+        wait.until(EC.visibility_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']"))).send_keys("Viagens", Keys.ENTER)
+    ))
+
+    safe_action(doc, "Clicando em Cadastrar", lambda: (
+        time.sleep(5),
+        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10089 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span"))).click()
+    ))
+
+
+
+  
+
+    safe_action(doc, "Preenchendo Data Retorno", preencher_campo_data_xpath(
+        "//input[contains(@class, 'hasDatepicker dataRetorno')]",
+        data_retorno
+    ))
+
+    safe_action(doc, "Preenchendo Horário Retorno", lambda: 
+        preencher_campo_com_retry(
+            driver, wait,
+            "#fmod_10089 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.catWrapper > div > div.cat_categoriaDadosExame.categoriaHolder > div > div > div > div:nth-child(8) > input",
+            hora_retorno
+        )
+    )
+
+  
+
+    safe_action(doc, "Preenchendo Km inicial", lambda: 
+        preencher_campo_com_retry(
+            driver, wait,
+            "#fmod_10089 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.catWrapper > div > div.cat_categoriaDadosExame.categoriaHolder > div > div > div > div:nth-child(12) > input",
+            km_inicial
+        )
+    )
+
+
+
+    safe_action(doc, "Preenchendo Km final", lambda: 
+        preencher_campo_com_retry(
+            driver, wait,
+            "#fmod_10089 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.catWrapper > div > div.cat_categoriaDadosExame.categoriaHolder > div > div > div > div:nth-child(13) > input",
+            km_final
+        )
+    )
+
+
+    safe_action(doc, "Preenchendo Descrição", lambda: 
+        preencher_campo_com_retry(
+            driver, wait,
+            "#fmod_10089 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.catWrapper > div > div.cat_categoriaDadosExame.categoriaHolder > div > div > div > div:nth-child(15) > textarea",
+            "TESTE DESCRIÇÃO VIAGEM SELENIUM AUTOMATIZADO: CORREU TUDO BEM FOI EFETUADO A VIAGEM COM SEGURANÇA, PAREI NO POSTO, ABASTECI, E FUI MUITO BEM HOSPEDADO PELO HOTEL, A VIAGEM FOI MUITO BOA, E O MOTORISTA FOI MUITO ATENCIOSO, E O VEÍCULO ESTAVA EM PERFEITAS CONDIÇÕES DE USO, NÃO TEVE NENHUM PROBLEMA DURANTE A VIAGEM, TUDO CORREU BEM, E VOLTEI PARA CASA COM SEGURANÇA."
+        )
+    )
+
+    safe_action(doc, "Acessando aba Rotas", lambda: (
+        wait.until(EC.element_to_be_clickable((By.LINK_TEXT, "Rotas"))).click(),
+        time.sleep(1)
+    ))
+
+   
+    safe_action(doc, "Preenchendo Complemento", lambda: 
+        preencher_campo_com_retry(
+            driver, wait,
+            "#fmod_10089 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.catWrapper > div > div.cat_categoriaRotas.categoriaHolder > div.groupHolder.clearfix.grupo_grupoRotas > div.group_grupoRotas.clearfix.grupoHolder.lista > div:nth-child(7) > div:nth-child(5) > input",
+            "Casa"
+        )
+    )
+
+
+    safe_action(doc, "Selecionando Área", abrir_modal_e_selecionar(
+        "#fmod_10089 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.catWrapper > div > div.cat_categoriaRotas.categoriaHolder > div.groupHolder.clearfix.grupo_grupoRotas > div.group_grupoRotas.clearfix.grupoHolder.lista > div:nth-child(7) > div:nth-child(9) > div > a",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
+        "1214333",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(4) > a",
+        "//td[contains(text(), '1214333')]"
+    ))
+
+
+
+    safe_action(doc, "Preenchendo Complemento", lambda: 
+        preencher_campo_com_retry(
+            driver, wait,
+            "#fmod_10089 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.catWrapper > div > div.cat_categoriaRotas.categoriaHolder > div.groupHolder.clearfix.grupo_grupoRotas > div.group_grupoRotas.clearfix.grupoHolder.lista > div:nth-child(9) > div:nth-child(5) > input",
+            "Casa"
+        )
+    )
+
+    safe_action(doc, "Rolando até o lov de Área", lambda: (
+        driver.execute_script("""
+            document.querySelector("#fmod_10089 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.catWrapper > div > div.cat_categoriaRotas.categoriaHolder > div.groupHolder.clearfix.grupo_grupoRotas > div.group_grupoRotas.clearfix.grupoHolder.lista > div:nth-child(9) > div:nth-child(9) > div > a").scrollIntoView({behavior: 'smooth', block: 'center'});
+        """),))
+
+    safe_action(doc, "Selecionando Área", abrir_modal_e_selecionar(
+        "#fmod_10089 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.catWrapper > div > div.cat_categoriaRotas.categoriaHolder > div.groupHolder.clearfix.grupo_grupoRotas > div.group_grupoRotas.clearfix.grupoHolder.lista > div:nth-child(9) > div:nth-child(9) > div > a",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
+        "1214333",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(4) > a",
+        "//td[contains(text(), '1214333')]"
+    ))
+
+
+    safe_action(doc, "Adicionando Rota", lambda: 
+        wait.until(EC.element_to_be_clickable((
+            By.CSS_SELECTOR,
+            "#fmod_10089 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.catWrapper > div > div.cat_categoriaRotas.categoriaHolder > div.groupHolder.clearfix.grupo_grupoRotas > div.btnListHolder > a.btAddGroup"
+        ))).click()
+    )
+
+    time.sleep(5)
+
+    safe_action(doc, "Salvando cadastro", lambda: driver.find_element(
+        By.CSS_SELECTOR, "#fmod_10089 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroViagem > div.btnHolder > a.btModel.btGray.btsave"
+    ).click())
+
+
+    safe_action(doc, "Fechando modal após salvamento", lambda: wait.until(EC.element_to_be_clickable((
+        By.CSS_SELECTOR, "#fmod_10089 > div.wdTop.ui-draggable-handle > div.wdClose > a"
+        ))
+    ).click())
+
+
+
     encontrar_mensagem_alerta()
-except TimeoutException:
-    print("Nenhum alerta apareceu dentro do tempo limite.")
 
-print('Teste executado com sucesso!')
-import sys
-import subprocess
-from selenium import webdriver
-# Redireciona saída padrão e erros para o arquivo log.txt
-sys.stdout = open("log.txt", "w", encoding="utf-8")
-sys.stderr = sys.stdout  # Erros também vão para o mesmo arquivo
+except Exception as e:
+    log(doc, f"❌ ERRO FATAL: {e}")
+    take_screenshot(driver, doc, "erro_fatal")
 
-sys.stdout.close()
-subprocess.run(["notepad", "log.txt"])
-# Aguarda o usuário pressionar "." para fechar o navegador
-print('Pressione "." para fechar o navegador...')
-while True:
-    if input() == ".":
-        break  
+finally:
 
-# Espera 10 segundos antes de fechar (opcional)
-time.sleep(3)
+    log(doc, "✅ Teste concluído com sucesso.")
 
-# Fecha o navegador
-driver.quit()
-
-
-
-
+    finalizar_relatorio()
