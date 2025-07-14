@@ -108,7 +108,7 @@ def finalizar_relatorio():
 
 def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.cancelo", "✅ Sucesso"),
+        (".alerts.salvo", "✅ Sucesso"),
         (".alerts.alerta", "⚠️ Alerta"),
         (".alerts.erro", "❌ Erro"),
     ]

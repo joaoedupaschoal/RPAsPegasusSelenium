@@ -5,7 +5,7 @@ from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException
 from webdriver_manager.chrome import ChromeDriverManager
 from docx import Document
 from docx.shared import Inches
@@ -13,6 +13,7 @@ from faker import Faker
 from faker.providers import BaseProvider
 import os, random, subprocess, time, sys
 from datetime import datetime, timedelta
+from selenium.webdriver import ActionChains
 
 # ========================== CONFIGURAÇÃO ==========================
 URL = "http://localhost:8080/gs/index.xhtml"
@@ -49,9 +50,47 @@ def take_screenshot(driver, nome):
         doc.add_picture(path, width=Inches(5.5))
         screenshot_registradas.add(nome)
 
+def wait_for_modal_to_disappear():
+    """Aguarda que qualquer modal/overlay desapareça"""
+    try:
+        # Aguarda até que o overlay desapareça
+        WebDriverWait(driver, 10).until(
+            EC.invisibility_of_element_located((By.CSS_SELECTOR, ".blockScreen"))
+        )
+        time.sleep(1)  # Aguarda adicional para garantir
+    except TimeoutException:
+        pass  # Se não encontrar o overlay, continua
+
+def safe_click(element):
+    """Clica em um elemento de forma segura, aguardando que seja clicável"""
+    try:
+        # Aguarda o elemento ser clicável
+        clickable_element = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable(element)
+        )
+        
+        # Rola até o elemento se necessário
+        driver.execute_script("arguments[0].scrollIntoView(true);", clickable_element)
+        time.sleep(0.5)
+        
+        # Tenta clicar
+        clickable_element.click()
+        
+    except ElementClickInterceptedException:
+        # Se ainda houver interceptação, tenta JavaScript
+        if isinstance(element, tuple):
+            element_obj = driver.find_element(*element)
+        else:
+            element_obj = element
+        driver.execute_script("arguments[0].click();", element_obj)
+
 def safe_action(descricao, func):
     try:
         log(f"🔄 {descricao}")
+        
+        # Aguarda modais desaparecerem antes de executar
+        wait_for_modal_to_disappear()
+        
         func()
         log(f"✅ {descricao} concluída.")
         take_screenshot(driver, descricao.lower().replace(" ", "_"))
@@ -159,6 +198,91 @@ def preencher_data(selector, valor):
         time.sleep(0.2)
     return acao
 
+
+def preencher_campo_com_retry(driver, wait, seletor, valor, max_tentativas=2):
+    """Tenta preencher o campo com diferentes métodos até conseguir"""
+    
+    for tentativa in range(max_tentativas):
+        try:
+
+            
+            # Aguarda o elemento
+            campo = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, seletor)))
+            
+            # Scroll até o elemento se necessário
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", campo)
+            time.sleep(0.5)
+            
+            # Método 1: Tradicional
+            if tentativa == 0:
+                campo.click()
+                campo.clear()
+                campo.send_keys(valor)
+                campo.send_keys(Keys.TAB)
+            
+            # Método 2: ActionChains
+            elif tentativa == 1:
+                ActionChains(driver).move_to_element(campo).click().perform()
+                time.sleep(0.2)
+                ActionChains(driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
+                ActionChains(driver).send_keys(valor).perform()
+                ActionChains(driver).send_keys(Keys.TAB).perform()
+            
+            # Método 3: JavaScript
+            else:
+                driver.execute_script("""
+                    var element = arguments[0];
+                    var valor = arguments[1];
+                    element.focus();
+                    element.value = '';
+                    element.value = valor;
+                    element.dispatchEvent(new Event('input', { bubbles: true }));
+                    element.dispatchEvent(new Event('change', { bubbles: true }));
+                    element.blur();
+                """, campo, valor)
+            
+            time.sleep(0.5)
+            
+            # Verifica se o valor foi preenchido
+            valor_atual = campo.get_attribute('value')
+            if valor_atual == valor:
+
+                return True
+            else:
+                print()
+                
+        except Exception as e:
+            time.sleep(1)
+    
+
+    return False
+def acao_preencher_cep():
+    sucesso = preencher_campo_com_retry(
+        driver,
+        wait,
+        "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaDadosCemiterio.categoriaHolder > div.groupHolder.clearfix.grupo_grupoEnderecoCemiterio > div > div > div:nth-child(1) > div > input",
+        "15081115"
+    )
+    if not sucesso:
+        raise Exception("Não foi possível preencher o campo CEP")
+    
+    campo = driver.find_element(By.CSS_SELECTOR, "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaDadosCemiterio.categoriaHolder > div.groupHolder.clearfix.grupo_grupoEnderecoCemiterio > div > div > div:nth-child(1) > div > input")
+    campo.send_keys(Keys.ENTER)
+    time.sleep(2)
+
+
+
+def preencher_campo_seguro(selector, valor):
+    """Preenche um campo de forma segura, aguardando que esteja disponível"""
+    try:
+        campo = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, selector)))
+        campo.clear()
+        campo.send_keys(valor)
+        time.sleep(0.3)
+    except TimeoutException:
+        log(f"⚠️ Campo {selector} não encontrado ou não clicável")
+        raise
+
 # ========================== DADOS ALEATÓRIOS ==========================
 cemetery_name = f"Cemitério {faker.last_name()} {faker.random.choice(['Eterno', 'da Paz', 'Memorial', 'Descanso'])}"
 dias_para_exumar = int(faker.random.choice(['365', '730', '1095', '1460', '1825']))
@@ -171,8 +295,9 @@ data_nascimento, data_falecimento, data_sepultamento, data_agendamento, data_reg
 # ========================== INICIALIZAÇÃO ==========================
 chrome_options = Options()
 chrome_options.add_argument("--start-maximized")
+chrome_options.add_argument("--disable-blink-features=AutomationControlled")
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-wait = WebDriverWait(driver, 10)
+wait = WebDriverWait(driver, 15)  # Aumentei o timeout
 
 # ========================== EXECUÇÃO DO TESTE ==========================
 try:
@@ -189,7 +314,7 @@ try:
     ))
 
     safe_action("Abrir menu com F2", lambda: (
-        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "body > div.sideMenu.animate > div.menuHolder > a.button.btModules > span"))).click(),
+        safe_click((By.CSS_SELECTOR, "body > div.sideMenu.animate > div.menuHolder > a.button.btModules > span")),
         time.sleep(2)
     ))
 
@@ -200,88 +325,81 @@ try:
     ))
 
     safe_action("Clicar em Cadastrar", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_5 > div.wdTelas > div > ul > li:nth-child(1) > a > span"))).click()
+        safe_click((By.CSS_SELECTOR, "#fmod_5 > div.wdTelas > div > ul > li:nth-child(1) > a > span"))
     ))
 
-    safe_action("Preencher Nome", lambda: driver.find_element(
-        By.CSS_SELECTOR,
-        "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaDadosCemiterio.categoriaHolder > div.groupHolder.clearfix.grupo_grupoDadosCemiterio > div > div > div:nth-child(2) > input"
-    ).send_keys(cemetery_name))
+    safe_action("Preencher Nome", lambda: preencher_campo_seguro(
+        "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaDadosCemiterio.categoriaHolder > div.groupHolder.clearfix.grupo_grupoDadosCemiterio > div > div > div:nth-child(2) > input",
+        cemetery_name
+    ))
 
     safe_action("Selecionar Status Ativo", lambda: Select(driver.find_element(
         By.CSS_SELECTOR,
         "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaDadosCemiterio.categoriaHolder > div.groupHolder.clearfix.grupo_grupoDadosCemiterio > div > div > div:nth-child(3) > select"
     )).select_by_visible_text("Ativo"))
 
-    safe_action("Preencher Dias para Exumar", lambda: driver.find_element(
-        By.CSS_SELECTOR,
-        "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaDadosCemiterio.categoriaHolder > div.groupHolder.clearfix.grupo_grupoDadosCemiterio > div > div > div:nth-child(4) > input"
-    ).send_keys(str(dias_para_exumar)))
-
-    safe_action("Preencher CEP", lambda: (
-
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
-            "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaDadosCemiterio.categoriaHolder > div.groupHolder.clearfix.grupo_grupoEnderecoCemiterio > div > div > div:nth-child(1) > div > input"
-        ))).click(),
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
-            "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaDadosCemiterio.categoriaHolder > div.groupHolder.clearfix.grupo_grupoEnderecoCemiterio > div > div > div:nth-child(1) > div > input"
-        ))).send_keys("15081115", Keys.ENTER),
-        time.sleep(2),
-
+    safe_action("Preencher Dias para Exumar", lambda: preencher_campo_seguro(
+        "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaDadosCemiterio.categoriaHolder > div.groupHolder.clearfix.grupo_grupoDadosCemiterio > div > div > div:nth-child(4) > input",
+        str(dias_para_exumar)
     ))
+
+    safe_action("Preencher CEP", acao_preencher_cep)
+
 
     safe_action("Confirmar preenchimento de endereço", lambda: (
-        time.sleep(2),
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#BtYes"))).click()
+        time.sleep(2),  # Aguarda o modal aparecer
+        safe_click((By.CSS_SELECTOR, "#BtYes"))
     ))
 
-    safe_action("Preencher Número", lambda: driver.find_element(
-        By.CSS_SELECTOR,
-        "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaDadosCemiterio.categoriaHolder > div.groupHolder.clearfix.grupo_grupoEnderecoCemiterio > div > div > div:nth-child(4) > input"
-    ).send_keys("1733"))
+    safe_action("Preencher Número", lambda: preencher_campo_seguro(
+        "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaDadosCemiterio.categoriaHolder > div.groupHolder.clearfix.grupo_grupoEnderecoCemiterio > div > div > div:nth-child(4) > input",
+        "1733"
+    ))
 
     safe_action("Acessar aba Exumação por Idade", lambda: (
-        wait.until(EC.element_to_be_clickable((By.LINK_TEXT, "Exumação por Idade"))).click()
+        safe_click((By.LINK_TEXT, "Exumação por Idade")),
+        time.sleep(2)  # Aguarda a aba carregar
     ))
 
-    safe_action("Preencher Idade Inicial", lambda: driver.find_element(
-        By.CSS_SELECTOR,
-        "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaExumacaoPorIdade.categoriaHolder > div > div.group_grupoExumacaoPorIdade.clearfix.grupoHolder.lista > div > div:nth-child(1) > input"
-    ).send_keys(str(idade_inicio)))
+    safe_action("Preencher Idade Inicial", lambda: preencher_campo_seguro(
+        "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaExumacaoPorIdade.categoriaHolder > div > div.group_grupoExumacaoPorIdade.clearfix.grupoHolder.lista > div > div:nth-child(1) > input",
+        str(idade_inicio)
+    ))
 
-    safe_action("Preencher Idade Final", lambda: driver.find_element(
-        By.CSS_SELECTOR,
-        "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaExumacaoPorIdade.categoriaHolder > div > div.group_grupoExumacaoPorIdade.clearfix.grupoHolder.lista > div > div:nth-child(2) > input"
-    ).send_keys(str(idade_fim)))
+    safe_action("Preencher Idade Final", lambda: preencher_campo_seguro(
+        "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaExumacaoPorIdade.categoriaHolder > div > div.group_grupoExumacaoPorIdade.clearfix.grupoHolder.lista > div > div:nth-child(2) > input",
+        str(idade_fim)
+    ))
 
-    safe_action("Preencher Dias para Exumar por Idade", lambda: driver.find_element(
-        By.CSS_SELECTOR,
-        "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaExumacaoPorIdade.categoriaHolder > div > div.group_grupoExumacaoPorIdade.clearfix.grupoHolder.lista > div > div:nth-child(3) > input"
-    ).send_keys(str(dias_para_exumar)))
+    safe_action("Preencher Dias para Exumar por Idade", lambda: preencher_campo_seguro(
+        "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaExumacaoPorIdade.categoriaHolder > div > div.group_grupoExumacaoPorIdade.clearfix.grupoHolder.lista > div > div:nth-child(3) > input",
+        str(dias_para_exumar)
+    ))
 
-    safe_action("Adicionar faixa de exumação", lambda: driver.find_element(
+    safe_action("Adicionar faixa de exumação", lambda: safe_click((
         By.CSS_SELECTOR,
         "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaExumacaoPorIdade.categoriaHolder > div > div.btnListHolder > a.btAddGroup"
-    ).click())
+    )))
 
-    safe_action("Salvar Cemitério", lambda: driver.find_element(
+    safe_action("Salvar Cemitério", lambda: safe_click((
         By.CSS_SELECTOR,
         "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.btnHolder > a.btModel.btGray.btsave"
-    ).click())
+    )))
 
+    # Aguarda mensagem de alerta
+    time.sleep(3)
     encontrar_mensagem_alerta()
 
-    safe_action("Fechar modal", lambda: driver.find_element(
+    safe_action("Fechar modal", lambda: safe_click((
         By.CSS_SELECTOR,
         "#fmod_5 > div.wdTop.ui-draggable-handle > div.wdClose > a"
-    ).click())
+    )))
 
 except Exception as e:
     log(f"❌ ERRO FATAL: {e}")
     take_screenshot(driver, "erro_fatal")
 
 finally:
-
-    log(doc, "✅ Teste concluído com sucesso.")
-
+    # CORREÇÃO: Remover o parâmetro 'doc' da função log()
+    log("✅ Teste concluído com sucesso.")
     finalizar_relatorio()
