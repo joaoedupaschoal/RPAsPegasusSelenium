@@ -356,6 +356,11 @@ try:
         "1733"
     ))
 
+    safe_action("Preencher Complemento", lambda: preencher_campo_seguro(
+        "#fmod_5 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCemiterio > div.catWrapper > div > div.cat_categoriaDadosCemiterio.categoriaHolder > div.groupHolder.clearfix.grupo_grupoEnderecoCemiterio > div > div > div:nth-child(5) > input",
+        "Casa"
+    ))
+
     safe_action("Acessar aba Exumação por Idade", lambda: (
         safe_click((By.LINK_TEXT, "Exumação por Idade")),
         time.sleep(2)  # Aguarda a aba carregar
