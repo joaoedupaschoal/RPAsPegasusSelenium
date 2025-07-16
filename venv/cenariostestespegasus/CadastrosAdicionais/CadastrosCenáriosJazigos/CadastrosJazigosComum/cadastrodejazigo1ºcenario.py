@@ -396,7 +396,7 @@ def gerar_dados_jazigo():
     return (numero_aleatorio, letra_aleatoria, altura_cm, largura_cm, comprimento_cm)
 
 def finalizar_relatorio():
-    nome_arquivo = f"relatorio_jazigos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_jazigos_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     try:
         doc.save(nome_arquivo)
         log(doc, f"📄 Relatório salvo como: {nome_arquivo}")

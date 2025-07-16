@@ -22,6 +22,7 @@ import random
 import string
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
+
 # ==== PROVIDERS CUSTOMIZADOS ====
 class BrasilProvider(BaseProvider):
     def rg(self):
@@ -59,6 +60,8 @@ def take_screenshot(driver, doc, nome):
         doc.add_picture(path, width=Inches(5.5))
         screenshot_registradas.add(nome)
 
+
+
 def safe_action(doc, descricao, func):
     try:
         log(doc, f"🔄 {descricao}...")
@@ -70,7 +73,7 @@ def safe_action(doc, descricao, func):
         take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
 
 def finalizar_relatorio():
-    nome_arquivo = f"relatorio_guias_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_guias_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     doc.save(nome_arquivo)
     log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
     subprocess.run(["start", "winword", nome_arquivo], shell=True)
@@ -232,6 +235,38 @@ def preencher_campo_com_retry(driver, wait, seletor, valor, max_tentativas=2):
 
     return False
 
+from selenium.webdriver.support.ui import Select
+
+def abrir_dropdown_tipo_modelo(driver, wait):
+    try:
+        print("🔵 Abrindo dropdown de Tipo de Modelo...")
+        dropdown = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#tipoModelo")))
+        dropdown.click()
+
+        print("🟢 Aguardando opções carregarem...")
+        # Aguardar pelo menos uma opção visível — ajusta se necessário!
+        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "ul li")))
+        print("✅ Lista carregada.")
+        return True
+    except Exception as e:
+        print(f"❌ Erro ao abrir o dropdown: {e}")
+        return False
+from selenium.webdriver.support.ui import Select
+
+def selecionar_modelo_com_select(driver, wait, texto_opcao):
+    try:
+        print(f"🔵 Selecionando '{texto_opcao}' no dropdown #tipoModelo...")
+        select_element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#tipoModelo")))
+        select = Select(select_element)
+        select.select_by_visible_text(texto_opcao)
+        print(f"✅ '{texto_opcao}' selecionado com sucesso.")
+        return True
+    except Exception as e:
+        print(f"❌ Erro ao selecionar '{texto_opcao}': {e}")
+        return False
+
+
+
 # Gera os dados necessários
 data_emissao, data_vencimento, data_consulta, hora_formatada = gerar_dados_guia()
 
@@ -240,6 +275,8 @@ options = Options()
 options.add_argument("--start-maximized")
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 wait = WebDriverWait(driver, 20)
+
+
 
 # ==== EXECUÇÃO DO TESTE ====
 try:
@@ -318,21 +355,26 @@ try:
         "//td[contains(text(), 'CARDIOLOGISTA')]"
     ))
 
-    time.sleep(1)
+    safe_action(doc, "Preenchendo Data da Consulta", lambda: preencher_campo_com_retry(driver, wait, "input.hasDatepicker.dataConsulta", data_consulta))
 
-    preencher_campo_com_retry(doc, "Preenchendo Data de Consulta", preencher_campo_data(
-        "//input[contains(@class, 'hasDatepicker dataConsulta')]", data_consulta
+    safe_action(doc, "Preenchendo Hora da Consulta", lambda: preencher_campo_com_retry(driver, wait,
+        "#fmod_10067 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroGuia > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_geral > div > div:nth-child(5) > div:nth-child(2) > input",
+        hora_formatada
     ))
 
-    preencher_campo_com_retry(doc, "Preenchendo Hora da Consulta", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10067 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroGuia > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_geral > div > div:nth-child(5) > div:nth-child(2) > input"))).click(),
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10067 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroGuia > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_geral > div > div:nth-child(5) > div:nth-child(2) > input"))).send_keys(hora_formatada)
-    ))
 
 
     safe_action(doc, "Salvando cadastro", lambda: (
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10067 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroGuia > div.btnHolder > a.btModel.btGray.btsave"))).click(),
     ))
+
+
+    safe_action(doc, "Fechando modal de documentos", lambda: (
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "body > div.modalHolder > div.modal.overflow > a"))).click(),
+        time.sleep(1)
+    ))
+
+
 
     safe_action(doc, "Fechando modal após salvamento", lambda: (
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10067 > div.wdTop.ui-draggable-handle > div.wdClose > a"))).click(),

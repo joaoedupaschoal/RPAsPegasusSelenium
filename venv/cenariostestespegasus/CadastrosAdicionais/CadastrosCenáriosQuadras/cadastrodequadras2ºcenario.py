@@ -247,7 +247,7 @@ def gerar_dados_quadra():
     return (ruas, jazigos_por_rua, total_jazigos)
 
 def finalizar_relatorio():
-    nome_arquivo = f"relatorio_quadras_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_quadras_cenario_2_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     try:
         doc.save(nome_arquivo)
         log(doc, f"📄 Relatório salvo como: {nome_arquivo}")

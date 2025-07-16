@@ -51,7 +51,7 @@ wait = WebDriverWait(driver, 10)
 
 # ==== FUNÇÕES ====
 def finalizar_relatorio():
-    doc_name = f"relatorio_centro_custo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    doc_name = f"relatorio_centro_custo_cenario_2_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     doc.save(doc_name)
     log(doc, f"📄 Relatório salvo como: {doc_name}")
     subprocess.run(["start", "winword", doc_name], shell=True)

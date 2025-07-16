@@ -79,7 +79,7 @@ def safe_action(doc, descricao, func):
 
 def finalizar_relatorio():
     """Finaliza e salva o relatório"""
-    nome_arquivo = f"relatorio_conta_bancaria_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_conta_bancaria_cenario_2_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     doc.save(nome_arquivo)
     log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
     try:

@@ -100,7 +100,7 @@ def safe_action(doc, descricao, func):
         take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
 
 def finalizar_relatorio():
-    nome_arquivo = f"relatorio_escala_motorista_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_fonte_informacao_cenario_3_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     doc.save(nome_arquivo)
     log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
     subprocess.run(["start", "winword", nome_arquivo], shell=True)
@@ -187,14 +187,10 @@ try:
 
 
 
-
-
     safe_action(doc, "Fechando modal após salvamento", lambda: wait.until(EC.element_to_be_clickable((
         By.CSS_SELECTOR, "#fmod_10069 > div.wdTop.ui-draggable-handle > div.wdClose > a"
         ))
     ).click())
-
-
 
     encontrar_mensagem_alerta()
 

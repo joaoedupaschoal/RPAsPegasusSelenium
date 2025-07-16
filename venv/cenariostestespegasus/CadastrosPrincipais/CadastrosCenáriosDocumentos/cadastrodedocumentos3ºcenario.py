@@ -58,7 +58,7 @@ def safe_action(doc, descricao, func):
         take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
 
 def finalizar_relatorio():
-    nome_arquivo = f"relatorio_documentos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_documentos_cenario_3_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     doc.save(nome_arquivo)
     log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
     subprocess.run(["start", "winword", nome_arquivo], shell=True)

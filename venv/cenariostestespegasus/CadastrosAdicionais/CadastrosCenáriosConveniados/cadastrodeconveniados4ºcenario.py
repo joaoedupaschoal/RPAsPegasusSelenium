@@ -109,7 +109,7 @@ def safe_action(doc, descricao, func):
         take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
 
 def finalizar_relatorio():
-    nome_arquivo = f"relatorio_conveniados_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_conveniados_cenario_4_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     doc.save(nome_arquivo)
     log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
     subprocess.run(["start", "winword", nome_arquivo], shell=True)
@@ -150,12 +150,7 @@ def safe_action(doc, descricao, func):
         log(doc, f"❌ Erro ao {descricao.lower()}: {e}")
         take_screenshot(driver, doc, f"erro_{descricao}")
 
-def finalizar_relatorio():
-    nome_arquivo = f"relatorio_vinculo_convenio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
-    doc.save(nome_arquivo)
-    log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
-    subprocess.run(["start", "winword", nome_arquivo], shell=True)
-    driver.quit()
+
 
 def encontrar_mensagem_alerta():
     seletores = [

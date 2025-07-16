@@ -361,7 +361,7 @@ def verificar_mensagens_continuamente(driver, doc, duracao=10):
     return False
 
 def finalizar_relatorio():
-    nome_arquivo = f"relatorio_jazigos_lote_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_jazigos_lote_cenario_3_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     try:
         doc.save(nome_arquivo)
         log(doc, f"📄 Relatório salvo como: {nome_arquivo}")

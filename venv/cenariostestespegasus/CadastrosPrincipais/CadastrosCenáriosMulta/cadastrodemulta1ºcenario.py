@@ -29,7 +29,8 @@ class BrasilProvider(BaseProvider):
 
 fake = Faker("pt_BR")
 fake.add_provider(BrasilProvider)
-
+valor = f"{fake.random_int(min=100, max=1000)}.{fake.random_int(min=0, max=99):02d}"
+pontos = fake.random_int(min=1, max=10)
 def gerar_dados_multa(intervalo_max_passado=30):
     """
     Gera dados completos de uma multa:
@@ -106,7 +107,7 @@ def safe_action(doc, descricao, func):
         take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
 
 def finalizar_relatorio():
-    nome_arquivo = f"relatorio_multa_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_multa_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     doc.save(nome_arquivo)
     log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
     subprocess.run(["start", "winword", nome_arquivo], shell=True)
@@ -187,6 +188,65 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
         
     return acao
 
+
+def preencher_campo_com_retry(driver, wait, seletor, valor, max_tentativas=2):
+    """Tenta preencher o campo com diferentes métodos até conseguir"""
+    
+    for tentativa in range(max_tentativas):
+        try:
+
+            
+            # Aguarda o elemento
+            campo = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, seletor)))
+            
+            # Scroll até o elemento se necessário
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", campo)
+            time.sleep(0.5)
+            
+            # Método 1: Tradicional
+            if tentativa == 0:
+                campo.click()
+                campo.clear()
+                campo.send_keys(valor)
+                campo.send_keys(Keys.TAB)
+            
+            # Método 2: ActionChains
+            elif tentativa == 1:
+                ActionChains(driver).move_to_element(campo).click().perform()
+                time.sleep(0.2)
+                ActionChains(driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
+                ActionChains(driver).send_keys(valor).perform()
+                ActionChains(driver).send_keys(Keys.TAB).perform()
+            
+            # Método 3: JavaScript
+            else:
+                driver.execute_script("""
+                    var element = arguments[0];
+                    var valor = arguments[1];
+                    element.focus();
+                    element.value = '';
+                    element.value = valor;
+                    element.dispatchEvent(new Event('input', { bubbles: true }));
+                    element.dispatchEvent(new Event('change', { bubbles: true }));
+                    element.blur();
+                """, campo, valor)
+            
+            time.sleep(0.5)
+            
+            # Verifica se o valor foi preenchido
+            valor_atual = campo.get_attribute('value')
+            if valor_atual == valor:
+
+                return True
+            else:
+                print()
+                
+        except Exception as e:
+            time.sleep(1)
+    
+
+    return False
+
 # ==== INICIALIZAÇÃO DO DRIVER ====
 options = Options()
 options.add_argument("--start-maximized")
@@ -217,75 +277,70 @@ try:
 
     safe_action(doc, "Clicando em Cadastrar", lambda: (
         time.sleep(3),
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10092 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span"))).click()
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10086 > div.wdTelas > div > ul > li:nth-child(1) > a > span"))).click()
     ))
 
     time.sleep(2)
 
     safe_action(doc, "Selecionando Veículo", abrir_modal_e_selecionar(
-        "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(3) > div > a",
+        "#fmod_10086 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(3) > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div.formCol.divPesquisa > div:nth-child(1) > input",
-        "SANDERO 2013",
+        "TESTE VEÍCULO SELENIUM AUTOMATIZADO",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
-        "//td[contains(text(), 'SANDERO 2013')]"
+        "//td[contains(text(), 'TESTE VEÍCULO SELENIUM AUTOMATIZADO')]"
     ))
 
     safe_action(doc, "Selecionando Motorista", abrir_modal_e_selecionar(
-        "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(4) > div > a",
+        "#fmod_10086 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(4) > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div.formCol.divPesquisa > input",
         "CRISPIM MALAFAIA",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "//td[contains(text(), 'CRISPIM MALAFAIA')]"
     ))
 
-    safe_action(doc, "Preenchendo Data da Multa", preencher_data(
-        "//input[@maxlength='10' and @name='dataMulta' and contains(@class, 'hasDatepicker dataMulta mandatory')]",
-        data_multa
+
+    safe_action(doc, "Preenchendo Data da Multa", lambda: preencher_campo_com_retry(driver, wait, "input.hasDatepicker.dataMulta", data_multa))
+
+
+
+    safe_action(doc, "Preenchendo Hora da Multa", lambda: preencher_campo_com_retry(driver, wait,
+        "#fmod_10086 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(6) > input",
+        hora_multa
     ))
 
-    safe_action(doc, "Preenchendo Hora da Multa", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(6) > input"))).click(),
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(6) > input"))).clear(),
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(6) > input"))).send_keys(hora_multa, Keys.TAB)
-    ))
 
     safe_action(doc, "Preenchendo Auto de Infração", preencher_campo(
-        "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(7) > input",
+        "#fmod_10086 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(7) > input",
         f"{fake.random_int(min=1000, max=9999)}-{fake.random_int(min=0, max=9)}"
     ))
 
     safe_action(doc, "Selecionando Situação", selecionar_opcao(
-        "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(8) > select",
+        "#fmod_10086 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(8) > select",
         "Paga"
     ))
 
-    safe_action(doc, "Preenchendo Data de Notificação", preencher_data(
-        "//input[@maxlength='10' and @name='dataNotificacao' and contains(@class, 'hasDatepicker dataNotificacao')]",
-        data_notificacao
+    safe_action(doc, "Preenchendo Data da Notificação", lambda: preencher_campo_com_retry(driver, wait, "input.hasDatepicker.dataNotificacao", data_notificacao))
+
+
+    safe_action(doc, "Preenchendo Data da Vencimento", lambda: preencher_campo_com_retry(driver, wait, "input.hasDatepicker.dataVencimento", data_vencimento))
+
+    safe_action(doc, "Preenchendo Data da Pagamento", lambda: preencher_campo_com_retry(driver, wait, "input.hasDatepicker.dataPagamento", data_pagamento))
+
+
+
+    safe_action(doc, "Preenchendo Valor", lambda: preencher_campo_com_retry(driver, wait,
+        "#fmod_10086 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(12) > input",
+        valor
     ))
 
-    safe_action(doc, "Preenchendo Data de Vencimento", preencher_data(
-        "//input[@maxlength='10' and @name='dataVencimento' and contains(@class, 'hasDatepicker dataVencimento')]",
-        data_vencimento
-    ))
-
-    safe_action(doc, "Preenchendo Data de Pagamento", preencher_data(
-        "//input[@maxlength='10' and @name='dataPagamento' and contains(@class, 'hasDatepicker dataPagamento')]",
-        data_pagamento
-    ))
-
-    safe_action(doc, "Preenchendo Valor", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(12) > input"))).clear(),
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(12) > input"))).send_keys(f"{fake.random_int(min=100, max=1000)}.{fake.random_int(min=0, max=99):02d}", Keys.TAB)
-    ))
 
     safe_action(doc, "Selecionando Gravidade", selecionar_opcao(
-        "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(13) > select",
+        "#fmod_10086 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(13) > select",
         "Leve"
     ))
 
     safe_action(doc, "Preenchendo Descrição", preencher_campo(
-        "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(14) > textarea",
+        "#fmod_10086 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_categoriaDadosMulta.categoriaHolder > div > div > div > div:nth-child(14) > textarea",
         "Multa referente a estacionamento em local proibido."
     ))
 
@@ -294,38 +349,42 @@ try:
     ))
 
     safe_action(doc, "Selecionando Infração", abrir_modal_e_selecionar(
-        "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_infracoes.categoriaHolder > div > div.group_infracoes.clearfix.grupoHolder.lista > div > div:nth-child(1) > div > a",
+        "#fmod_10086 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_infracoes.categoriaHolder > div > div.group_infracoes.clearfix.grupoHolder.lista > div > div:nth-child(1) > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div.formCol.divPesquisa > input",
         "TESTE INFRAÇÃO SELENIUM AUTOMATIZADO: ALTA VELOCID",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "//td[contains(text(), 'TESTE INFRAÇÃO SELENIUM AUTOMATIZADO: ALTA VELOCID')]"
     ))
 
-    safe_action(doc, "Preenchendo Pontos", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_infracoes.categoriaHolder > div > div.group_infracoes.clearfix.grupoHolder.lista > div > div:nth-child(2) > input"))).clear(),
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_infracoes.categoriaHolder > div > div.group_infracoes.clearfix.grupoHolder.lista > div > div:nth-child(2) > input"))).send_keys(str(fake.random_int(min=1, max=10)), Keys.TAB)
+
+
+
+
+    safe_action(doc, "Preenchendo Pontos", preencher_campo(
+        "#fmod_10086 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_infracoes.categoriaHolder > div > div.group_infracoes.clearfix.grupoHolder.lista > div > div:nth-child(2) > input",
+        pontos
     ))
 
+
     safe_action(doc, "Adicionando Infração", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_infracoes.categoriaHolder > div > div.btnListHolder > a.btAddGroup"))).click()
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10086 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.catWrapper > div > div.cat_infracoes.categoriaHolder > div > div.btnListHolder > a.btAddGroup"))).click()
     ))
 
     safe_action(doc, "Salvando cadastro", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.btnHolder > a.btModel.btGray.btsave"))).click()
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10086 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroMulta > div.btnHolder > a.btModel.btGray.btsave"))).click()
     ))
 
     time.sleep(1)
 
-    safe_action(doc, "Confirmando salvamento", lambda: (
+    safe_action(doc, "Recusando lançamento da multa no contas à pagar", lambda: (
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#BtNo"))).click()
     ))
 
-    time.sleep(3)
 
     encontrar_mensagem_alerta()
 
     safe_action(doc, "Fechando modal", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10092 > div.wdTop.ui-draggable-handle > div.wdClose > a"))).click()
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10086 > div.wdTop.ui-draggable-handle > div > a"))).click()
     ))
 
 except Exception as e:

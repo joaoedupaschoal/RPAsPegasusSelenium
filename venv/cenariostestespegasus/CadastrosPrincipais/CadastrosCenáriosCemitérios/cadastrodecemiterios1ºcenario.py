@@ -125,7 +125,7 @@ def encontrar_mensagem_alerta():
     return None
 
 def finalizar_relatorio():
-    nome_arquivo = f"relatorio_cemiterio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_cemiterio_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     doc.save(nome_arquivo)
     log(f"📄 Relatório salvo como: {nome_arquivo}")
     try:

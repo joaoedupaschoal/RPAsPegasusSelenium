@@ -379,7 +379,7 @@ def finalizar_relatorio():
     """
     try:
         log(doc, "Finalizando relatório...")
-        nome_arquivo = f"relatorio_emitente_nf_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+        nome_arquivo = f"relatorio_emitente_nf_cenario_2_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
         doc.save(nome_arquivo)
         log(doc, f"📄 Relatório salvo como: {nome_arquivo}", "SUCCESS")
         

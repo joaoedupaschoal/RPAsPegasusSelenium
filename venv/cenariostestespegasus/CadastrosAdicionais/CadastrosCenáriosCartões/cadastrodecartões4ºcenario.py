@@ -40,7 +40,7 @@ def main():
     wait = WebDriverWait(driver, 10)
 
     def finalizar_relatorio():
-        doc_name = f"relatorio_cartoes_cenario4_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+        doc_name = f"relatorio_cartoes_cenario_4_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
         doc.save(doc_name)
         log(doc, f"📄 Relatório salvo como: {doc_name}")
         try:

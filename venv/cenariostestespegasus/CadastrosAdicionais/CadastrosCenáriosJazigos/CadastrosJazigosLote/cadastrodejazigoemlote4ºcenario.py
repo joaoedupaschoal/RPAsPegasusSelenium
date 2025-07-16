@@ -336,7 +336,7 @@ def encontrar_mensagem_alerta(driver, doc):
     return None
 
 def finalizar_relatorio():
-    nome_arquivo = f"relatorio_jazigos_lote_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_jazigos_lote_cenario_4_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     try:
         doc.save(nome_arquivo)
         log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
