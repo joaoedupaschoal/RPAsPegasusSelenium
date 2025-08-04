@@ -141,7 +141,7 @@ def safe_action(doc, descricao, func):
 
 def finalizar_relatorio():
     try:
-        nome_arquivo = f"relatorio_vinculo_convenio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+        nome_arquivo = f"relatorio_vinculo_convenio_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
         doc.save(nome_arquivo)
         log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
         
@@ -216,13 +216,13 @@ def selecionar_convenio():
         if linhas:
             primeira_linha = linhas[0]
             
-            # Scroll FORÇADO até a linha
+            # Scroll até a linha
             driver.execute_script("arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", primeira_linha)
             time.sleep(1)
             
-            # CLICK FORÇADO JavaScript
+            # CLICK JavaScript
             driver.execute_script("arguments[0].click();", primeira_linha)
-            print("✅ CLICK FORÇADO na primeira linha do convênio")
+            print("✅ CLICK na primeira linha do convênio")
             
             # Aguarda modal fechar com timeout maior
             aguardar_modal_fechar(15)
@@ -286,13 +286,13 @@ def selecionar_item_tabela(tabela_id, texto_busca, descricao):
 
 
 def clicar_elemento_com_retry(seletor, descricao, max_tentativas=5):
-    """Clica em elemento com retry FORÇADO e diferentes métodos"""
+    """Clica em elemento com retry e diferentes métodos"""
     for tentativa in range(max_tentativas):
         try:
             # Aguarda elemento estar presente
             elemento = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, seletor)))
             
-            # Scroll FORÇADO até o elemento
+            # Scroll até o elemento
             driver.execute_script("arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", elemento)
             time.sleep(0.5)
             
@@ -303,20 +303,20 @@ def clicar_elemento_com_retry(seletor, descricao, max_tentativas=5):
             """)
             
             if tentativa == 0:
-                # Método 1: Click JavaScript FORÇADO (mais confiável)
+                # Método 1: Click JavaScript (mais confiável)
                 driver.execute_script("arguments[0].click();", elemento)
-                print(f"Click JavaScript FORÇADO em {descricao}")
+                print(f"Click JavaScript em {descricao}")
                 
             elif tentativa == 1:
-                # Método 2: Click normal com wait forçado
+                # Método 2: Click normal com wait
                 wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, seletor)))
                 elemento.click()
-                print(f"Click normal FORÇADO em {descricao}")
+                print(f"Click normal em {descricao}")
                 
             elif tentativa == 2:
                 # Método 3: ActionChains com coordenadas
                 ActionChains(driver).move_to_element(elemento).pause(0.5).click().perform()
-                print(f"ActionChains FORÇADO em {descricao}")
+                print(f"ActionChains em {descricao}")
                 
             elif tentativa == 3:
                 # Método 4: JavaScript com eventos disparados
@@ -325,7 +325,7 @@ def clicar_elemento_com_retry(seletor, descricao, max_tentativas=5):
                     arguments[0].click();
                     arguments[0].dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
                 """, elemento)
-                print(f"JavaScript com eventos FORÇADO em {descricao}")
+                print(f"JavaScript com eventos em {descricao}")
                 
             else:
                 # Método 5: Força bruta - tenta tudo
@@ -342,10 +342,10 @@ def clicar_elemento_com_retry(seletor, descricao, max_tentativas=5):
             return True
             
         except Exception as e:
-            print(f"TENTATIVA {tentativa + 1} de clicar FORÇADO em {descricao} falhou: {e}")
+            print(f"TENTATIVA {tentativa + 1} de clicar em {descricao} falhou: {e}")
             time.sleep(1)
     
-    print(f"❌ FALHA TOTAL - Não foi possível clicar FORÇADO em {descricao}")
+    print(f"❌ FALHA TOTAL - Não foi possível clicar em {descricao}")
     return False
 
 # ==== INICIALIZAÇÃO DO DRIVER ====
@@ -395,7 +395,7 @@ try:
         raise Exception("Falha ao abrir menu")
 
     # Clicar em Cadastrar com FORÇA TOTAL
-    if not safe_action(doc, "Clicando FORÇADO em Cadastrar", lambda: (
+    if not safe_action(doc, "Clicando em Cadastrar", lambda: (
         driver.execute_script("""
             var botao = document.querySelector('#fmod_10068 > div.wdTelas > div > ul > li > a > span');
             if (botao) {
@@ -406,11 +406,11 @@ try:
         """),
         time.sleep(2)
     )):
-        # Se JavaScript falhar, tenta método tradicional FORÇADO
+        # Se JavaScript falhar, tenta método tradicional
         clicar_elemento_com_retry("#fmod_10068 > div.wdTelas > div > ul > li > a > span", "botão Cadastrar")
 
     # Abrir LOV Convênio com FORÇA TOTAL
-    if not safe_action(doc, "Abrindo LOV Convênio FORÇADO", lambda: (
+    if not safe_action(doc, "Abrindo LOV Convênio", lambda: (
         driver.execute_script("""
             var botao = document.querySelector('#fmod_10068 > div.wdTelas > div.telaCadastro.clearfix.telaVinculoConvenioConveniado > div.catWrapper > div > div > div > div > div:nth-child(2) > div:nth-child(1) > div > a');
             if (botao) {
@@ -424,7 +424,7 @@ try:
         clicar_elemento_com_retry("#fmod_10068 > div.wdTelas > div.telaCadastro.clearfix.telaVinculoConvenioConveniado > div.catWrapper > div > div > div > div > div:nth-child(2) > div:nth-child(1) > div > a", "LOV Convênio")
 
     # Pesquisar Convênio com FORÇA TOTAL
-    if not safe_action(doc, "Pesquisando Convênio FORÇADO", lambda: (
+    if not safe_action(doc, "Pesquisando Convênio", lambda: (
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div.formCol.divPesquisa > input"))).clear(),
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div.formCol.divPesquisa > input"))).send_keys("TESTE CONVÊNIO SELENIUM AUTOMATIZADO"),
         time.sleep(1),
@@ -437,11 +437,11 @@ try:
         raise Exception("Falha ao pesquisar convênio")
 
     # Selecionar Convênio com FORÇA TOTAL
-    if not safe_action(doc, "Selecionando Convênio FORÇADO", selecionar_convenio):
+    if not safe_action(doc, "Selecionando Convênio", selecionar_convenio):
         raise Exception("Falha ao selecionar convênio")
 
     # Abrir LOV Conveniado com FORÇA TOTAL
-    if not safe_action(doc, "Abrindo LOV Conveniado FORÇADO", lambda: (
+    if not safe_action(doc, "Abrindo LOV Conveniado", lambda: (
         time.sleep(2),
         driver.execute_script("""
             var botao = document.querySelector('#fmod_10068 > div.wdTelas > div.telaCadastro.clearfix.telaVinculoConvenioConveniado > div.catWrapper > div > div > div > div > div:nth-child(2) > div:nth-child(2) > div > a');
@@ -456,7 +456,7 @@ try:
         clicar_elemento_com_retry("#fmod_10068 > div.wdTelas > div.telaCadastro.clearfix.telaVinculoConvenioConveniado > div.catWrapper > div > div > div > div > div:nth-child(2) > div:nth-child(2) > div > a", "LOV Conveniado")
 
     # Pesquisar Conveniado com FORÇA TOTAL
-    if not safe_action(doc, "Pesquisando Conveniado FORÇADO", lambda: (
+    if not safe_action(doc, "Pesquisando Conveniado", lambda: (
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div.formCol.divPesquisa > div > div > input"))).clear(),
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div.formCol.divPesquisa > div > div > input"))).send_keys("TESTE CONVENIADO SELENIUM AUTOMATIZADO"),
         time.sleep(1),
@@ -469,11 +469,11 @@ try:
         raise Exception("Falha ao pesquisar conveniado")
 
     # Selecionar Conveniado com FORÇA TOTAL
-    safe_action(doc, "Selecionando Conveniado FORÇADO", lambda: selecionar_item_tabela("DataTables_Table_4", "TESTE CONVENIADO SELENIUM AUTOMATIZADO", "conveniado"))
+    safe_action(doc, "Selecionando Conveniado", lambda: selecionar_item_tabela("DataTables_Table_4", "TESTE CONVENIADO SELENIUM AUTOMATIZADO", "conveniado"))
 
 
     # Abrir LOV Especialidade com FORÇA TOTAL
-    if not safe_action(doc, "Abrindo LOV Especialidade FORÇADO", lambda: (
+    if not safe_action(doc, "Abrindo LOV Especialidade", lambda: (
         time.sleep(2),
         driver.execute_script("""
             var botao = document.querySelector('#fmod_10068 > div.wdTelas > div.telaCadastro.clearfix.telaVinculoConvenioConveniado > div.catWrapper > div > div > div > div > div:nth-child(3) > div:nth-child(1) > div > div > a');
@@ -488,7 +488,7 @@ try:
         clicar_elemento_com_retry("#fmod_10068 > div.wdTelas > div.telaCadastro.clearfix.telaVinculoConvenioConveniado > div.catWrapper > div > div > div > div > div:nth-child(3) > div:nth-child(1) > div > div > a", "LOV Especialidade")
 
     # Pesquisar Especialidade com FORÇA TOTAL
-    if not safe_action(doc, "Pesquisando Especialidade FORÇADO", lambda: (
+    if not safe_action(doc, "Pesquisando Especialidade", lambda: (
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div.formCol.divPesquisa > div > div > input"))).clear(),
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div.formCol.divPesquisa > div > div > input"))).send_keys("CARDIOLOGISTA"),
         time.sleep(1),
@@ -501,11 +501,11 @@ try:
         raise Exception("Falha ao pesquisar especialidade")
 
     # Selecionar Especialidade com FORÇA TOTAL
-    if not safe_action(doc, "Selecionando Especialidade FORÇADO", lambda: selecionar_item_tabela("DataTables_Table_4", "CARDIOLOGISTA", "especialidade")):
+    if not safe_action(doc, "Selecionando Especialidade", lambda: selecionar_item_tabela("DataTables_Table_4", "CARDIOLOGISTA", "especialidade")):
         raise Exception("Falha ao selecionar especialidade")
 
     # Salvar com FORÇA TOTAL
-    if not safe_action(doc, "Salvando Vínculo FORÇADO", lambda: (
+    if not safe_action(doc, "Salvando Vínculo", lambda: (
         time.sleep(2),
         driver.execute_script("""
             var botao = document.querySelector('#fmod_10068 > div.wdTelas > div.telaCadastro.clearfix.telaVinculoConvenioConveniado > div.catWrapper > div > div > div > div > div:nth-child(3) > div:nth-child(2) > a');
@@ -520,7 +520,7 @@ try:
         clicar_elemento_com_retry("#fmod_10068 > div.wdTelas > div.telaCadastro.clearfix.telaVinculoConvenioConveniado > div.catWrapper > div > div > div > div > div:nth-child(3) > div:nth-child(2) > a", "botão Salvar")
 
     # Pesquisar após salvar com FORÇA TOTAL
-    if not safe_action(doc, "Pesquisando após salvar FORÇADO", lambda: (
+    if not safe_action(doc, "Pesquisando após salvar", lambda: (
         time.sleep(2),
         driver.execute_script("""
             var botao = document.querySelector('#fmod_10068 > div.wdTelas > div.telaCadastro.clearfix.telaVinculoConvenioConveniado > div.catWrapper > div > div > div > div > div:nth-child(3) > div:nth-child(3) > a');
@@ -535,7 +535,7 @@ try:
         clicar_elemento_com_retry("#fmod_10068 > div.wdTelas > div.telaCadastro.clearfix.telaVinculoConvenioConveniado > div.catWrapper > div > div > div > div > div:nth-child(3) > div:nth-child(3) > a", "botão Pesquisar")
 
     # Fechar modal final com FORÇA TOTAL
-    safe_action(doc, "Fechando modal final FORÇADO", lambda: (
+    safe_action(doc, "Fechando modal final", lambda: (
         time.sleep(3),
         driver.execute_script("""
             var botao = document.querySelector('#fmod_10068 > div.wdTop.ui-draggable-handle > div.wdClose > a');

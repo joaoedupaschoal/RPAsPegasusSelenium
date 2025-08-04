@@ -52,6 +52,7 @@ def gerar_dados_multa(intervalo_max_passado=30):
 
     # Demais datas relacionadas
     data_notificacao_dt = data_multa_dt + timedelta(days=random.randint(0, 5))
+    data_notificacao_dt <  datetime.now()  # Garante que a notificação não seja futura
     data_vencimento_dt = data_multa_dt + timedelta(days=random.randint(10, 20))
     data_pagamento_dt = random.choice([
         data_notificacao_dt + timedelta(days=random.randint(0, (data_vencimento_dt - data_notificacao_dt).days)),
@@ -189,7 +190,7 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
     return acao
 
 
-def preencher_campo_com_retry(driver, wait, seletor, valor, max_tentativas=2):
+def preencher_campo_com_retry(driver, wait, seletor, valor, max_tentativas=3):
     """Tenta preencher o campo com diferentes métodos até conseguir"""
     
     for tentativa in range(max_tentativas):
@@ -375,13 +376,13 @@ try:
     ))
 
     time.sleep(1)
+    encontrar_mensagem_alerta()
 
     safe_action(doc, "Recusando lançamento da multa no contas à pagar", lambda: (
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#BtNo"))).click()
     ))
 
 
-    encontrar_mensagem_alerta()
 
     safe_action(doc, "Fechando modal", lambda: (
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10086 > div.wdTop.ui-draggable-handle > div > a"))).click()
