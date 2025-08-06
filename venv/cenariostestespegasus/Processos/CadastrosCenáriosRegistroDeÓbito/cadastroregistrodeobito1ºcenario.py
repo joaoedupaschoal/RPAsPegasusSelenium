@@ -412,9 +412,9 @@ def executar_teste():
         safe_action(doc, "Selecionando pessoa falecida", abrir_modal_e_selecionar_robusto(
             '#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(6) > div > a',
             '#txtPesquisa',
-            'FALECIDO TESTE SELENIUM AUTOMATIZADO',
+            'FALECIDO TESTE SELENIUM AUTOMATIZADO 28868',
             'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > a',
-            "//td[contains(text(), 'FALECIDO TESTE SELENIUM AUTOMATIZADO')]"
+            "//td[contains(text(), 'FALECIDO TESTE SELENIUM AUTOMATIZADO 28868')]"
         ))
 
         safe_action(doc, "Selecionando Situação do Falecido", selecionar_opcao_robusta(
@@ -429,11 +429,17 @@ def executar_teste():
 
 # Data do falecimento
         safe_action(doc, "Preenchendo Data do falecimento", lambda: preencher_campo_com_retry(
-            driver, wait, "input[ref='25']", data_falecimento)).send_keys(Keys.TAB)
+            driver, wait, "input[ref='25']", data_falecimento))
+
+        safe_action(doc, "Pressionando a tecla Tab para evitar erros", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[ref='25']"))).send_keys(Keys.TAB)
+        ))
 
         safe_action(doc, "Preenchendo hora do falecimento", lambda: preencher_campo_com_retry(
-            safe_scroll_and_interact("#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(10) > input", "send_keys", hora_falecimento)
-        ))
+            driver, wait, "#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(10) > input", hora_falecimento))
+
+        
+
 
         safe_action(doc, "Preenchendo Local de Falecimento", preencher_campo_robusto(
             '#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(11) > input',
@@ -513,9 +519,14 @@ def executar_teste():
             'LOCAL SEPULTAMENTO TESTE SELENIUM AUTOMATIZADO'
         ))
 
-        safe_action(doc, "Preenchendo Data da Registro", lambda: preencher_campo_com_retry(
-    driver, wait, "input[ref='10118']", data_registro,)).send_keys(Keys.TAB)
-        
+        safe_action(doc, "Preenchendo  Data de Registro", lambda: preencher_campo_com_retry(
+    driver, wait, "input[ref='10118']", data_registro,))
+
+        safe_action(doc, "Pressionando a tecla Tab para evitar erros", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[ref='10118']"))).send_keys(Keys.TAB)
+        ))
+
+
         safe_action(doc, "Selecionando Local de Velório", abrir_modal_e_selecionar_robusto(
             '#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(41) > div > a',
             'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input.nomePesquisa',
@@ -524,12 +535,15 @@ def executar_teste():
             "//td[contains(text(), 'TESTE VELÓRIO SELENIUM AUTOMATIZADO')]"
         ))
 
-        safe_action(doc, "Preenchendo Data da Sepultamento", lambda: preencher_campo_com_retry(
-    driver, wait, "input[ref='96']", data_sepultamento, )).send_keys(Keys.TAB)
-        
-        safe_action(doc, "Preenchendo Hora do Sepultamento", lambda: preencher_campo_com_retry(
-            safe_scroll_and_interact("#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(43) > input", "send_keys", hora_sepultamento)
+        safe_action(doc, "Preenchendo  Data de Sepultamento", lambda: preencher_campo_com_retry(
+    driver, wait, "input[ref='96']", data_sepultamento, ))
+
+        safe_action(doc, "Pressionando a tecla Tab para evitar erros", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[ref='96']"))).send_keys(Keys.TAB)
         ))
+
+        safe_action(doc, "Preenchendo Hora da Sepultamento", lambda: preencher_campo_com_retry(
+    driver, wait, "#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(43) > input", hora_sepultamento,))
 
         safe_action(doc, "Preenchendo Declaração de Óbito", preencher_campo_robusto(
             '#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(45) > input',
@@ -582,9 +596,13 @@ def executar_teste():
             'TESTE CIDADE SEPULTAMENTO SELENIUM AUTOMATIZADO'
         ))
 
-        safe_action(doc, "Preenchendo Data da Velório", lambda: preencher_campo_com_retry(
-    driver, wait, "input[ref='100159']", data_velorio,)).send_keys(Keys.TAB)
-        
+        safe_action(doc, "Preenchendo  Data de Velório", lambda: preencher_campo_com_retry(
+    driver, wait, "input[ref='100159']", data_velorio,))
+
+        safe_action(doc, "Pressionando a tecla Tab para evitar erros", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[ref='100159']"))).send_keys(Keys.TAB)
+        ))
+
         safe_action(doc, "Preenchendo Observações do Óbito", preencher_campo_robusto(
             '#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(4) > div > div:nth-child(7) > textarea',
             'TESTE OBSERVAÇÕES DO ÓBITO SELENIUM AUTOMATIZADO'
@@ -602,7 +620,14 @@ def executar_teste():
         ))
 
         # Procura por mensagens de alerta
+        time.sleep(10)
+        log(doc, "🔍 Verificando mensagens de alerta...")
         encontrar_mensagem_alerta()
+
+        safe_action(doc, "Recusando a solicitação da criação da Ordem de Serviço", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#BtNo"))).click()
+        ))
+
 
         return True
 

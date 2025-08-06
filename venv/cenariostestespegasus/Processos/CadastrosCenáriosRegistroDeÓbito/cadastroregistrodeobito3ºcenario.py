@@ -1,3 +1,5 @@
+# Corrigido: cadastroregistrodeobito1cenario.py
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -5,32 +7,31 @@ from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver import ActionChains
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
 from webdriver_manager.chrome import ChromeDriverManager
-from faker import Faker  # Importando o Faker
+from docx import Document
+from docx.shared import Inches
+from faker import Faker
 from faker.providers import BaseProvider
 from validate_docbr import CPF
-import random
-import time
 from datetime import datetime, timedelta
-# Inicializando o Faker
-fake = Faker()
-from selenium.common.exceptions import TimeoutException
-
-import random
-from datetime import timedelta
-from faker import Faker
-import sys
+from selenium.webdriver import ActionChains
 import subprocess
-from selenium import webdriver
-# Redireciona saída padrão e erros para o arquivo log.txt
-sys.stdout = open("log.txt", "w", encoding="utf-8")
-sys.stderr = sys.stdout  # Erros também vão para o mesmo arquivo
+import os
+import time
+import random
 
+# ==== PROVIDERS CUSTOMIZADOS ====
+class BrasilProvider(BaseProvider):
+    def rg(self):
+        numeros = [str(random.randint(0, 9)) for _ in range(8)]
+        return ''.join(numeros) + '-' + str(random.randint(0, 9))
+
+fake = Faker("pt_BR")
+fake.add_provider(BrasilProvider)
 
 def gerar_datas_validas():
     """Gera datas coerentes para nascimento, falecimento e sepultamento dentro de um intervalo válido."""
-    
     hoje = datetime.today().date()
     dez_anos_atras = hoje - timedelta(days=3650)  # Limite máximo de 10 anos atrás
     
@@ -48,517 +49,453 @@ def gerar_datas_validas():
     # Registro entre 1 e 10 dias após o sepultamento
     data_registro = data_sepultamento + timedelta(days=random.randint(1, 10))
 
+    data_velorio = fake.date_between(start_date=data_falecimento, end_date=data_sepultamento)
+
     return (
         data_nascimento.strftime("%d/%m/%Y"),
         data_falecimento.strftime("%d/%m/%Y"),
         data_sepultamento.strftime("%d/%m/%Y"),
+        data_velorio.strftime("%d/%m/%Y"),
         data_registro.strftime("%d/%m/%Y")
     )
 
 # Gera os valores corretos
-data_nascimento, data_falecimento, data_sepultamento, data_registro = gerar_datas_validas()
-hora_falecimento = fake.time(pattern="%H:%M")  # Horário aleatório no formato HH:MM
-hora_sepultamento = fake.time(pattern="%H:%M")  # Horário aleatório no formato HH:MM
-localizacao = fake.city()  # Nome de uma cidade aleatória
+data_nascimento, data_falecimento, data_sepultamento, data_velorio, data_registro = gerar_datas_validas()
+hora_falecimento = fake.time(pattern="%H:%M")
+hora_sepultamento = fake.time(pattern="%H:%M")
+localizacao = fake.city()
 
-
-
-
-'''Nesse teste, o robô preencherá apenas os Campos Obrigatórios e salvará o cadastro'''
-
-print('Nesse teste, o robô preencherá apenas os Campos Obrigatórios e salvará o cadastro')
-
-
-
-class BrasilProvider(BaseProvider):
-    def rg(self):
-        numeros = [str(random.randint(0, 9)) for _ in range(8)]
-        return ''.join(numeros) + '-' + str(random.randint(0, 9))
-
-fake = Faker("pt_BR")
-fake.add_provider(BrasilProvider)  # Adiciona o provedor
-
-
-
+# ==== CONFIGURAÇÕES ====
 URL = "http://localhost:8080/gs/index.xhtml"
+LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
+LOGIN_PASSWORD = "071999gs"
 
-def ajustar_zoom(driver):
-    """ Ajusta o zoom da página sem interferir em outras guias. """
-    driver.execute_script("document.body.style.zoom='90%'")
+# ==== INICIALIZAÇÃO DE VARIÁVEIS GLOBAIS ====
+doc = Document()
+doc.add_heading("RELATÓRIO DO TESTE", 0)
+doc.add_paragraph("Cadastro de Registro de Óbito – Cenário 3: Preenchimento dos campos obrigatórios e salvamento.")
+doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
-# Configuração do ChromeDriver
-chrome_options = Options()
-chrome_options.add_argument("--start-maximized")  # Maximiza a janela
+screenshot_registradas = set()
+driver = None
+wait = None
 
-# Inicializando o driver
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+# ==== FUNÇÕES DE UTILITÁRIO MELHORADAS ====
+def log(doc, msg):
+    print(msg)
+    doc.add_paragraph(msg)
 
-# Acessa a URL
-driver.get(URL)
+def take_screenshot(driver, doc, nome):
+    if driver is None:
+        return
+    if nome not in screenshot_registradas:
+        path = f"screenshots/{nome}.png"
+        os.makedirs("screenshots", exist_ok=True)
+        try:
+            driver.save_screenshot(path)
+            doc.add_paragraph(f"Screenshot: {nome}")
+            doc.add_picture(path, width=Inches(5.5))
+            screenshot_registradas.add(nome)
+        except Exception as e:
+            log(doc, f"⚠️ Erro ao tirar screenshot {nome}: {e}")
 
-# Espera até que o campo de login esteja presente
-wait = WebDriverWait(driver, 10)
-email_input = wait.until(EC.presence_of_element_located((By.ID, "j_id15:email")))
-email_input.send_keys('joaoeduardo.gold@outlook.com')
-
-password_input = wait.until(EC.presence_of_element_located((By.ID, "j_id15:senha")))
-password_input.send_keys("071999gs", Keys.ENTER)
-
-# Aguarda a página carregar
-time.sleep(5)
-
-ajustar_zoom(driver)
-# Simula o pressionamento da tecla F3
-driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F3)
-
-
-wait = WebDriverWait(driver, 7)  # Tempo máximo de espera
-botao_registro_obito = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'body > div.menuLayer.animate.process.overflow.overflowY.boxsize.active > ul > li:nth-child(14) > img')))
-botao_registro_obito.click()
-
-wait = WebDriverWait(driver, 7)  # Tempo máximo de espera
-botao_cadastrar = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, '#fmod_23 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span')))
-botao_cadastrar.click()
-
-
-
-wait = WebDriverWait(driver, 7)  # Tempo máximo de espera
-wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, '#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(6) > div > a'))).click()
-
-wait = WebDriverWait(driver, 7)  # Tempo máximo de espera
-wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a'))).click()
-
-
-# Preenchendo os dados pessoais com o Faker
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(2) > input").send_keys(fake.name())  # Nome falso
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(3) > select")).select_by_visible_text("Física")
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(4) > select")).select_by_visible_text("Carteira de Identidade Classista")
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(1) > input").send_keys(fake.ssn())  # Gerando um RG falso
-
-time.sleep(0.5)
-
-# Data de Nascimento com o Faker
-campo_data = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "input.dataExpedicao"))
-) 
-campo_data.click()  # Clica no campo de data
-campo_data.send_keys(fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%d/%m/%Y"))  # Gerando uma data de nascimento aleatória
-
-time.sleep(0.5)
-
-# Gera um CPF válido
-cpf = CPF().generate()
-
-# Localiza o campo de CPF
-cpf_field = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(3) > input")
-
-# Preenche o campo com o CPF gerado
-cpf_field.click()
-cpf_field.send_keys(cpf)
-
-time.sleep(1)
-
-# Dados Complementares
-driver.find_element(By.LINK_TEXT, "Dados Complementares").click()
-
-time.sleep(1)
-
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(1) > select")).select_by_visible_text("Solteiro")
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(2) > select")).select_by_visible_text("Feminino")
-
-# Gerando um e-mail e preenchendo
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(9) > input").send_keys(fake.email())
-
-campo_data = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "input.dataNascimento"))
-) 
-campo_data.click()  # Clica no campo de data
-campo_data.send_keys(fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%d/%m/%Y"))  # Gerando uma data de nascimento aleatória
-
-time.sleep(0.5)
-
-
-# Contato
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(5) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(6) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(7) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(9) > input").send_keys(fake.email())  # Gerando um e-mail falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(11) > input").send_keys(fake.city())  # Gerando uma cidade fictícia
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(12) > input").send_keys(fake.country())  # Gerando um país fictício
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(13) > input").send_keys(fake.first_name())  # Gerando o nome do pai fictício
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(14) > input").send_keys(fake.first_name())  # Gerando o nome da mãe fictício
-
-time.sleep(0.5)
-
-# Profissão
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(16) > input").send_keys(fake.job())  # Gerando uma profissão fictícia
-
-time.sleep(0.5)
-
-time.sleep(0.5)
-
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.categorias.overflow.overflowY > ul > li.li_enderecos > a").click()
-
-
-time.sleep(3)
-
-# Aguarda até o elemento estar presente na página
-try:
-    elemento = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(2) > div:nth-child(1) > div > input"))
-    )
-
-
-    # Preenche o campo de endereço
-    elemento.send_keys("15081115")
+def safe_action(doc, descricao, func, max_retries=3):
+    """Executa uma ação com retry e tratamento robusto de erros"""
+    global driver
     
-    print("Elemento encontrado, efetuando preenchimento!")
-
-    # Aguarda o botão aparecer e clica nele
-    botao = WebDriverWait(driver, 5).until(
-        EC.element_to_be_clickable((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(2) > div:nth-child(1) > div > a"))
-    )
-    botao.click()
-
-except Exception as e:
-    print(f"Erro: {e}")
-
-
-element = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#BtYes")))
-
-element.click()
-element.click()
-
-
-time.sleep(5)
-
-
-
-
-elemento = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(2) > input")
-elemento.send_keys("1733")
-
-
-
-elemento = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(3) > input")
-elemento.send_keys("Casa")
-
-
-
-time.sleep(3)
-
-
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(9) > label > input").click()
-
-time.sleep(2)
-
-
-# Clique no botão "Salvar"
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.btnHolder > a.btModel.btGray.btsave").click()
-
-time.sleep(1)
-
-
-
-
-
-campo_data_falecimento = WebDriverWait(driver, 10).until(
-    EC.element_to_be_clickable((By.CSS_SELECTOR, "input.hasDatepicker.mandatory.fc"))
-)
-
-# Interage com o campo diretamente
-campo_data_falecimento.click()
-campo_data_falecimento.clear()
-campo_data_falecimento.send_keys(data_falecimento)
-
-
-
-
-
-
-
-time.sleep(3)
-
-campo_data_sepultamento = WebDriverWait(driver, 10).until(
-    EC.element_to_be_clickable((By.CSS_SELECTOR, 'input[grupo="10036"][ref="96"]'))
-)
-
-# Rolando até o elemento
-driver.execute_script("arguments[0].scrollIntoView();", campo_data_sepultamento)
-
-# Tentando clicar após rolar para a posição correta
-campo_data_sepultamento.click()
-campo_data_sepultamento.clear()
-campo_data_sepultamento.send_keys(data_sepultamento)
-campo_data_sepultamento.send_keys(data_sepultamento)
-campo_data_sepultamento.send_keys(data_sepultamento)
-
-
-
-
-campo_numero_declaracao_obito = WebDriverWait(driver, 10).until(
-    EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(44) > input"))
-)
-campo_numero_declaracao_obito.send_keys(fake.random_int(min=1, max=99))
-
-Select(driver.find_element(By.CSS_SELECTOR, "#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(45) > select")).select_by_visible_text("Particular")
-
-Select(driver.find_element(By.CSS_SELECTOR, "#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(48) > select")).select_by_visible_text("Avô(ó)")
-
-declarante = WebDriverWait(driver, 10).until(
-    EC.element_to_be_clickable((By.CSS_SELECTOR, '#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(2) > div > div:nth-child(2) > div > a'))
-)
-
-# Rolando até o elemento
-driver.execute_script("arguments[0].scrollIntoView();", declarante)
-
-# Tentando clicar após rolar para a posição correta
-declarante.click()
-
-
-
-
-# Rolando para o elemento
-
-
-
-
-wait = WebDriverWait(driver, 7)  # Tempo máximo de espera
-wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a'))).click()
-
-
-# Preenchendo os dados pessoais com o Faker
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(2) > input").send_keys(fake.name())  # Nome falso
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(3) > select")).select_by_visible_text("Física")
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(4) > select")).select_by_visible_text("Carteira de Identidade Classista")
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(1) > input").send_keys(fake.ssn())  # Gerando um RG falso
-
-time.sleep(0.5)
-
-# Data de Nascimento com o Faker
-campo_data = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "input.dataExpedicao"))
-) 
-campo_data.click()  # Clica no campo de data
-campo_data.send_keys(fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%d/%m/%Y"))  # Gerando uma data de nascimento aleatória
-
-time.sleep(0.5)
-
-# Gera um CPF válido
-cpf = CPF().generate()
-
-# Localiza o campo de CPF
-cpf_field = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(3) > input")
-
-# Preenche o campo com o CPF gerado
-cpf_field.click()
-cpf_field.send_keys(cpf)
-
-time.sleep(1)
-
-# Dados Complementares
-driver.find_element(By.LINK_TEXT, "Dados Complementares").click()
-
-time.sleep(1)
-
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(1) > select")).select_by_visible_text("Solteiro")
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(2) > select")).select_by_visible_text("Feminino")
-
-# Gerando um e-mail e preenchendo
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(9) > input").send_keys(fake.email())
-
-campo_data = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "input.dataNascimento"))
-) 
-campo_data.click()  # Clica no campo de data
-campo_data.send_keys(fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%d/%m/%Y"))  # Gerando uma data de nascimento aleatória
-
-time.sleep(0.5)
-
-
-# Contato
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(5) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(6) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(7) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(9) > input").send_keys(fake.email())  # Gerando um e-mail falso
-
-
-element = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(11) > input")
-
-# Rolando até o elemento
-driver.execute_script("arguments[0].scrollIntoView();", element)
-
-# Inserindo o valor no campo de entrada
-element.send_keys(fake.city())
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(12) > input").send_keys(fake.country())  # Gerando um país fictício
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(13) > input").send_keys(fake.first_name())  # Gerando o nome do pai fictício
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(14) > input").send_keys(fake.first_name())  # Gerando o nome da mãe fictício
-
-time.sleep(0.5)
-
-# Profissão
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(16) > input").send_keys(fake.job())  # Gerando uma profissão fictícia
-
-time.sleep(0.5)
-
-time.sleep(0.5)
-
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.categorias.overflow.overflowY > ul > li.li_enderecos > a").click()
-
-
-time.sleep(3)
-
-# Aguarda até o elemento estar presente na página
-try:
-    elemento = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(2) > div:nth-child(1) > div > input"))
-    )
-
-
-    # Preenche o campo de endereço
-    elemento.send_keys("15081115")
+    for attempt in range(max_retries):
+        try:
+            if attempt == 0:
+                log(doc, f"🔄 {descricao}...")
+            else:
+                log(doc, f"🔄 {descricao}... (Tentativa {attempt + 1})")
+            
+            func()
+            log(doc, f"✅ {descricao} realizada com sucesso.")
+            take_screenshot(driver, doc, descricao.lower().replace(" ", "_"))
+            return True
+            
+        except (TimeoutException, NoSuchElementException, StaleElementReferenceException) as e:
+            if attempt < max_retries - 1:
+                log(doc, f"⚠️ Tentativa {attempt + 1} falhou para {descricao}, tentando novamente...")
+                time.sleep(2)
+                continue
+            else:
+                log(doc, f"❌ Erro ao {descricao.lower()} após {max_retries} tentativas: {e}")
+                take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
+                return False
+        except Exception as e:
+            log(doc, f"❌ Erro inesperado ao {descricao.lower()}: {e}")
+            take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
+            return False
+
+def finalizar_relatorio():
+    global driver, doc
     
-    print("Elemento encontrado, efetuando preenchimento!")
-
-    # Aguarda o botão aparecer e clica nele
-    botao = WebDriverWait(driver, 5).until(
-        EC.element_to_be_clickable((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(2) > div:nth-child(1) > div > a"))
-    )
-    botao.click()
-
-except Exception as e:
-    print(f"Erro: {e}")
-
-
-element = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#BtYes")))
-
-element.click()
-element.click()
-
-
-time.sleep(5)
-
-
-
-
-elemento = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(2) > input")
-elemento.send_keys("1733")
-
-
-
-elemento = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(3) > input")
-elemento.send_keys("Casa")
-
-
-
-time.sleep(3)
-
-
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(9) > label > input").click()
-
-time.sleep(2)
-
-
-# Clique no botão "Salvar"
-
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.btnHolder > a.btModel.btGray.btsave").click()
-
-
-
-
-
-
-
-
-
-Select(driver.find_element(By.CSS_SELECTOR, "#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(2) > div > div:nth-child(12) > select")).select_by_visible_text("Avô(ó)")
-
-
-driver.find_element(By.CSS_SELECTOR, "#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(2) > div > div:nth-child(13) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(2) > div > div:nth-child(14) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(2) > div > div:nth-child(15) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-
-time.sleep(10)
-# Clique no botão "Salvar"
-
-salvar = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.btnHolder > a.btModel.btGray.btsave > span"))
-) 
-salvar.click()  
-
-
-
-
-wait = WebDriverWait(driver, 10)
-botao_nao = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#BtNo")))
-botao_nao.click()
-botao_nao.click()
-botao_nao.click()
-
-time.sleep(3)
-
-# Fechar modal
-
-
-X = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_23 > div.wdTop.ui-draggable-handle > div.wdClose"))
-) 
-X.click()  
-
-
-
-
-
-time.sleep(1)
-
-
-
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+    nome_arquivo = f"relatorio_obito_cenario_3_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    try:
+        doc.save(nome_arquivo)
+        log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
+        try:
+            subprocess.run(["start", "winword", nome_arquivo], shell=True)
+        except:
+            pass
+    except Exception as e:
+        print(f"Erro ao salvar relatório: {e}")
+    
+    if driver:
+        try:
+            driver.quit()
+        except:
+            pass
 
 def encontrar_mensagem_alerta():
+    global driver, doc
+    
+    if driver is None:
+        return None
+        
     seletores = [
-        (".alerts.salvo", "sucesso"),
-        (".alerts.alerta", "alerta"),
-        (".alerts.erro", "erro"),
+        (".alerts.salvo", "✅ Sucesso"),
+        (".alerts.alerta", "⚠️ Alerta"),
+        (".alerts.erro", "❌ Erro"),
     ]
 
     for seletor, tipo in seletores:
         try:
             elemento = driver.find_element(By.CSS_SELECTOR, seletor)
-            if elemento.is_displayed():  # garante que está visível
-                print(f"Mensagem de {tipo}:", elemento.text)
+            if elemento.is_displayed():
+                log(doc, f"📢 {tipo}: {elemento.text}")
                 return elemento
-        except NoSuchElementException:
+        except:
             continue
 
-    print("Nenhuma mensagem encontrada.")
+    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
 
-# Espera apenas pelo container de alertas como um todo (melhora desempenho)
-try:
-    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".alerts")))
-    encontrar_mensagem_alerta()
-except TimeoutException:
-    print("Nenhum alerta apareceu dentro do tempo limite.")
+def ajustar_zoom():
+    global driver, doc
+    
+    if driver is None:
+        return
+        
+    try:
+        driver.execute_script("document.body.style.zoom='90%'")
+        log(doc, "🔍 Zoom ajustado para 90%.")
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao ajustar zoom: {e}")
 
-print('Teste executado com sucesso!')
-import sys
-import subprocess
-from selenium import webdriver
-# Redireciona saída padrão e erros para o arquivo log.txt
-sys.stdout = open("log.txt", "w", encoding="utf-8")
-sys.stderr = sys.stdout  # Erros também vão para o mesmo arquivo
+def safe_scroll_and_interact(selector, action_type="click", value=None, timeout=10, by_xpath=False):
+    """Função robusta para rolar até elemento e interagir com ele"""
+    global driver, doc
+    
+    if driver is None:
+        return None
+        
+    try:
+        # Escolhe o tipo de seletor
+        by_type = By.XPATH if by_xpath else By.CSS_SELECTOR
+        
+        # Aguarda o elemento estar presente
+        element = WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located((by_type, selector))
+        )
+        
+        # Rola até o elemento
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", element)
+        time.sleep(0.5)
+        
+        # Aguarda o elemento estar clicável se necessário
+        if action_type in ["click", "send_keys"]:
+            element = WebDriverWait(driver, timeout).until(
+                EC.element_to_be_clickable((by_type, selector))
+            )
+        
+        # Executa a ação
+        if action_type == "click":
+            element.click()
+        elif action_type == "send_keys" and value:
+            element.clear()
+            element.send_keys(value)
+        elif action_type == "select" and value:
+            Select(element).select_by_visible_text(value)
+            
+        return element
+        
+    except Exception as e:
+        log(doc, f"❌ Erro ao interagir com elemento {selector}: {e}")
+        return None
 
-sys.stdout.close()
-subprocess.run(["notepad", "log.txt"])
-# Aguarda o usuário pressionar "." para fechar o navegador
-print('Pressione "." para fechar o navegador...')
-while True:
-    if input() == ".":
-        break  
+def preencher_campo_robusto(selector, valor, clear_first=True):
+    """Preenche campo de forma robusta"""
+    def acao():
+        element = safe_scroll_and_interact(selector, "send_keys", valor)
+        if element is None:
+            raise Exception(f"Não foi possível encontrar o elemento: {selector}")
+    return acao
 
-# Espera 10 segundos antes de fechar (opcional)
-time.sleep(3)
+def selecionar_opcao_robusta(selector, texto):
+    """Seleciona opção de forma robusta"""
+    def acao():
+        element = safe_scroll_and_interact(selector, "select", texto)
+        if element is None:
+            raise Exception(f"Não foi possível encontrar o select: {selector}")
+    return acao
 
-# Fecha o navegador
-driver.quit()
+def clicar_elemento_robusto(selector):
+    """Clica em elemento de forma robusta"""
+    def acao():
+        element = safe_scroll_and_interact(selector, "click")
+        if element is None:
+            raise Exception(f"Não foi possível clicar no elemento: {selector}")
+    return acao
+
+def preencher_campo_com_retry(driver, wait, seletor, valor, max_tentativas=3):
+    """Tenta preencher o campo com diferentes métodos até conseguir"""
+    global doc
+    
+    if driver is None or wait is None:
+        return False
+    
+    for tentativa in range(max_tentativas):
+        try:
+            # Aguarda o elemento
+            campo = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, seletor)))
+            
+            # Scroll até o elemento se necessário
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", campo)
+            time.sleep(0.5)
+            
+            # Método 1: Tradicional
+            if tentativa == 0:
+                campo.click()
+                campo.clear()
+                campo.send_keys(valor)
+                campo.send_keys(Keys.TAB)
+            
+            # Método 2: ActionChains
+            elif tentativa == 1:
+                ActionChains(driver).move_to_element(campo).click().perform()
+                time.sleep(0.2)
+                ActionChains(driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
+                ActionChains(driver).send_keys(valor).perform()
+                ActionChains(driver).send_keys(Keys.TAB).perform()
+            
+            # Método 3: JavaScript
+            else:
+                driver.execute_script("""
+                    var element = arguments[0];
+                    var valor = arguments[1];
+                    element.focus();
+                    element.value = '';
+                    element.value = valor;
+                    element.dispatchEvent(new Event('input', { bubbles: true }));
+                    element.dispatchEvent(new Event('change', { bubbles: true }));
+                    element.blur();
+                """, campo, valor)
+            
+            time.sleep(0.5)
+            
+            # Verifica se o valor foi preenchido
+            valor_atual = campo.get_attribute('value')
+            if valor_atual == valor:
+                return True
+                
+        except Exception as e:
+            log(doc, f"⚠️ Tentativa {tentativa + 1} falhou: {e}")
+            time.sleep(1)
+    
+    return False
+
+def abrir_modal_e_selecionar_robusto(btn_selector, pesquisa_selector, termo_pesquisa, btn_pesquisar_selector, resultado_xpath):
+    """Versão robusta da função de modal"""
+    global driver, wait, doc
+    
+    def acao():
+        if driver is None or wait is None:
+            raise Exception("Driver ou wait não inicializados")
+            
+        # Abre o modal
+        safe_scroll_and_interact(btn_selector, "click")
+        time.sleep(1)
+
+        # Aguarda e preenche campo pesquisa
+        campo_pesquisa = wait.until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, pesquisa_selector))
+        )
+        campo_pesquisa.clear()
+        campo_pesquisa.send_keys(termo_pesquisa)
+        time.sleep(0.5)
+
+        # Clica pesquisar
+        pesquisar = wait.until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, btn_pesquisar_selector))
+        )
+        pesquisar.click()
+        time.sleep(2)
+        
+        # Aguarda resultado e clica
+        resultado = wait.until(
+            EC.element_to_be_clickable((By.XPATH, resultado_xpath))
+        )
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", resultado)
+        time.sleep(0.5)
+        resultado.click()
+        time.sleep(1)
+
+    return acao
+
+def inicializar_driver():
+    """Inicializa o driver do Chrome"""
+    global driver, wait
+    
+    try:
+        options = Options()
+        options.add_argument("--start-maximized")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        wait = WebDriverWait(driver, 20)
+        
+        return True
+    except Exception as e:
+        log(doc, f"❌ Erro ao inicializar driver: {e}")
+        return False
+
+# ==== EXECUÇÃO DO TESTE ====
+def executar_teste():
+    global driver, wait, doc
+    
+    try:
+        # Inicializa o driver
+        if not inicializar_driver():
+            return False
+
+        safe_action(doc, "Acessando sistema", lambda: driver.get(URL))
+
+        safe_action(doc, "Realizando login", lambda: (
+            wait.until(EC.presence_of_element_located((By.ID, "j_id15:email"))).send_keys(LOGIN_EMAIL),
+            wait.until(EC.presence_of_element_located((By.ID, "j_id15:senha"))).send_keys(LOGIN_PASSWORD, Keys.ENTER),
+            time.sleep(5)
+        ))
+
+        safe_action(doc, "Ajustando zoom e abrindo menu", lambda: (
+            ajustar_zoom(),
+            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F3)
+        ))
+
+        safe_action(doc, "Acessando Registro de Óbito", lambda: (
+            wait.until(EC.element_to_be_clickable((By.XPATH, '/html/body/div[15]/ul/li[14]/img'))).click()
+        ))
+
+        safe_action(doc, "Clicando em Cadastrar", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, '#fmod_23 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span'))).click()
+        ))
+
+        safe_action(doc, "Selecionando pessoa falecida", abrir_modal_e_selecionar_robusto(
+            '#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(6) > div > a',
+            '#txtPesquisa',
+            'PESSOA FALECIDA TESTE',
+            'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > a',
+            "//td[contains(text(), 'PESSOA FALECIDA TESTE')]"
+        ))
+
+# Data do falecimento
+        safe_action(doc, "Preenchendo Data do falecimento", lambda: preencher_campo_com_retry(
+            driver, wait, "input[ref='25']", data_falecimento))
+
+        safe_action(doc, "Pressionando a tecla Tab para evitar erros", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[ref='25']"))).send_keys(Keys.TAB)
+        ))
+
+        safe_action(doc, "Preenchendo  Data de Sepultamento", lambda: preencher_campo_com_retry(
+            driver, wait, "input[ref='96']", data_sepultamento, ))
+
+        safe_action(doc, "Pressionando a tecla Tab para evitar erros", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[ref='96']"))).send_keys(Keys.TAB)
+        ))
+
+
+        safe_action(doc, "Preenchendo Declaração de Óbito", preencher_campo_robusto(
+            '#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(45) > input',
+            str(fake.random_int(min=1000, max=9999))
+        ))
+
+        safe_action(doc, "Selecionando a opção para o Tipo de Óbito ser Particular", selecionar_opcao_robusta(
+            "#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(46) > select",
+            "Particular"
+        ))
+
+
+
+        safe_action(doc, "Selecionando Grau de Parentesco", selecionar_opcao_robusta(
+            "#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(49) > select",
+            "Agregado"
+        ))
+
+        safe_action(doc, "Selecionando Declarante", abrir_modal_e_selecionar_robusto(
+            '#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(2) > div > div:nth-child(2) > div > a',
+            '#txtPesquisa',
+            'TESTE DECLARANTE SELENIUM AUTOMATIZADO',
+            'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > a',
+            "//td[contains(text(), 'TESTE DECLARANTE SELENIUM AUTOMATIZADO')]"
+        ))
+
+        safe_action(doc, "Salvando cadastro", clicar_elemento_robusto(
+            '#fmod_23 > div.wdTelas > div.telaCadastro.clearfix > div.btnHolder > a.btModel.btGray.btsave'
+        ))
+
+        # Aguarda um pouco após salvar
+        time.sleep(3)
+
+        safe_action(doc, "Fechando modal após o salvamento", clicar_elemento_robusto(
+            '#fmod_23 > div.wdTop.ui-draggable-handle > div.wdClose > a'
+        ))
+
+        # Procura por mensagens de alerta
+        time.sleep(2)
+        log(doc, "🔍 Verificando mensagens de alerta...")
+        encontrar_mensagem_alerta()
+
+        safe_action(doc, "Recusando a solicitação da criação da Ordem de Serviço", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#BtNo"))).click()
+        ))
+
+
+        return True
+
+    except Exception as e:
+        log(doc, f"❌ ERRO FATAL: {e}")
+        take_screenshot(driver, doc, "erro_fatal")
+        return False
+
+    finally:
+        log(doc, "✅ Teste concluído.")
+
+# ==== FUNÇÃO PRINCIPAL ====
+def main():
+    """Função principal que executa o teste"""
+    global doc
+    
+    try:
+        log(doc, "🚀 Iniciando teste de cadastro de registro de óbito...")
+        
+        sucesso = executar_teste()
+        
+        if sucesso:
+            log(doc, "✅ Teste executado com sucesso!")
+        else:
+            log(doc, "❌ Teste finalizado com erros.")
+            
+    except Exception as e:
+        log(doc, f"❌ Erro na execução principal: {e}")
+        
+    finally:
+        finalizar_relatorio()
+
+# ==== EXECUÇÃO ====
+if __name__ == "__main__":
+    main()
