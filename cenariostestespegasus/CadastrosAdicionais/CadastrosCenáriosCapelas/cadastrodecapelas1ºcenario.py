@@ -1,3 +1,14 @@
+import sys
+import os
+
+# Adiciona a raiz do projeto ao sys.path
+sys.path.append(
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../..")
+    )
+)
+
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -92,16 +103,27 @@ def main():
         campo_cidade = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR,
             "#fmod_10035 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(3) > input")))
         campo_cidade.send_keys("São José do Rio Preto - SP")
+
         time.sleep(1)
+
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "ul.ui-autocomplete")))
+   
+   
         wait.until(EC.element_to_be_clickable((By.XPATH, "//li[contains(text(), 'São José do Rio Preto - SP')]"))).click()
+        
         log(doc, "✅ Campo 'Cidade - UF' preenchido e selecionado.")
         take_screenshot(driver, doc, "cidade_uf_preenchida")
+
+
+
+
 
         log(doc, "🔄 Clicando no botão 'Salvar'.")
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
             "#fmod_10035 > div.wdTelas > div.telaCadastro.clearfix > div.btnHolder > a.btModel.btGray.btsave"))).click()
+        
         time.sleep(2)
+
         log(doc, "✅ Cadastro enviado com sucesso.")
         take_screenshot(driver, doc, "apos_clicar_salvar")
 
@@ -109,7 +131,9 @@ def main():
         log(doc, "🔄 Fechando o formulário.")
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
             "#fmod_10035 > div.wdTop.ui-draggable-handle > div.wdClose > a"))).click()
+       
         time.sleep(1)
+       
         log(doc, "✅ Formulário fechado.")
         take_screenshot(driver, doc, "formulario_fechado")
 

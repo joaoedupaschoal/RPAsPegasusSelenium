@@ -1,4 +1,7 @@
 # Refatorado e organizado: cadastrodeescalamotorista2ºcenario.py
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
+from utils.actions import log, take_screenshot, safe_action, encontrar_mensagem_alerta, ajustar_zoom
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By

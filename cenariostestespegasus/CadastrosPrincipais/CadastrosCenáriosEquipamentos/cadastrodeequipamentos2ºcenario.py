@@ -36,6 +36,7 @@ def log(doc, msg):
     print(msg)
     doc.add_paragraph(msg)
 
+
 def take_screenshot(driver, doc, nome):
     if nome not in screenshot_registradas:
         path = f"screenshots/{nome}.png"
@@ -44,6 +45,69 @@ def take_screenshot(driver, doc, nome):
         doc.add_paragraph(f"Screenshot: {nome}")
         doc.add_picture(path, width=Inches(5.5))
         screenshot_registradas.add(nome)
+
+def safe_scroll_and_interact(selector, action_type="click", value=None, timeout=10, by_xpath=False):
+    """Rola até o elemento e interage com ele de forma robusta."""
+    global driver, doc
+    if driver is None:
+        return None
+    try:
+        by_type = By.XPATH if by_xpath else By.CSS_SELECTOR
+        element = WebDriverWait(driver, timeout).until(EC.presence_of_element_located((by_type, selector)))
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", element)
+        time.sleep(0.5)
+        if action_type in ["click", "send_keys"]:
+            element = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((by_type, selector)))
+        if action_type == "click":
+            element.click()
+        elif action_type == "send_keys" and value:
+            element.clear()
+            element.send_keys(value)
+        elif action_type == "select" and value:
+            Select(element).select_by_visible_text(value)
+        return element
+    except Exception as e:
+        log(doc, f"❌ Erro ao interagir com elemento {selector}: {e}")
+        return None
+
+
+def abrir_modal_e_selecionar_robusto(btn_selector, pesquisa_selector, termo_pesquisa, btn_pesquisar_selector, resultado_xpath):
+    """Versão robusta da função de modal"""
+    global driver, wait, doc
+    
+    def acao():
+        if driver is None or wait is None:
+            raise Exception("Driver ou wait não inicializados")
+            
+        # Abre o modal
+        safe_scroll_and_interact(btn_selector, "click")
+        time.sleep(5)
+
+        # Aguarda e preenche campo pesquisa
+        campo_pesquisa = wait.until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, pesquisa_selector))
+        )
+        campo_pesquisa.clear()
+        campo_pesquisa.send_keys(termo_pesquisa)
+        time.sleep(0.5)
+
+        # Clica pesquisar
+        pesquisar = wait.until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, btn_pesquisar_selector))
+        )
+        pesquisar.click()
+        time.sleep(3)
+        
+        # Aguarda resultado e clica
+        resultado = wait.until(
+            EC.element_to_be_clickable((By.XPATH, resultado_xpath))
+        )
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", resultado)
+        time.sleep(0.5)
+        resultado.click()
+        time.sleep(1)
+
+    return acao
 
 def safe_action(doc, descricao, func):
     try:
@@ -108,30 +172,25 @@ try:
         driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2),
         time.sleep(1),
         wait.until(EC.visibility_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']"))).send_keys("Equipamento")
-    ))
-
+    ))    
+    
     safe_action(doc, "Selecionando opção de Equipamento", lambda: (
-        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[16]/a"))).click()
+        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[15]/a"))).click()
     ))
 
     safe_action(doc, "Clicando em Cadastrar", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span"))).click()
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div > ul > li:nth-child(1) > a > span"))).click()
     ))
 
-    safe_action(doc, "Abrindo LOV Grupo", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_dadosEquipamento.categoriaHolder > div > div > div > div:nth-child(2) > div > a"))).click()
-    ))
 
-    safe_action(doc, "Criando novo Grupo", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(4) > a"))).click(),
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_10056 > div.wdTelas > div > div.catWrapper > div > div > div > div > div > div:nth-child(2) > input"))).send_keys("TESTE GRUPO EQUIPAMENTO SELENIUM AUTOMATIZADO"),
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_10056 > div.wdTelas > div > div.catWrapper > div > div > div > div > div > div:nth-child(3) > input"))).send_keys(fake.random_int(min=10, max=5000)),
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_10056 > div.wdTelas > div > div.catWrapper > div > div > div > div > div > div:nth-child(5) > input"))).send_keys(fake.random_int(min=10, max=90)),
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_10056 > div.wdTelas > div > div.catWrapper > div > div > div > div > div > div:nth-child(6) > input"))).send_keys(fake.random_int(min=10, max=50000)),
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_10056 > div.wdTelas > div > div.catWrapper > div > div > div > div > div > div:nth-child(7) > input"))).send_keys(fake.random_int(min=10, max=90)),
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_10056 > div.wdTelas > div > div.catWrapper > div > div > div > div > div > div:nth-child(8) > input"))).send_keys(fake.random_int(min=10, max=90)),
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_10056 > div.wdTelas > div > div.catWrapper > div > div > div > div > div > div:nth-child(9) > input"))).send_keys(fake.random_int(min=10, max=50000)),
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#cg_10056 > div.wdTelas > div > div.btnHolder > a.btModel.btGray.btsave"))).click()
+
+
+    safe_action(doc, "Selecionando Grupo", abrir_modal_e_selecionar_robusto(
+        '#fmod_10057 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_dadosEquipamento.categoriaHolder > div > div > div > div:nth-child(2) > div > a',
+        'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input',
+        'SEL',
+        'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a',
+        "//td[contains(text(), 'SEL')]"
     ))
 
     safe_action(doc, "Preenchendo número de patrimônio", lambda: (

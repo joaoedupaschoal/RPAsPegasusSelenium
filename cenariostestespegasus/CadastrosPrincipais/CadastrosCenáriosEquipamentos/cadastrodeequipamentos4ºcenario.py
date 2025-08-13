@@ -109,15 +109,13 @@ try:
         time.sleep(1),
         wait.until(EC.visibility_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']"))).send_keys("Equipamento")
     ))
-
     safe_action(doc, "Selecionando opção de Equipamento", lambda: (
-        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[16]/a"))).click()
+        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[15]/a"))).click()
     ))
 
     safe_action(doc, "Clicando em Cadastrar", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span"))).click()
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div > ul > li:nth-child(1) > a > span"))).click()
     ))
-
     safe_action(doc, "Selecionando Filial", lambda: (
         Select(wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_dadosEquipamento.categoriaHolder > div > div > div > div:nth-child(8) > select")))).select_by_visible_text("Filial Gold 1")
     ))

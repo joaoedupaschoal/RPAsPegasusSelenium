@@ -1,3 +1,12 @@
+import sys
+import os
+
+# Adiciona a raiz do projeto ao sys.path
+sys.path.append(
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../..")
+    )
+)
 # Refatorado com logs detalhados e preenchimento via JavaScript - VERSÃO CORRIGIDA
 
 from selenium import webdriver

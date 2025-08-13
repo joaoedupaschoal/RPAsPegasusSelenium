@@ -1,3 +1,14 @@
+import sys
+import os
+
+# Adiciona a raiz do projeto ao sys.path
+sys.path.append(
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../..")
+    )
+)
+
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
