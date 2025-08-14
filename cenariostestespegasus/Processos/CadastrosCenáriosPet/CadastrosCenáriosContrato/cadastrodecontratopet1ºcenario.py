@@ -157,6 +157,10 @@ def safe_action(doc, descricao, func):
         log(doc, "— stacktrace —")
         log(doc, traceback.format_exc())
 
+def finalizar_cadastro():
+    seletor_css_finalizar = '#gsPet > div.wdTelas > div.wdWizard.clearfix.telaConsulta > div.btnHolder > div'
+    clicar_elemento_robusto(driver, wait, seletor_css_finalizar)
+    time.sleep(6)
 
 
 def abrir_modal_e_selecionar_robusto(btn_selector, pesquisa_selector, termo_pesquisa, btn_pesquisar_selector, resultado_xpath):
@@ -659,11 +663,8 @@ def executar_teste():
             clicar_elemento_robusto(driver, wait, '#gsPet > div.wdTelas > div.wdWizard.clearfix.telaConsulta > div.btnHolder > a:nth-child(3)')
         )
 
-        xpath_selector = "//div[contains(@class,'btModel') and contains(@class,'btGray') and normalize-space(text())='Finalizar']"
-        safe_action(doc, "Finalizando cadastro", lambda:
-            clicar_elemento_robusto(driver, wait, xpath_selector),
-            time.sleep(6)
-        )   
+
+        safe_action(doc, "Finalizando cadastro", finalizar_cadastro)
 
 
 
