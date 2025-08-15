@@ -209,30 +209,101 @@ def aguardar_elemento(seletor, timeout=TIMEOUT_DEFAULT, condicao='clickable', by
         log(doc, f"❌ Erro aguardando elemento {seletor}: {e}", 'ERROR')
         raise
 
-# ==== SCROLL E INTERAÇÃO MELHORADOS ====
-def scroll_to_element(elemento):
-    """Scroll inteligente até elemento"""
+# ==== SCROLL CORRIGIDO - PRINCIPAL CORREÇÃO ====
+def scroll_to_element_safe(elemento_ou_seletor, by_type=By.CSS_SELECTOR):
+    """Scroll seguro até elemento com validação robusta"""
     global driver
     
-    if driver is None or elemento is None:
+    if driver is None:
+        log(doc, "⚠️ Driver não disponível para scroll", 'WARN')
         return False
     
     try:
-        # Scroll suave até o elemento
-        driver.execute_script("""
-            arguments[0].scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-                inline: 'center'
-            });
-        """, elemento)
-        time.sleep(0.8)  # Aguarda scroll completar
+        # Se for seletor, encontra o elemento
+        if isinstance(elemento_ou_seletor, str):
+            elemento = aguardar_elemento(elemento_ou_seletor, 10, 'present', by_type)
+        else:
+            elemento = elemento_ou_seletor
         
-        # Verifica se elemento está visível
-        return elemento.is_displayed() and elemento.is_enabled()
+        if elemento is None:
+            log(doc, "⚠️ Elemento não encontrado para scroll", 'WARN')
+            return False
+        
+        # Verifica se elemento é válido antes de fazer scroll
+        if not elemento.is_displayed():
+            log(doc, "⚠️ Elemento não está visível para scroll", 'WARN')
+            return False
+        
+        # Estratégias de scroll em ordem de preferência
+        scroll_strategies = [
+            # Estratégia 1: JavaScript com verificação prévia
+            lambda: driver.execute_script("""
+                var element = arguments[0];
+                if (element && typeof element.scrollIntoView === 'function') {
+                    element.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                        inline: 'center'
+                    });
+                    return true;
+                } else {
+                    return false;
+                }
+            """, elemento),
+            
+            # Estratégia 2: ActionChains
+            lambda: ActionChains(driver).move_to_element(elemento).perform(),
+            
+            # Estratégia 3: JavaScript alternativo
+            lambda: driver.execute_script("""
+                var element = arguments[0];
+                if (element) {
+                    element.scrollIntoView();
+                    window.scrollBy(0, -100);
+                }
+            """, elemento),
+            
+            # Estratégia 4: Scroll da página até o elemento
+            lambda: driver.execute_script("""
+                var element = arguments[0];
+                if (element) {
+                    var rect = element.getBoundingClientRect();
+                    var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    var targetY = rect.top + scrollTop - (window.innerHeight / 2);
+                    window.scrollTo(0, targetY);
+                }
+            """, elemento)
+        ]
+        
+        for i, strategy in enumerate(scroll_strategies, 1):
+            try:
+                log(doc, f"   Tentando estratégia de scroll {i}...")
+                result = strategy()
+                
+                # Para estratégia 1, verifica resultado
+                if i == 1 and result is False:
+                    log(doc, f"   Estratégia {i}: elemento não suporta scrollIntoView", 'WARN')
+                    continue
+                
+                time.sleep(0.8)  # Aguarda scroll completar
+                
+                # Verifica se elemento ainda está acessível
+                if elemento.is_displayed() and elemento.is_enabled():
+                    log(doc, f"✅ Scroll realizado com estratégia {i}")
+                    return True
+                else:
+                    log(doc, f"   Estratégia {i}: elemento não ficou acessível", 'WARN')
+                    continue
+                    
+            except Exception as e:
+                log(doc, f"   Estratégia {i} de scroll falhou: {str(e)[:100]}...", 'WARN')
+                continue
+        
+        log(doc, "⚠️ Todas as estratégias de scroll falharam", 'WARN')
+        return False
         
     except Exception as e:
-        log(doc, f"⚠️ Erro no scroll: {e}", 'WARN')
+        log(doc, f"⚠️ Erro geral no scroll: {e}", 'WARN')
         return False
 
 def remover_overlays():
@@ -265,7 +336,7 @@ def remover_overlays():
     except Exception as e:
         log(doc, f"⚠️ Erro ao remover overlays: {e}", 'WARN')
 
-# ==== CLIQUE ROBUSTO MELHORADO ====
+# ==== CLIQUE ROBUSTO CORRIGIDO ====
 def clicar_elemento_robusto(seletor, timeout=TIMEOUT_DEFAULT, by_type=By.CSS_SELECTOR):
     """Clique robusto com múltiplas estratégias"""
     def acao():
@@ -278,9 +349,10 @@ def clicar_elemento_robusto(seletor, timeout=TIMEOUT_DEFAULT, by_type=By.CSS_SEL
             # 2. Remove overlays
             remover_overlays()
             
-            # 3. Scroll até elemento
-            if not scroll_to_element(elemento):
-                log(doc, f"⚠️ Elemento pode não estar visível: {seletor}", 'WARN')
+            # 3. Scroll seguro até elemento
+            scroll_success = scroll_to_element_safe(elemento)
+            if not scroll_success:
+                log(doc, f"⚠️ Problemas com scroll, continuando mesmo assim: {seletor}", 'WARN')
             
             # 4. Aguarda ser clicável
             try:
@@ -368,6 +440,82 @@ def _preencher_javascript(elemento, valor):
         element.blur();
     """, elemento, valor)
 
+
+
+def _valor_do_elemento(elemento, driver=None):
+    """Tenta ler o valor atual (value ou textContent p/ contenteditable)."""
+    val = (elemento.get_attribute('value') or "").strip()
+    if not val and elemento.get_attribute('contenteditable') in ('true', 'True', True):
+        try:
+            # usa JS p/ garantir leitura de contenteditable
+            return (driver.execute_script("return arguments[0].textContent;", elemento) or "").strip()
+        except Exception:
+            return (elemento.text or "").strip()
+    return val
+
+def preencher_campo_robusto_xpath(xpath, valor, limpar_primeiro=True, timeout=TIMEOUT_DEFAULT):
+    """Versão para XPath da função de preenchimento robusto."""
+    def acao():
+        if valor is None or valor == "":
+            log(doc, f"⚠️ Valor vazio para campo (xpath): {xpath}, pulando preenchimento", 'WARN')
+            return True
+
+        # 1) aguarda de forma robusta pelo elemento via XPATH
+        try:
+            elemento = WebDriverWait(driver, timeout).until(
+                EC.element_to_be_clickable((By.XPATH, xpath))
+            )
+        except Exception:
+            # fallback: presença + possibilidade de clique depois
+            elemento = WebDriverWait(driver, timeout).until(
+                EC.presence_of_element_located((By.XPATH, xpath))
+            )
+
+        # 2) scroll até o elemento
+        scroll_success = scroll_to_element_safe(elemento)
+        if not scroll_success:
+            log(doc, f"⚠️ Problemas com scroll para (xpath): {xpath}", 'WARN')
+
+        # 3) estratégias de preenchimento (rebusca o elemento a cada tentativa p/ evitar stale)
+        def _refind():
+            try:
+                return WebDriverWait(driver, 2).until(
+                    EC.presence_of_element_located((By.XPATH, xpath))
+                )
+            except Exception:
+                return elemento  # último conhecido (melhor que nada)
+
+        estrategias = [
+            lambda: _preencher_tradicional(_refind(), valor, limpar_primeiro),
+            lambda: _preencher_actionchains(_refind(), valor),
+            lambda: _preencher_javascript(_refind(), valor),
+        ]
+
+        for i, estrategia in enumerate(estrategias, 1):
+            try:
+                estrategia()
+                time.sleep(0.5)
+
+                # Verificação do preenchimento
+                elemento_check = _refind()
+                valor_atual = _valor_do_elemento(elemento_check, driver)
+
+                if valor_atual.strip() == str(valor).strip() or str(valor) in valor_atual:
+                    log(doc, f"✅ Campo (xpath) preenchido com estratégia {i}: '{valor_atual}'")
+                    return True
+                else:
+                    log(doc, f"⚠️ Estratégia {i} não confirmou o valor. Esperado: '{valor}', Atual: '{valor_atual}'", 'WARN')
+
+            except Exception as e:
+                log(doc, f"⚠️ Estratégia {i} (xpath) falhou: {e}", 'WARN')
+                if i == len(estrategias):
+                    raise
+
+        raise Exception(f"Falha ao preencher (xpath): {xpath} com todas as estratégias")
+
+    return acao
+
+
 def preencher_campo_robusto(seletor, valor, limpar_primeiro=True, timeout=TIMEOUT_DEFAULT):
     """Função melhorada para preenchimento de campos"""
     def acao():
@@ -377,7 +525,8 @@ def preencher_campo_robusto(seletor, valor, limpar_primeiro=True, timeout=TIMEOU
             
         elemento = aguardar_elemento(seletor, timeout, 'clickable')
         
-        if not scroll_to_element(elemento):
+        scroll_success = scroll_to_element_safe(elemento)
+        if not scroll_success:
             log(doc, f"⚠️ Problemas com scroll para {seletor}", 'WARN')
         
         # Múltiplas estratégias de preenchimento
@@ -409,6 +558,224 @@ def preencher_campo_robusto(seletor, valor, limpar_primeiro=True, timeout=TIMEOU
         raise Exception(f"Falha ao preencher campo {seletor} com todas as estratégias")
     
     return acao
+
+
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver import ActionChains
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException, JavascriptException
+from selenium.webdriver.support import expected_conditions as EC
+
+def preencher_textarea_por_indice(indice_campo, texto, max_tentativas=5, limpar_primeiro=True):
+    """Preenche um <textarea> pelo índice (ordem no DOM) usando estratégias múltiplas"""
+    def acao():
+        if not isinstance(indice_campo, int) or indice_campo < 0:
+            raise ValueError(f"Índice inválido: {indice_campo}")
+        if texto is None or not isinstance(texto, str):
+            raise ValueError(f"Texto inválido: {texto!r}")
+
+        tentativa = 0
+        while tentativa < max_tentativas:
+            tentativa += 1
+            try:
+                campos = encontrar_campos_textarea()
+                if not campos:
+                    if tentativa < max_tentativas:
+                        log(doc, f"⚠️ Nenhuma <textarea> encontrada (tentativa {tentativa}/{max_tentativas})", "WARN")
+                        time.sleep(1.5)
+                        continue
+                    raise Exception("Nenhuma <textarea> foi encontrada na página.")
+
+                if indice_campo >= len(campos):
+                    raise Exception(f"Índice {indice_campo} inválido. Encontradas {len(campos)} textareas.")
+
+                campo_info = campos[indice_campo]
+                elemento   = campo_info["elemento"]
+                campo_id   = campo_info.get("id") or "(sem id)"
+                campo_name = campo_info.get("name") or "(sem name)"
+
+                log(doc, f"🎯 Tentativa {tentativa}: Preenchendo textarea {indice_campo} (ID: {campo_id}, name: {campo_name}) com {len(texto)} caracteres")
+
+                # Se já estiver preenchido corretamente, encerra
+                if validar_textarea_preenchida(elemento, texto):
+                    log(doc, f"✅ Textarea {indice_campo} já está com o valor desejado.")
+                    return True
+
+                # Estratégias em ordem de 'menos invasiva' para 'mais invasiva'
+                estrategias = [
+                    lambda: _textarea_tradicional(elemento, texto, limpar_primeiro),
+                    lambda: _textarea_actionchains(elemento, texto, limpar_primeiro),
+                    lambda: _textarea_js_setvalue(elemento, texto),
+                    lambda: _textarea_js_react_input(elemento, texto),
+                ]
+
+                for i, estrategia in enumerate(estrategias, 1):
+                    try:
+                        log(doc, f"   ▶️ Estratégia {i}…")
+                        estrategia()
+                        time.sleep(0.8)
+
+                        # Revalida após a estratégia
+                        if validar_textarea_preenchida(elemento, texto):
+                            val = (elemento.get_attribute("value") or "").strip()
+                            log(doc, f"✅ Preenchido com sucesso pela estratégia {i}: '{val[:60]}{'…' if len(val) > 60 else ''}'")
+                            return True
+                        else:
+                            log(doc, f"⚠️ Estratégia {i} não refletiu o valor esperado.", "WARN")
+                    except (StaleElementReferenceException, JavascriptException, TimeoutException) as e:
+                        log(doc, f"⚠️ Estratégia {i} falhou: {e}", "WARN")
+                        # Reobter o elemento se necessário
+                        try:
+                            campos = encontrar_campos_textarea()
+                            elemento = campos[indice_campo]["elemento"]
+                        except Exception:
+                            pass
+                        continue
+
+                # Se chegou aqui, nenhuma estratégia funcionou nesta tentativa
+                if tentativa < max_tentativas:
+                    log(doc, f"⚠️ Tentativa {tentativa} falhou; reintentando em 1.5s…", "WARN")
+                    time.sleep(1.5)
+                    continue
+            except Exception as e:
+                if tentativa < max_tentativas:
+                    log(doc, f"⚠️ Erro na tentativa {tentativa}: {e}. Retentando…", "WARN")
+                    time.sleep(1.5)
+                    continue
+                else:
+                    raise
+
+        raise Exception(f"Falha ao preencher textarea {indice_campo} após {max_tentativas} tentativas.")
+    return acao
+
+
+# =========================
+# Helpers usados pela função
+# =========================
+
+def encontrar_campos_textarea(timeout=10):
+    """
+    Retorna uma lista de dicts com metadados de cada <textarea> visível e interativa.
+    Ex.: [{'elemento': WebElement, 'id': '...', 'name': '...'}]
+    """
+    elementos = []
+    try:
+        # Espera haver pelo menos 1 textarea no DOM (se existir)
+        wait.until(lambda d: len(d.find_elements(By.TAG_NAME, "textarea")) >= 0)
+        textareas = driver.find_elements(By.TAG_NAME, "textarea")
+    except Exception:
+        textareas = []
+
+    for el in textareas:
+        try:
+            if not el.is_displayed() or not el.is_enabled():
+                continue
+            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+            elementos.append({
+                "elemento": el,
+                "id": el.get_attribute("id"),
+                "name": el.get_attribute("name"),
+            })
+        except Exception:
+            continue
+
+    return elementos
+
+
+def normalizar_texto(txt):
+    if txt is None:
+        return ""
+    # Normaliza quebras de linha e espaços
+    return txt.replace("\r\n", "\n").replace("\r", "\n").strip()
+
+
+def validar_textarea_preenchida(elemento, texto_esperado):
+    """Confere se o valor atual da textarea bate com o texto esperado (normalizado)."""
+    try:
+        atual = elemento.get_attribute("value")
+        # Alguns frameworks populam via textContent em textareas (raro, mas possível)
+        if atual is None or atual == "":
+            atual = (elemento.text or "")
+        return normalizar_texto(atual) == normalizar_texto(texto_esperado)
+    except StaleElementReferenceException:
+        return False
+
+
+# =========================
+# Estratégias de preenchimento
+# =========================
+
+def _prepare_focus_and_clear(elemento, limpar_primeiro=True):
+    # Garante visibilidade e foco
+    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", elemento)
+    try:
+        elemento.click()
+    except Exception:
+        driver.execute_script("arguments[0].focus();", elemento)
+
+    if limpar_primeiro:
+        try:
+            elemento.clear()
+        except Exception:
+            # Fallback de limpeza por teclas
+            ActionChains(driver)\
+                .move_to_element(elemento).click()\
+                .key_down(Keys.CONTROL).send_keys("a").key_up(Keys.CONTROL)\
+                .send_keys(Keys.DELETE).perform()
+
+
+def _textarea_tradicional(elemento, texto, limpar_primeiro=True):
+    _prepare_focus_and_clear(elemento, limpar_primeiro)
+    elemento.send_keys(texto)
+    # Dispara blur para muitos bindings reativos
+    elemento.send_keys(Keys.TAB)
+
+
+def _textarea_actionchains(elemento, texto, limpar_primeiro=True):
+    _prepare_focus_and_clear(elemento, limpar_primeiro)
+    ac = ActionChains(driver)
+    ac.move_to_element(elemento).click().perform()
+    # Quebra o texto em partes para evitar engasgos em campos longos
+    for chunk_start in range(0, len(texto), 400):
+        ac.send_keys(texto[chunk_start:chunk_start+400]).perform()
+        time.sleep(0.05)
+    ac.send_keys(Keys.TAB).perform()
+
+
+def _textarea_js_setvalue(elemento, texto):
+    # Seta .value e dispara eventos clássicos
+    driver.execute_script("""
+        const el = arguments[0];
+        const val = arguments[1];
+        el.value = val;
+        // Dispara eventos comuns que form libs escutam
+        el.dispatchEvent(new Event('input',  {bubbles:true}));
+        el.dispatchEvent(new Event('change', {bubbles:true}));
+        el.dispatchEvent(new KeyboardEvent('keyup', {bubbles:true}));
+        el.dispatchEvent(new Event('blur',   {bubbles:true}));
+    """, elemento, texto)
+
+
+def _textarea_js_react_input(elemento, texto):
+    # Compat extra p/ React (setando o setter do prototype) + eventos
+    driver.execute_script("""
+        const el = arguments[0];
+        const val = arguments[1];
+
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value');
+        if (desc && desc.set) {
+            desc.set.call(el, val);
+        } else {
+            el.value = val;
+        }
+
+        // React/Vue/Svelte geralmente escutam 'input'
+        el.dispatchEvent(new Event('input', {bubbles: true}));
+        el.dispatchEvent(new Event('change', {bubbles: true}));
+        el.dispatchEvent(new Event('blur', {bubbles: true}));
+    """, elemento, texto)
+
+
 
 # ==== SISTEMA DATEPICKER MELHORADO ====
 def encontrar_campos_datepicker():
@@ -494,7 +861,7 @@ def _datepicker_actionchains(elemento, data_valor):
     """Estratégia ActionChains para datepicker"""
     global driver
     
-    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", elemento)
+    scroll_to_element_safe(elemento)
     time.sleep(0.5)
     
     ActionChains(driver).move_to_element(elemento).click().perform()
@@ -512,7 +879,7 @@ def _datepicker_actionchains(elemento, data_valor):
 
 def _datepicker_tradicional(elemento, data_valor):
     """Estratégia tradicional para datepicker"""
-    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", elemento)
+    scroll_to_element_safe(elemento)
     time.sleep(0.5)
     elemento.click()
     time.sleep(0.5)
@@ -552,6 +919,10 @@ def validar_data_preenchida(elemento, data_esperada):
         
     except Exception:
         return False
+
+
+
+
 
 def preencher_datepicker_por_indice(indice_campo, data_valor, max_tentativas=5):
     """Preenche datepicker pelo índice com estratégias múltiplas"""
@@ -645,7 +1016,7 @@ def abrir_modal_e_selecionar_robusto(btn_selector, pesquisa_selector, termo_pesq
             # 1. Abre o modal
             log(doc, f"🔘 Abrindo modal com botão: {btn_selector}")
             elemento_botao = aguardar_elemento(btn_selector, TIMEOUT_DEFAULT, 'clickable')
-            scroll_to_element(elemento_botao)
+            scroll_to_element_safe(elemento_botao)
             remover_overlays()
             
             # Clique no botão do modal
@@ -677,7 +1048,7 @@ def abrir_modal_e_selecionar_robusto(btn_selector, pesquisa_selector, termo_pesq
             # 4. Aguarda resultado e clica
             log(doc, f"🎯 Selecionando resultado: {resultado_xpath}")
             resultado = aguardar_elemento(resultado_xpath, TIMEOUT_DEFAULT, 'clickable', By.XPATH)
-            scroll_to_element(resultado)
+            scroll_to_element_safe(resultado)
             time.sleep(0.5)
             
             try:
@@ -981,7 +1352,7 @@ def realizar_consulta():
     def acao():
         seletor = '#gsPet > div.wdTelas > div.telaConsulta.telaConsultaContratoPet > div > div.btnHolder > a'
         elemento = aguardar_elemento(seletor, TIMEOUT_DEFAULT, 'clickable')
-        scroll_to_element(elemento)
+        scroll_to_element_safe(elemento)
         
         try:
             elemento.click()
@@ -998,7 +1369,7 @@ def finalizar_cadastro():
     def acao():
         seletor_css_finalizar = '#gsPet > div.wdTelas > div.wdWizard.clearfix.telaConsulta > div.btnHolder > div'
         elemento = aguardar_elemento(seletor_css_finalizar, TIMEOUT_DEFAULT, 'clickable')
-        scroll_to_element(elemento)
+        scroll_to_element_safe(elemento)
         
         try:
             elemento.click()
@@ -1097,7 +1468,70 @@ def inicializar_driver():
         log(doc, f"❌ Erro ao inicializar driver: {e}", 'ERROR')
         return False
 
-# ==== EXECUÇÃO DO TESTE MELHORADA ====
+# ==== FUNÇÃO CORRIGIDA PARA ACESSO AO PET ====
+def acessar_modulo_pet():
+    """Versão corrigida para acessar o módulo PET"""
+    def acao():
+        # XPath do elemento que precisamos clicar
+        xpath_pet = "/html/body/div[15]/ul/li[39]/img"
+        
+        try:
+            # Aguarda elemento estar presente
+            elemento = aguardar_elemento(xpath_pet, TIMEOUT_DEFAULT, 'present', By.XPATH)
+            
+            # Usa scroll seguro
+            scroll_success = scroll_to_element_safe(elemento)
+            if not scroll_success:
+                log(doc, "⚠️ Problemas com scroll, tentando continuar", 'WARN')
+            
+            # Remove overlays
+            remover_overlays()
+            time.sleep(1)
+            
+            # Aguarda elemento ficar clicável
+            elemento_clicavel = aguardar_elemento(xpath_pet, TIMEOUT_CURTO, 'clickable', By.XPATH)
+            
+            # Tenta diferentes estratégias de clique
+            estrategias_clique = [
+                lambda: elemento_clicavel.click(),
+                lambda: ActionChains(driver).move_to_element(elemento_clicavel).click().perform(),
+                lambda: driver.execute_script("arguments[0].click();", elemento_clicavel),
+                lambda: driver.execute_script("""
+                    var element = arguments[0];
+                    if (element) {
+                        element.focus();
+                        var event = new MouseEvent('click', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window
+                        });
+                        element.dispatchEvent(event);
+                    }
+                """, elemento_clicavel)
+            ]
+            
+            for i, estrategia in enumerate(estrategias_clique, 1):
+                try:
+                    log(doc, f"   Tentando estratégia de clique {i} para módulo PET...")
+                    estrategia()
+                    time.sleep(2)
+                    log(doc, f"✅ Clique no módulo PET realizado com estratégia {i}")
+                    return True
+                except Exception as e:
+                    log(doc, f"⚠️ Estratégia {i} falhou: {e}", 'WARN')
+                    if i == len(estrategias_clique):
+                        raise
+                    continue
+            
+            return False
+            
+        except Exception as e:
+            log(doc, f"❌ Erro ao acessar módulo PET: {e}", 'ERROR')
+            raise
+    
+    return acao
+
+# ==== EXECUÇÃO DO TESTE CORRIGIDA ====
 def executar_teste():
     """Executa o teste principal com tratamento robusto de erros"""
     global driver, wait, doc
@@ -1131,14 +1565,8 @@ def executar_teste():
             time.sleep(2)
         ))
 
-        campo = "/html/body/div[15]/ul/li[39]/img"
-
-        # 4. Navegação para PET
-        safe_action(doc, "Acessando módulo PET", lambda: (
-            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", campo),
-            aguardar_elemento("/html/body/div[15]/ul/li[39]/img", timeout=TIMEOUT_DEFAULT, by_type=By.XPATH).click(),
-            time.sleep(3)
-        ), critico=True)
+        # 4. Navegação para PET (CORRIGIDA)
+        safe_action(doc, "Acessando módulo PET", acessar_modulo_pet(), critico=True)
 
         # 5. Acesso à consulta de contrato
         safe_action(doc, "Abrindo consulta de contrato", lambda: (
@@ -1224,57 +1652,70 @@ def executar_teste():
                    clicar_elemento_xpath_robusto("/html/body/div[20]/div[2]/div[1]/div[1]/div/a"))
 
         safe_action(doc, "Preenchendo descrição da mensagem", 
-                   preencher_campo_robusto('body > div:nth-child(307) > div.modal.overflow > div.cadastroMensagem > div:nth-child(3) > textarea',
-                                          'TESTE DESCRIÇÃO DA MENSAGEM SELENIUM AUTOMATIZADO (Automação de Testes): Teste de mensagem em contrato pet.'))
+            preencher_textarea_por_indice(0,
+                 "TESTE DESCRIÇÃO DA MENSAGEM SELENIUM AUTOMATIZADO (Automação de Testes): Teste de mensagem em contrato pet."))
+
+
+
 
         safe_action(doc, "Definindo período de exibição - Data Inicial", 
-                   preencher_datepicker_por_indice(0, "14/08/2025"))
+                   preencher_datepicker_por_indice(4, "14/08/2025"))
 
         safe_action(doc, "Definindo período de exibição - Data Final", 
-                   preencher_datepicker_por_indice(1, "24/11/2025"))
+                   preencher_datepicker_por_indice(5, "24/11/2025"))
 
         safe_action(doc, "Confirmando mensagem", 
                    clicar_elemento_xpath_robusto("/html/body/div[21]/div[2]/div[1]/div[3]/a[2]"))
+
+
+        log(doc, "🔍 Verificando mensagens de alerta...")
+        encontrar_mensagem_alerta()
+
+
 
         safe_action(doc, "Fechando aba de mensagens", 
                    clicar_elemento_xpath_robusto("/html/body/div[20]/div[2]/div[1]/div[2]/a"))
 
         # 12. Títulos do contrato
         safe_action(doc, "Visualizando títulos do Contrato Pet", 
-                   clicar_elemento_xpath_robusto("/html/body/div[20]/div[2]/div[1]/div/div/div[1]/div[1]/div[3]/button[2]"))
+                   clicar_elemento_xpath_robusto("//button[@class='btModel btGray' and .//i[contains(@class, 'sp-pesquisar')] and normalize-space(text())='Ver Títulos']"))
 
         safe_action(doc, "Aguardando carregamento de títulos", lambda: (
-            time.sleep(10),
+            time.sleep(30),
             take_screenshot(driver, doc, "titulos_contrato_pet", forcar=True)
         ))
 
         safe_action(doc, "Fechando aba de títulos", 
-                   clicar_elemento_xpath_robusto("/html/body/div[20]/div[1]/h2/a"))
+                   clicar_elemento_xpath_robusto("//a[@title='Sair' and contains(@class, 'sp-fecharGrande')]"))
 
         # 13. Digitalização de documentos
         safe_action(doc, "Abrindo digitalização de documentos", 
-                   clicar_elemento_xpath_robusto("//*[@id='DataTables_Table_0']/tbody/tr[1]/td[7]/span[2]"))
+                   clicar_elemento_xpath_robusto("//span[@title='Digitalizar documentos' and contains(@class, 'sp-scanner')]"))
 
         safe_action(doc, "Adicionando novo documento", 
-                   clicar_elemento_xpath_robusto("/html/body/div[20]/div[2]/div[1]/div[2]/span"))
+                   clicar_elemento_xpath_robusto("//span[contains(@class, 'sp-addFile')]"))
 
-        safe_action(doc, "Preenchendo descrição do arquivo", 
-                   preencher_campo_robusto('body > div:nth-child(306) > div.modal.overflow > div.addHolder > div:nth-child(2) > div > input',
-                                          'TESTE DESCRIÇÃO DO ARQUIVO SELENIUM AUTOMATIZADO (Automação de Testes): Teste de digitalização de documentos.'))
+
+
+
+
 
         # Upload de arquivo
         caminho_arquivo = r"C:\Users\Gold System\Downloads\TESTEPNGPET.png"
         if os.path.exists(caminho_arquivo):
             safe_action(doc, "Fazendo upload do arquivo", 
-                       fazer_upload_arquivo("/html/body/div[21]/div[2]/div[1]/div[2]/div/div/div/div/div/div", caminho_arquivo))
+                       fazer_upload_arquivo("//div[contains(@class, 'qq-upload-button') and contains(normalize-space(.), 'Selecione')]", caminho_arquivo))
         else:
             log(doc, f"⚠️ Arquivo não encontrado: {caminho_arquivo}, pulando upload", 'WARN')
 
         safe_action(doc, "Salvando arquivo digitalizado", 
-                   clicar_elemento_robusto("/html/body/div[21]/div[2]/div[1]/div[3]/a[2]"))
+                   clicar_elemento_xpath_robusto("//a[contains(@class,'btModel') and contains(@class,'btGreen') and normalize-space(.)='Salvar']"))
+
+        log(doc, "🔍 Verificando mensagens de alerta após digitalização...")
+        encontrar_mensagem_alerta()
 
         safe_action(doc, "Fechando modal de digitalização", 
-                   clicar_elemento_robusto("/html/body/div[20]/div[2]/a"))
+                   clicar_elemento_xpath_robusto("//a[contains(@class,'fa') and contains(@class,'fa-close')]"))
 
         # 14. Finalização
         safe_action(doc, "Fechando tela de consulta", 

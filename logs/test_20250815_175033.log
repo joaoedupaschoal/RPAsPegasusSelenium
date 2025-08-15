@@ -1,0 +1,221 @@
+2025-08-15 17:50:41 - INFO - SUCCESS: Driver inicializado com sucesso
+2025-08-15 17:50:41 - ERROR - Falha na etapa: Acessando sistema
+2025-08-15 17:50:49 - INFO - SUCCESS: Realizando login realizada com sucesso
+2025-08-15 17:50:50 - INFO - Zoom ajustado para 90%
+2025-08-15 17:50:53 - INFO - SUCCESS: Acessando menu Plano Empresa realizada com sucesso
+2025-08-15 17:50:57 - INFO - SUCCESS: Clicando em Fechamento realizada com sucesso
+2025-08-15 17:51:05 - INFO - SUCCESS: Selecionando Plano Empresa realizada com sucesso
+2025-08-15 17:51:36 - ERROR - Falha ao clicar em ('css selector', '#gsPlanoEmpresa > div.wdTelas > div:nth-child(4) > div.formRow.formLastLine > div:nth-child(2) > a'): Message: Elemento não encontrado: ('css selector', '#gsPlanoEmpresa > div.wdTelas > div:nth-child(4) > div.formRow.formLastLine > div:nth-child(2) > a') (condição: present, timeout: 30s)
+
+2025-08-15 17:51:36 - INFO - SUCCESS: Buscando Plano Empresa realizada com sucesso
+2025-08-15 17:51:36 - INFO - Encontrados 0 campos datepicker
+2025-08-15 17:51:36 - WARNING - Nenhum campo datepicker encontrado, tentativa 1
+2025-08-15 17:51:39 - INFO - Encontrados 0 campos datepicker
+2025-08-15 17:51:39 - WARNING - Nenhum campo datepicker encontrado, tentativa 2
+2025-08-15 17:51:41 - INFO - Encontrados 0 campos datepicker
+2025-08-15 17:51:41 - WARNING - Nenhum campo datepicker encontrado, tentativa 3
+2025-08-15 17:51:43 - INFO - Encontrados 0 campos datepicker
+2025-08-15 17:51:43 - WARNING - Nenhum campo datepicker encontrado, tentativa 4
+2025-08-15 17:51:45 - INFO - Encontrados 0 campos datepicker
+2025-08-15 17:51:45 - ERROR - Preenchendo dados do fechamento falhou: Exception: Falha ao preencher datepicker 0 após 5 tentativas
+2025-08-15 17:51:45 - ERROR - Falha na etapa: Preenchimento dos dados
+2025-08-15 17:52:15 - ERROR - Falha ao clicar em ('css selector', '#gsPlanoEmpresa > div.wdTelas > div:nth-child(4) > div.contentHolder.clearfix.overflow.overflowY > div:nth-child(2) > div:nth-child(5) > div > a'): Message: Elemento não encontrado: ('css selector', '#gsPlanoEmpresa > div.wdTelas > div:nth-child(4) > div.contentHolder.clearfix.overflow.overflowY > div:nth-child(2) > div:nth-child(5) > div > a') (condição: present, timeout: 30s)
+
+2025-08-15 17:53:29 - ERROR - Falha ao preencher campo ('css selector', 'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input'): Message: invalid session id: session deleted as the browser has closed the connection
+from disconnected: not connected to DevTools
+  (Session info: chrome=138.0.7204.185)
+Stacktrace:
+	GetHandleVerifier [0x0x3fba83+63395]
+	GetHandleVerifier [0x0x3fbac4+63460]
+	(No symbol) [0x0x242113]
+	(No symbol) [0x0x231b20]
+	(No symbol) [0x0x24f922]
+	(No symbol) [0x0x2b5c9c]
+	(No symbol) [0x0x2d0099]
+	(No symbol) [0x0x2af1a6]
+	(No symbol) [0x0x27e7b2]
+	(No symbol) [0x0x27f654]
+	GetHandleVerifier [0x0x678883+2672035]
+	GetHandleVerifier [0x0x673cba+2652634]
+	GetHandleVerifier [0x0x422bca+223466]
+	GetHandleVerifier [0x0x412cb8+158168]
+	GetHandleVerifier [0x0x41978d+185517]
+	GetHandleVerifier [0x0x403b78+96408]
+	GetHandleVerifier [0x0x403d02+96802]
+	GetHandleVerifier [0x0x3ee90a+9770]
+	BaseThreadInitThunk [0x0x7709fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x778882ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x7788827e+238]
+
+2025-08-15 17:53:30 - ERROR - Falha ao clicar em ('css selector', 'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(4) > a'): Message: invalid session id
+Stacktrace:
+	GetHandleVerifier [0x0x3fba83+63395]
+	GetHandleVerifier [0x0x3fbac4+63460]
+	(No symbol) [0x0x241f70]
+	(No symbol) [0x0x27daa8]
+	(No symbol) [0x0x2af266]
+	(No symbol) [0x0x2aae65]
+	(No symbol) [0x0x2aa3e6]
+	(No symbol) [0x0x213a45]
+	(No symbol) [0x0x213f9e]
+	(No symbol) [0x0x21442d]
+	GetHandleVerifier [0x0x678883+2672035]
+	GetHandleVerifier [0x0x673cba+2652634]
+	GetHandleVerifier [0x0x422bca+223466]
+	GetHandleVerifier [0x0x412cb8+158168]
+	GetHandleVerifier [0x0x41978d+185517]
+	(No symbol) [0x0x213710]
+	(No symbol) [0x0x212f1d]
+	GetHandleVerifier [0x0x7adb9c+3938492]
+	BaseThreadInitThunk [0x0x7709fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x778882ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x7788827e+238]
+
+2025-08-15 17:53:32 - ERROR - Falha ao clicar em ('xpath', "//td[contains(text(), 'TESTE TIPO DE MENSALIDADE SELENIUM AUTOMATIZADO')]"): Message: invalid session id
+Stacktrace:
+	GetHandleVerifier [0x0x3fba83+63395]
+	GetHandleVerifier [0x0x3fbac4+63460]
+	(No symbol) [0x0x241f70]
+	(No symbol) [0x0x27daa8]
+	(No symbol) [0x0x2af266]
+	(No symbol) [0x0x2aae65]
+	(No symbol) [0x0x2aa3e6]
+	(No symbol) [0x0x213a45]
+	(No symbol) [0x0x213f9e]
+	(No symbol) [0x0x21442d]
+	GetHandleVerifier [0x0x678883+2672035]
+	GetHandleVerifier [0x0x673cba+2652634]
+	GetHandleVerifier [0x0x422bca+223466]
+	GetHandleVerifier [0x0x412cb8+158168]
+	GetHandleVerifier [0x0x41978d+185517]
+	(No symbol) [0x0x213710]
+	(No symbol) [0x0x212f1d]
+	GetHandleVerifier [0x0x7adb9c+3938492]
+	BaseThreadInitThunk [0x0x7709fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x778882ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x7788827e+238]
+
+2025-08-15 17:53:33 - INFO - SUCCESS: Selecionando Tipo Mensalidade realizada com sucesso
+2025-08-15 17:53:33 - ERROR - Erro ao tirar screenshot selecionando_tipo_mensalidade: Message: invalid session id
+Stacktrace:
+	GetHandleVerifier [0x0x3fba83+63395]
+	GetHandleVerifier [0x0x3fbac4+63460]
+	(No symbol) [0x0x241f70]
+	(No symbol) [0x0x27daa8]
+	(No symbol) [0x0x2af266]
+	(No symbol) [0x0x2aae65]
+	(No symbol) [0x0x2aa3e6]
+	(No symbol) [0x0x213a45]
+	(No symbol) [0x0x213f9e]
+	(No symbol) [0x0x21442d]
+	GetHandleVerifier [0x0x678883+2672035]
+	GetHandleVerifier [0x0x673cba+2652634]
+	GetHandleVerifier [0x0x422bca+223466]
+	GetHandleVerifier [0x0x412cb8+158168]
+	GetHandleVerifier [0x0x41978d+185517]
+	(No symbol) [0x0x213710]
+	(No symbol) [0x0x212f1d]
+	GetHandleVerifier [0x0x7adb9c+3938492]
+	BaseThreadInitThunk [0x0x7709fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x778882ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x7788827e+238]
+
+2025-08-15 17:53:33 - ERROR - Falha ao clicar em ('css selector', '#gsPlanoEmpresa > div.wdTelas > div:nth-child(4) > div.btnHolder > a:nth-child(2)'): Message: invalid session id
+Stacktrace:
+	GetHandleVerifier [0x0x3fba83+63395]
+	GetHandleVerifier [0x0x3fbac4+63460]
+	(No symbol) [0x0x241f70]
+	(No symbol) [0x0x27daa8]
+	(No symbol) [0x0x2af266]
+	(No symbol) [0x0x2aae65]
+	(No symbol) [0x0x2aa3e6]
+	(No symbol) [0x0x213a45]
+	(No symbol) [0x0x213f9e]
+	(No symbol) [0x0x21442d]
+	GetHandleVerifier [0x0x678883+2672035]
+	GetHandleVerifier [0x0x673cba+2652634]
+	GetHandleVerifier [0x0x422bca+223466]
+	GetHandleVerifier [0x0x412cb8+158168]
+	GetHandleVerifier [0x0x41978d+185517]
+	(No symbol) [0x0x213710]
+	(No symbol) [0x0x212f1d]
+	GetHandleVerifier [0x0x7adb9c+3938492]
+	BaseThreadInitThunk [0x0x7709fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x778882ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x7788827e+238]
+
+2025-08-15 17:53:33 - INFO - SUCCESS: Realizando fechamento de Plano Empresa realizada com sucesso
+2025-08-15 17:53:33 - ERROR - Erro ao tirar screenshot realizando_fechamento_de_plano_empresa: Message: invalid session id
+Stacktrace:
+	GetHandleVerifier [0x0x3fba83+63395]
+	GetHandleVerifier [0x0x3fbac4+63460]
+	(No symbol) [0x0x241f70]
+	(No symbol) [0x0x27daa8]
+	(No symbol) [0x0x2af266]
+	(No symbol) [0x0x2aae65]
+	(No symbol) [0x0x2aa3e6]
+	(No symbol) [0x0x213a45]
+	(No symbol) [0x0x213f9e]
+	(No symbol) [0x0x21442d]
+	GetHandleVerifier [0x0x678883+2672035]
+	GetHandleVerifier [0x0x673cba+2652634]
+	GetHandleVerifier [0x0x422bca+223466]
+	GetHandleVerifier [0x0x412cb8+158168]
+	GetHandleVerifier [0x0x41978d+185517]
+	(No symbol) [0x0x213710]
+	(No symbol) [0x0x212f1d]
+	GetHandleVerifier [0x0x7adb9c+3938492]
+	BaseThreadInitThunk [0x0x7709fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x778882ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x7788827e+238]
+
+2025-08-15 17:53:33 - ERROR - Falha ao clicar em ('css selector', '#gsPlanoEmpresa > div.wdTop.ui-draggable-handle > div.wdClose > a'): Message: invalid session id
+Stacktrace:
+	GetHandleVerifier [0x0x3fba83+63395]
+	GetHandleVerifier [0x0x3fbac4+63460]
+	(No symbol) [0x0x241f70]
+	(No symbol) [0x0x27daa8]
+	(No symbol) [0x0x2af266]
+	(No symbol) [0x0x2aae65]
+	(No symbol) [0x0x2aa3e6]
+	(No symbol) [0x0x213a45]
+	(No symbol) [0x0x213f9e]
+	(No symbol) [0x0x21442d]
+	GetHandleVerifier [0x0x678883+2672035]
+	GetHandleVerifier [0x0x673cba+2652634]
+	GetHandleVerifier [0x0x422bca+223466]
+	GetHandleVerifier [0x0x412cb8+158168]
+	GetHandleVerifier [0x0x41978d+185517]
+	(No symbol) [0x0x213710]
+	(No symbol) [0x0x212f1d]
+	GetHandleVerifier [0x0x7adb9c+3938492]
+	BaseThreadInitThunk [0x0x7709fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x778882ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x7788827e+238]
+
+2025-08-15 17:53:33 - INFO - SUCCESS: Fechando modal realizada com sucesso
+2025-08-15 17:53:33 - ERROR - Erro ao tirar screenshot fechando_modal: Message: invalid session id
+Stacktrace:
+	GetHandleVerifier [0x0x3fba83+63395]
+	GetHandleVerifier [0x0x3fbac4+63460]
+	(No symbol) [0x0x241f70]
+	(No symbol) [0x0x27daa8]
+	(No symbol) [0x0x2af266]
+	(No symbol) [0x0x2aae65]
+	(No symbol) [0x0x2aa3e6]
+	(No symbol) [0x0x213a45]
+	(No symbol) [0x0x213f9e]
+	(No symbol) [0x0x21442d]
+	GetHandleVerifier [0x0x678883+2672035]
+	GetHandleVerifier [0x0x673cba+2652634]
+	GetHandleVerifier [0x0x422bca+223466]
+	GetHandleVerifier [0x0x412cb8+158168]
+	GetHandleVerifier [0x0x41978d+185517]
+	(No symbol) [0x0x213710]
+	(No symbol) [0x0x212f1d]
+	GetHandleVerifier [0x0x7adb9c+3938492]
+	BaseThreadInitThunk [0x0x7709fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x778882ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x7788827e+238]
+
+2025-08-15 17:53:37 - INFO - Driver encerrado
