@@ -790,8 +790,8 @@ class PlanoEmpresaTest:
         self.doc = Document()
         self.doc.add_heading("RELATÓRIO DO TESTE", 0)
         self.doc.add_paragraph(
-            "Processo: Fechamento Plano Empresa – Cenário 1: "
-            "Nesse teste, o usuário irá realizar o fechamento de um Plano Empresa."
+            "Processo: Fechamento Plano Empresa – Cenário 3: "
+            "Nesse teste, o usuário irá preencherá apenas os campos obrigatórios para o fechamento de um Plano Empresa."
         )
         self.doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     
@@ -921,7 +921,7 @@ class PlanoEmpresaTest:
             self.element_handler.fill_field((
                 By.XPATH,
                 "//input[@type='text' and contains(@class,'nomePesquisa')]"
-            ), "38.926.740/0001-26")
+            ), "94.698.345/0001-04")
             
             # Clica pesquisar
             self.element_handler.robust_click((
@@ -933,7 +933,7 @@ class PlanoEmpresaTest:
             # Seleciona resultado
             self.element_handler.robust_click((
                 By.XPATH,
-                "//td[contains(text(), 'PLANO EMPRESA TESTE SELENIUM AUTOMATIZADO')]"
+                "//td[contains(text(), 'EMPRESA TESTE (CHRISTOFER)')]"
             ))
         
         return self.safe_action.execute(
@@ -971,20 +971,6 @@ class PlanoEmpresaTest:
             )))
             tipo_valor_select.select_by_visible_text("Valor Contrato")
             
-            # Seleciona Tipo de reajuste
-            tipo_reajuste_select = Select(self.element_handler.wait_for_element((
-                By.XPATH,
-                "//select[option[normalize-space(.)='Acréscimo'] and option[normalize-space(.)='Desconto']]"
-            )))
-            tipo_reajuste_select.select_by_visible_text("Desconto")
-            
-            # Preenche Taxa de Reajuste
-            taxa_value = str(self.data_generator.fake.random_int(min=1, max=10000))
-            self.element_handler.fill_field((
-                By.XPATH,
-                "//input[@ref='pct' and @placeholder='% ' and contains(@style,'width: 70px')]"
-            ), taxa_value)
-            time.sleep(0.5)
         
         return self.safe_action.execute(
             self.driver_manager.driver,
@@ -1076,9 +1062,9 @@ class PlanoEmpresaTest:
                 ("Seleção do Plano Empresa", self.select_plano_empresa),
                 ("Busca do Plano Empresa", self.search_plano_empresa),
                 ("Preenchimento dos dados", self.fill_fechamento_data),
-                ("Seleção Tipo Mensalidade", self.select_tipo_mensalidade),
                 ("Execução do fechamento", self.execute_fechamento),
                 ("Confirmação do fechamento", self.confirm),
+                ("Verificação de mensagens de alerta", self.find_alert_messages),
                 ("Fechamento do modal", self.close_modal)
             ]
             
@@ -1129,7 +1115,7 @@ class PlanoEmpresaTest:
     def finalize_report(self):
         """Finaliza e salva o relatório"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"relatorio_fechamento_plano_empresa_cenario_1_{timestamp}.docx"
+        filename = f"relatorio_fechamento_plano_empresa_cenario_3_{timestamp}.docx"
         filepath = os.path.join(self.config.REPORTS_DIR, filename)
         
         try:

@@ -1,0 +1,16 @@
+2025-08-18 16:01:04 - INFO - SUCCESS: Driver inicializado com sucesso
+2025-08-18 16:01:05 - ERROR - Falha na etapa: Acessando sistema
+2025-08-18 16:01:12 - INFO - SUCCESS: Realizando login realizada com sucesso
+2025-08-18 16:01:14 - INFO - Zoom ajustado para 90%
+2025-08-18 16:01:17 - INFO - SUCCESS: Acessando menu Plano Empresa realizada com sucesso
+2025-08-18 16:01:21 - INFO - SUCCESS: Clicando em Fechamento realizada com sucesso
+2025-08-18 16:01:31 - INFO - SUCCESS: Selecionando Plano Empresa realizada com sucesso
+2025-08-18 16:01:33 - INFO - SUCCESS: Buscando Plano Empresa realizada com sucesso
+2025-08-18 16:01:34 - INFO - Encontrados 1 campos datepicker
+2025-08-18 16:01:34 - INFO - Preenchendo datepicker 0 (ID: dp1755543670249) com '17/12/2025'
+2025-08-18 16:01:35 - INFO - SUCCESS: Datepicker preenchido com estratégia 1: '17/12/2025'
+2025-08-18 16:01:35 - INFO - SUCCESS: Preenchendo dados do fechamento realizada com sucesso
+2025-08-18 16:01:36 - INFO - SUCCESS: Realizando fechamento de Plano Empresa realizada com sucesso
+2025-08-18 16:01:38 - INFO - SUCCESS: Confirmando fechamento de Plano Empresa realizada com sucesso
+2025-08-18 16:01:42 - INFO - SUCCESS: Fechando modal realizada com sucesso
+2025-08-18 16:01:53 - INFO - Driver encerrado

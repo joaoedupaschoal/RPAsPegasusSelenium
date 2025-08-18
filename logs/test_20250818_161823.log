@@ -1,0 +1,13 @@
+2025-08-18 16:18:40 - INFO - SUCCESS: Driver inicializado com sucesso
+2025-08-18 16:18:42 - ERROR - Falha na etapa: Acessando sistema
+2025-08-18 16:18:51 - INFO - SUCCESS: Realizando login realizada com sucesso
+2025-08-18 16:18:55 - INFO - Zoom ajustado para 90%
+2025-08-18 16:18:59 - INFO - SUCCESS: Acessando menu Plano Empresa realizada com sucesso
+2025-08-18 16:19:05 - INFO - SUCCESS: Clicando em Fechamento realizada com sucesso
+2025-08-18 16:19:19 - INFO - SUCCESS: Selecionando Plano Empresa realizada com sucesso
+2025-08-18 16:19:23 - INFO - SUCCESS: Buscando Plano Empresa realizada com sucesso
+2025-08-18 16:19:27 - INFO - SUCCESS: Preenchendo dados do fechamento realizada com sucesso
+2025-08-18 16:19:42 - INFO - SUCCESS: Selecionando Tipo Mensalidade realizada com sucesso
+2025-08-18 16:19:46 - INFO - SUCCESS: Realizando fechamento de Plano Empresa realizada com sucesso
+2025-08-18 16:19:49 - INFO - SUCCESS: Fechando modal realizada com sucesso
+2025-08-18 16:20:21 - INFO - Driver encerrado

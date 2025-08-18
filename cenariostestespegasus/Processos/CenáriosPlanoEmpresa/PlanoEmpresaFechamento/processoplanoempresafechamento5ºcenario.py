@@ -790,9 +790,8 @@ class PlanoEmpresaTest:
         self.doc = Document()
         self.doc.add_heading("RELATÓRIO DO TESTE", 0)
         self.doc.add_paragraph(
-            "Processo: Fechamento Plano Empresa – Cenário 1: "
-            "Nesse teste, o usuário irá realizar o fechamento de um Plano Empresa."
-        )
+            "Processo: Fechamento Plano Empresa – Cenário 2:"
+            "Nesse teste, o usuário tentará buscar um Plano Empresa sem Contratos, para verificar se o sistema efetua o disparo da mensagem de alerta corretamente")
         self.doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     
     def setup_components(self):
@@ -921,7 +920,7 @@ class PlanoEmpresaTest:
             self.element_handler.fill_field((
                 By.XPATH,
                 "//input[@type='text' and contains(@class,'nomePesquisa')]"
-            ), "38.926.740/0001-26")
+            ), "57.018.934/0001-78")
             
             # Clica pesquisar
             self.element_handler.robust_click((
@@ -954,7 +953,11 @@ class PlanoEmpresaTest:
             self.driver_manager.driver,
             "Buscando Plano Empresa",
             search_action
+
         )
+    
+
+    
     
     def fill_fechamento_data(self) -> bool:
         """Preenche dados do fechamento"""
@@ -1075,10 +1078,7 @@ class PlanoEmpresaTest:
                 ("Acesso ao Fechamento", self.access_fechamento),
                 ("Seleção do Plano Empresa", self.select_plano_empresa),
                 ("Busca do Plano Empresa", self.search_plano_empresa),
-                ("Preenchimento dos dados", self.fill_fechamento_data),
-                ("Seleção Tipo Mensalidade", self.select_tipo_mensalidade),
-                ("Execução do fechamento", self.execute_fechamento),
-                ("Confirmação do fechamento", self.confirm),
+                ("Vericação de mensagem de alerta", self.find_alert_messages),
                 ("Fechamento do modal", self.close_modal)
             ]
             
@@ -1100,10 +1100,7 @@ class PlanoEmpresaTest:
                 else:
                     self.logger.error(f"Falha na etapa: {step_name}")
             
-            # Verifica mensagens de alerta
-            self.logger.info("🔍 Verificando mensagens de alerta...")
-            self.find_alert_messages()
-            
+
             # Relatório final
             success_rate = (success_count / total_steps) * 100
             self.logger.info(f"📊 Taxa de sucesso: {success_rate:.1f}% ({success_count}/{total_steps} etapas)")
@@ -1129,7 +1126,7 @@ class PlanoEmpresaTest:
     def finalize_report(self):
         """Finaliza e salva o relatório"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"relatorio_fechamento_plano_empresa_cenario_1_{timestamp}.docx"
+        filename = f"relatorio_fechamento_plano_empresa_cenario_2_{timestamp}.docx"
         filepath = os.path.join(self.config.REPORTS_DIR, filename)
         
         try:

@@ -790,8 +790,8 @@ class PlanoEmpresaTest:
         self.doc = Document()
         self.doc.add_heading("RELATÓRIO DO TESTE", 0)
         self.doc.add_paragraph(
-            "Processo: Fechamento Plano Empresa – Cenário 1: "
-            "Nesse teste, o usuário irá realizar o fechamento de um Plano Empresa."
+            "Processo: Fechamento Plano Empresa – Cenário 2: "
+            "Nesse teste, o usuário irá cancelar o fechamento de um Plano Empresa."
         )
         self.doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     
@@ -1011,17 +1011,17 @@ class PlanoEmpresaTest:
             select_action
         )
     
-    def execute_fechamento(self) -> bool:
-        """Executa o fechamento do Plano Empresa"""
+    def cancelamento_fechamento(self) -> bool:
+        """Cancela o fechamento do Plano Empresa"""
         def fechamento_action():
             self.element_handler.robust_click((
                 By.CSS_SELECTOR,
-                '#gsPlanoEmpresa > div.wdTelas > div.telaConsulta > div.btnHolder > a:nth-child(2)'
+                '#gsPlanoEmpresa > div.wdTelas > div.telaConsulta > div.btnHolder > a.btModel.btGray.btcancel'
             ))
         
         return self.safe_action.execute(
             self.driver_manager.driver,
-            "Realizando fechamento de Plano Empresa",
+            "Cancelando fechamento de Plano Empresa",
             fechamento_action
         )
     
@@ -1077,8 +1077,7 @@ class PlanoEmpresaTest:
                 ("Busca do Plano Empresa", self.search_plano_empresa),
                 ("Preenchimento dos dados", self.fill_fechamento_data),
                 ("Seleção Tipo Mensalidade", self.select_tipo_mensalidade),
-                ("Execução do fechamento", self.execute_fechamento),
-                ("Confirmação do fechamento", self.confirm),
+                ("Cancelamento do fechamento", self.cancelamento_fechamento),
                 ("Fechamento do modal", self.close_modal)
             ]
             
@@ -1129,7 +1128,7 @@ class PlanoEmpresaTest:
     def finalize_report(self):
         """Finaliza e salva o relatório"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"relatorio_fechamento_plano_empresa_cenario_1_{timestamp}.docx"
+        filename = f"relatorio_fechamento_plano_empresa_cenario_2_{timestamp}.docx"
         filepath = os.path.join(self.config.REPORTS_DIR, filename)
         
         try:

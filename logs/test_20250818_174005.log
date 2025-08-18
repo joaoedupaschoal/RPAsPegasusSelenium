@@ -1,0 +1,9 @@
+2025-08-18 17:40:23 - INFO - SUCCESS: Driver inicializado com sucesso
+2025-08-18 17:40:24 - ERROR - Falha na etapa: Acessando sistema
+2025-08-18 17:40:33 - INFO - SUCCESS: Realizando login realizada com sucesso
+2025-08-18 17:40:37 - INFO - Zoom ajustado para 90%
+2025-08-18 17:40:41 - INFO - SUCCESS: Acessando menu Plano Empresa realizada com sucesso
+2025-08-18 17:40:47 - INFO - SUCCESS: Clicando em Estorno Fechamento realizada com sucesso
+2025-08-18 17:40:49 - INFO - SUCCESS: Buscando Plano Empresa realizada com sucesso
+2025-08-18 17:40:54 - INFO - SUCCESS: Fechando modal realizada com sucesso
+2025-08-18 17:42:03 - INFO - Driver encerrado

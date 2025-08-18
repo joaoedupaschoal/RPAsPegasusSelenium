@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from datetime import time as dt_time
 from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass
-
+import pyautogui
 # Selenium imports
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -790,8 +790,8 @@ class PlanoEmpresaTest:
         self.doc = Document()
         self.doc.add_heading("RELATÓRIO DO TESTE", 0)
         self.doc.add_paragraph(
-            "Processo: Fechamento Plano Empresa – Cenário 1: "
-            "Nesse teste, o usuário irá realizar o fechamento de um Plano Empresa."
+            "Processo: Estorno Fechamento Plano Empresa – Cenário 2: "
+            "Nesse teste, o usuário irá realizar o Estorno de um fechamento de um Plano Empresa sem preencher os campos, para verificar se o sistema está disparando as mensagens de alerta corretamente."
         )
         self.doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     
@@ -886,17 +886,17 @@ class PlanoEmpresaTest:
         )
     
     def access_fechamento(self) -> bool:
-        """Acessa a funcionalidade de Fechamento"""
+        """Acessa a funcionalidade de Estorno Fechamento"""
         def fechamento_action():
             self.element_handler.robust_click((
                 By.CSS_SELECTOR,
-                '#gsPlanoEmpresa > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span'
+                '#gsPlanoEmpresa > div.wdTelas > div > ul > li:nth-child(3) > a > span'
             ))
             time.sleep(2)
         
         return self.safe_action.execute(
             self.driver_manager.driver,
-            "Clicando em Fechamento",
+            "Clicando em Estorno Fechamento",
             fechamento_action
         )
     
@@ -906,7 +906,7 @@ class PlanoEmpresaTest:
             # Abre LOV
             self.element_handler.robust_click((
                 By.XPATH,
-                "//*[@id='gsPlanoEmpresa']/div[2]/div[2]/div[1]/div[1]/div/a"
+                "//*[@id='gsPlanoEmpresa']/div[2]/div[2]/div[1]/div/div[1]/div/a"
             ))
             time.sleep(1)
             
@@ -947,7 +947,7 @@ class PlanoEmpresaTest:
         def search_action():
             self.element_handler.robust_click((
                 By.XPATH,
-                "//a[contains(@class,'btModel') and contains(@class,'btGray') and contains(normalize-space(.), 'Buscar')]"
+                "//a[contains(@class,'btModel') and contains(@class,'btGray') and contains(normalize-space(.), 'Pesquisar')]"
             ))
         
         return self.safe_action.execute(
@@ -957,35 +957,13 @@ class PlanoEmpresaTest:
         )
     
     def fill_fechamento_data(self) -> bool:
-        """Preenche dados do fechamento"""
+        """Preenche dados do estorno fechamento"""
         def fill_data_action():
             # Preenche Data de Vencimento
-            success = self.datepicker_handler.fill_datepicker_by_index(0, "17/12/2025")
+            success = self.datepicker_handler.fill_datepicker_by_index(0, "12/2025")
             if not success:
-                raise Exception("Falha ao preencher data de vencimento")
+                raise Exception("Falha ao preencher Mês/ano")
             
-            # Seleciona Tipo Valor Base
-            tipo_valor_select = Select(self.element_handler.wait_for_element((
-                By.XPATH,
-                "//select[option[normalize-space(.)='Valor Contrato'] and option[normalize-space(.)='Valor Pacote']]"
-            )))
-            tipo_valor_select.select_by_visible_text("Valor Contrato")
-            
-            # Seleciona Tipo de reajuste
-            tipo_reajuste_select = Select(self.element_handler.wait_for_element((
-                By.XPATH,
-                "//select[option[normalize-space(.)='Acréscimo'] and option[normalize-space(.)='Desconto']]"
-            )))
-            tipo_reajuste_select.select_by_visible_text("Desconto")
-            
-            # Preenche Taxa de Reajuste
-            taxa_value = str(self.data_generator.fake.random_int(min=1, max=10000))
-            self.element_handler.fill_field((
-                By.XPATH,
-                "//input[@ref='pct' and @placeholder='% ' and contains(@style,'width: 70px')]"
-            ), taxa_value)
-            time.sleep(0.5)
-        
         return self.safe_action.execute(
             self.driver_manager.driver,
             "Preenchendo dados do fechamento",
@@ -1011,22 +989,49 @@ class PlanoEmpresaTest:
             select_action
         )
     
-    def execute_fechamento(self) -> bool:
-        """Executa o fechamento do Plano Empresa"""
-        def fechamento_action():
+    def select_mes_ano(self) -> bool:
+        """Seleciona o mês/ano no campo de fechamento"""
+        def select_action():
+            # Abre o widget
+            self.element_handler.robust_click((By.CSS_SELECTOR, "input.mtz-monthpicker-widgetcontainer"))
+            time.sleep(1)
+
+            # Clica em Dezembro (usa contains na classe para evitar dependência da ordem)
             self.element_handler.robust_click((
-                By.CSS_SELECTOR,
-                '#gsPlanoEmpresa > div.wdTelas > div.telaConsulta > div.btnHolder > a:nth-child(2)'
+                By.XPATH,
+                "//td[contains(@class,'mtz-monthpicker-month') and @data-month='12']"
             ))
-        
+            time.sleep(1)
+
         return self.safe_action.execute(
             self.driver_manager.driver,
-            "Realizando fechamento de Plano Empresa",
+            "Selecionando Mês/Ano (Dezembro)",
+            select_action
+        )
+
+    def execute_estorno_fechamento(self) -> bool:
+        """Executa o estorno do fechamento do Plano Empresa e fecha a guia"""
+        def fechamento_action():
+            # Clica no botão de estornar
+            self.element_handler.robust_click((
+                By.CSS_SELECTOR,
+                '#gsPlanoEmpresa > div.wdTelas > div.telaConsulta.telaEstornoFechamentoPlanoEmpresa > div.btnHolder > a'
+            ))
+            time.sleep(3)
+
+            # Garante foco na janela controlada pelo WebDriver
+            self.driver_manager.driver.switch_to.window(self.driver_manager.driver.current_window_handle)
+
+
+        return self.safe_action.execute(
+            self.driver_manager.driver,
+            "Realizando estorno do fechamento de Plano Empresa",
             fechamento_action
         )
+
     
     def confirm(self) -> bool:
-        """Confirma o fechemento do Plano Empresa"""
+        """Confirma o estorno do fechemento do Plano Empresa"""
         def close_action():
             self.element_handler.robust_click((
                 By.CSS_SELECTOR,
@@ -1057,7 +1062,7 @@ class PlanoEmpresaTest:
     def run_test(self) -> bool:
         """Executa o teste completo"""
         try:
-            self.logger.info("🚀 Iniciando teste de fechamento de Plano Empresa")
+            self.logger.info("🚀 Iniciando teste de estorno de fechamento de Plano Empresa")
             
             # Inicializa driver
             if not self.driver_manager.initialize_driver():
@@ -1073,14 +1078,11 @@ class PlanoEmpresaTest:
                 ("Ajuste de zoom e menu", lambda: (self.adjust_zoom(), True)[1]),
                 ("Acesso ao menu Plano Empresa", self.access_plano_empresa_menu),
                 ("Acesso ao Fechamento", self.access_fechamento),
-                ("Seleção do Plano Empresa", self.select_plano_empresa),
                 ("Busca do Plano Empresa", self.search_plano_empresa),
-                ("Preenchimento dos dados", self.fill_fechamento_data),
-                ("Seleção Tipo Mensalidade", self.select_tipo_mensalidade),
-                ("Execução do fechamento", self.execute_fechamento),
-                ("Confirmação do fechamento", self.confirm),
+                ("Verificação das mensagens de alerta", self.find_alert_messages),
                 ("Fechamento do modal", self.close_modal)
             ]
+
             
             success_count = 0
             total_steps = len(steps)
@@ -1100,10 +1102,7 @@ class PlanoEmpresaTest:
                 else:
                     self.logger.error(f"Falha na etapa: {step_name}")
             
-            # Verifica mensagens de alerta
-            self.logger.info("🔍 Verificando mensagens de alerta...")
-            self.find_alert_messages()
-            
+
             # Relatório final
             success_rate = (success_count / total_steps) * 100
             self.logger.info(f"📊 Taxa de sucesso: {success_rate:.1f}% ({success_count}/{total_steps} etapas)")

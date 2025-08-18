@@ -790,8 +790,8 @@ class PlanoEmpresaTest:
         self.doc = Document()
         self.doc.add_heading("RELATÓRIO DO TESTE", 0)
         self.doc.add_paragraph(
-            "Processo: Fechamento Plano Empresa – Cenário 1: "
-            "Nesse teste, o usuário irá realizar o fechamento de um Plano Empresa."
+            "Processo: Consulta Plano Empresa – Cenário 2: "
+            "Nesse teste, o usuário irá realizar a consulta de um Plano Empresa sem preencher nenhum campo para verificar se o sistema efetua o disparo das mensagens de alerta corretamente."
         )
         self.doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     
@@ -885,28 +885,66 @@ class PlanoEmpresaTest:
             menu_action
         )
     
-    def access_fechamento(self) -> bool:
-        """Acessa a funcionalidade de Fechamento"""
-        def fechamento_action():
+    def access_consulta(self) -> bool:
+        """Acessa a funcionalidade de Consulta"""
+        def consulta_action():
             self.element_handler.robust_click((
                 By.CSS_SELECTOR,
-                '#gsPlanoEmpresa > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span'
+                '#gsPlanoEmpresa > div.wdTelas > div > ul > li:nth-child(2) > a > span'
             ))
             time.sleep(2)
         
         return self.safe_action.execute(
             self.driver_manager.driver,
-            "Clicando em Fechamento",
-            fechamento_action
+            "Clicando em Consulta",
+            consulta_action
         )
     
+
+    def clique_abas_e_print_contratos(self) -> bool: 
+        """Clica na aba e tira print"""
+        def click_and_print_action_contratos():
+            # Clica na aba "Contratos"
+            self.element_handler.robust_click((
+                By.XPATH,
+                "//*[@id='gsPlanoEmpresa']/div[2]/div[2]/div[2]/ul/li[1]/a"
+            ))
+            time.sleep(1)
+            
+
+        
+        return self.safe_action.execute(
+            self.driver_manager.driver,
+            "Clicando na aba Contratos e tirando print",
+            click_and_print_action_contratos
+        )
+
+    def clique_abas_e_print_titulos(self) -> bool: 
+        """Clica na aba e tira print"""
+        def click_and_print_action_titulos():
+            # Clica na aba "Títulos"
+            self.element_handler.robust_click((
+                By.XPATH,
+                "//*[@id='gsPlanoEmpresa']/div[2]/div[2]/div[2]/ul/li[2]/a"
+            ))
+            time.sleep(1)
+            
+
+        return self.safe_action.execute(
+            self.driver_manager.driver,
+            "Clicando na aba Títulos e tirando print",
+            click_and_print_action_titulos
+        )
+
+
+
     def select_plano_empresa(self) -> bool:
         """Seleciona o Plano Empresa"""
         def selection_action():
             # Abre LOV
             self.element_handler.robust_click((
                 By.XPATH,
-                "//*[@id='gsPlanoEmpresa']/div[2]/div[2]/div[1]/div[1]/div/a"
+                "//*[@id='gsPlanoEmpresa']/div[2]/div[2]/div[1]/div/div[1]/div/a"
             ))
             time.sleep(1)
             
@@ -947,12 +985,12 @@ class PlanoEmpresaTest:
         def search_action():
             self.element_handler.robust_click((
                 By.XPATH,
-                "//a[contains(@class,'btModel') and contains(@class,'btGray') and contains(normalize-space(.), 'Buscar')]"
+                "//a[contains(@class,'btModel') and contains(@class,'btGray') and contains(normalize-space(.), 'Pesquisar')]"
             ))
         
         return self.safe_action.execute(
             self.driver_manager.driver,
-            "Buscando Plano Empresa",
+            "Pesquisando Plano Empresa",
             search_action
         )
     
@@ -992,6 +1030,8 @@ class PlanoEmpresaTest:
             fill_data_action
         )
     
+
+
     def select_tipo_mensalidade(self) -> bool:
         """Seleciona Tipo Mensalidade"""
         def select_action():
@@ -1072,13 +1112,9 @@ class PlanoEmpresaTest:
                 ("Login", self.login),
                 ("Ajuste de zoom e menu", lambda: (self.adjust_zoom(), True)[1]),
                 ("Acesso ao menu Plano Empresa", self.access_plano_empresa_menu),
-                ("Acesso ao Fechamento", self.access_fechamento),
-                ("Seleção do Plano Empresa", self.select_plano_empresa),
+                ("Acesso a Consulta", self.access_consulta),
                 ("Busca do Plano Empresa", self.search_plano_empresa),
-                ("Preenchimento dos dados", self.fill_fechamento_data),
-                ("Seleção Tipo Mensalidade", self.select_tipo_mensalidade),
-                ("Execução do fechamento", self.execute_fechamento),
-                ("Confirmação do fechamento", self.confirm),
+                ("Verificação de mensagens de alerta", self.find_alert_messages),
                 ("Fechamento do modal", self.close_modal)
             ]
             
@@ -1100,10 +1136,7 @@ class PlanoEmpresaTest:
                 else:
                     self.logger.error(f"Falha na etapa: {step_name}")
             
-            # Verifica mensagens de alerta
-            self.logger.info("🔍 Verificando mensagens de alerta...")
-            self.find_alert_messages()
-            
+
             # Relatório final
             success_rate = (success_count / total_steps) * 100
             self.logger.info(f"📊 Taxa de sucesso: {success_rate:.1f}% ({success_count}/{total_steps} etapas)")
@@ -1129,7 +1162,7 @@ class PlanoEmpresaTest:
     def finalize_report(self):
         """Finaliza e salva o relatório"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"relatorio_fechamento_plano_empresa_cenario_1_{timestamp}.docx"
+        filename = f"relatorio_consulta_plano_empresa_cenario_1_{timestamp}.docx"
         filepath = os.path.join(self.config.REPORTS_DIR, filename)
         
         try:

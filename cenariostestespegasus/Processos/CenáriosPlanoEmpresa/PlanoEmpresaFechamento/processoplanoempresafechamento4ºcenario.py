@@ -790,8 +790,8 @@ class PlanoEmpresaTest:
         self.doc = Document()
         self.doc.add_heading("RELATÓRIO DO TESTE", 0)
         self.doc.add_paragraph(
-            "Processo: Fechamento Plano Empresa – Cenário 1: "
-            "Nesse teste, o usuário irá realizar o fechamento de um Plano Empresa."
+            "Processo: Fechamento Plano Empresa – Cenário 4: "
+            "Nesse teste, o usuário preencherá apenas os compos NÃO obrigatórios para verificar se o sistema dispara as mensagens de alerta corretamente."
         )
         self.doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     
@@ -959,17 +959,6 @@ class PlanoEmpresaTest:
     def fill_fechamento_data(self) -> bool:
         """Preenche dados do fechamento"""
         def fill_data_action():
-            # Preenche Data de Vencimento
-            success = self.datepicker_handler.fill_datepicker_by_index(0, "17/12/2025")
-            if not success:
-                raise Exception("Falha ao preencher data de vencimento")
-            
-            # Seleciona Tipo Valor Base
-            tipo_valor_select = Select(self.element_handler.wait_for_element((
-                By.XPATH,
-                "//select[option[normalize-space(.)='Valor Contrato'] and option[normalize-space(.)='Valor Pacote']]"
-            )))
-            tipo_valor_select.select_by_visible_text("Valor Contrato")
             
             # Seleciona Tipo de reajuste
             tipo_reajuste_select = Select(self.element_handler.wait_for_element((
@@ -1078,7 +1067,7 @@ class PlanoEmpresaTest:
                 ("Preenchimento dos dados", self.fill_fechamento_data),
                 ("Seleção Tipo Mensalidade", self.select_tipo_mensalidade),
                 ("Execução do fechamento", self.execute_fechamento),
-                ("Confirmação do fechamento", self.confirm),
+                ("Verificação de mensagens de alerta", self.find_alert_messages),
                 ("Fechamento do modal", self.close_modal)
             ]
             
@@ -1099,11 +1088,7 @@ class PlanoEmpresaTest:
                     success_count += 1
                 else:
                     self.logger.error(f"Falha na etapa: {step_name}")
-            
-            # Verifica mensagens de alerta
-            self.logger.info("🔍 Verificando mensagens de alerta...")
-            self.find_alert_messages()
-            
+
             # Relatório final
             success_rate = (success_count / total_steps) * 100
             self.logger.info(f"📊 Taxa de sucesso: {success_rate:.1f}% ({success_count}/{total_steps} etapas)")
@@ -1129,7 +1114,7 @@ class PlanoEmpresaTest:
     def finalize_report(self):
         """Finaliza e salva o relatório"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"relatorio_fechamento_plano_empresa_cenario_1_{timestamp}.docx"
+        filename = f"relatorio_fechamento_plano_empresa_cenario_4_{timestamp}.docx"
         filepath = os.path.join(self.config.REPORTS_DIR, filename)
         
         try:
