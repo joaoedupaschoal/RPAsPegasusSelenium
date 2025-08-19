@@ -1097,7 +1097,7 @@ class PlanoEmpresaTest:
     def run_test(self) -> bool:
         """Executa o teste completo"""
         try:
-            self.logger.info("🚀 Iniciando teste de fechamento de Plano Empresa")
+            self.logger.info("🚀 Iniciando teste de Consulta de Plano Empresa")
             
             # Inicializa driver
             if not self.driver_manager.initialize_driver():
@@ -1162,7 +1162,7 @@ class PlanoEmpresaTest:
     def finalize_report(self):
         """Finaliza e salva o relatório"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"relatorio_consulta_plano_empresa_cenario_1_{timestamp}.docx"
+        filename = f"relatorio_consulta_plano_empresa_cenario_2_{timestamp}.docx"
         filepath = os.path.join(self.config.REPORTS_DIR, filename)
         
         try:

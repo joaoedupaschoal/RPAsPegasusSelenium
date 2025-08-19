@@ -1097,7 +1097,7 @@ class PlanoEmpresaTest:
     def run_test(self) -> bool:
         """Executa o teste completo"""
         try:
-            self.logger.info("🚀 Iniciando teste de fechamento de Plano Empresa")
+            self.logger.info("🚀 Iniciando teste de Consulta de Plano Empresa")
             
             # Inicializa driver
             if not self.driver_manager.initialize_driver():

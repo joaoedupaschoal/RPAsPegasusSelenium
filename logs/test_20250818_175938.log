@@ -1,0 +1,143 @@
+2025-08-18 18:00:15 - INFO - SUCCESS: Driver inicializado com sucesso
+2025-08-18 18:00:19 - ERROR - Falha na etapa: Acessando sistema
+2025-08-18 18:02:13 - INFO - SUCCESS: Realizando login realizada com sucesso
+2025-08-18 18:04:13 - INFO - Zoom ajustado para 90%
+2025-08-18 18:04:31 - INFO - SUCCESS: Acessando menu Plano Empresa realizada com sucesso
+2025-08-18 18:04:46 - INFO - SUCCESS: Clicando em Consulta realizada com sucesso
+2025-08-18 18:05:31 - ERROR - Falha ao clicar em ('xpath', "//td[contains(text(), 'PLANO EMPRESA TESTE SELENIUM AUTOMATIZADO')]"): Message: stale element reference: stale element not found in the current frame
+  (Session info: chrome=138.0.7204.185); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#staleelementreferenceexception
+Stacktrace:
+	GetHandleVerifier [0x0x33ba83+63395]
+	GetHandleVerifier [0x0x33bac4+63460]
+	(No symbol) [0x0x182113]
+	(No symbol) [0x0x1888e9]
+	(No symbol) [0x0x18aec3]
+	(No symbol) [0x0x2117b4]
+	(No symbol) [0x0x1ef3ac]
+	(No symbol) [0x0x2107ba]
+	(No symbol) [0x0x1ef1a6]
+	(No symbol) [0x0x1be7b2]
+	(No symbol) [0x0x1bf654]
+	GetHandleVerifier [0x0x5b8883+2672035]
+	GetHandleVerifier [0x0x5b3cba+2652634]
+	GetHandleVerifier [0x0x362bca+223466]
+	GetHandleVerifier [0x0x352cb8+158168]
+	GetHandleVerifier [0x0x35978d+185517]
+	GetHandleVerifier [0x0x343b78+96408]
+	GetHandleVerifier [0x0x343d02+96802]
+	GetHandleVerifier [0x0x32e90a+9770]
+	BaseThreadInitThunk [0x0x75abfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x776d82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x776d827e+238]
+	(No symbol) [0x0]
+
+2025-08-18 18:05:31 - INFO - SUCCESS: Selecionando Plano Empresa realizada com sucesso
+2025-08-18 18:05:37 - INFO - SUCCESS: Pesquisando Plano Empresa realizada com sucesso
+2025-08-18 18:06:14 - ERROR - Falha ao clicar em ('xpath', "//*[@id='gsPlanoEmpresa']/div[2]/div[2]/div[2]/ul/li[1]/a"): Message: Elemento não encontrado: ('xpath', "//*[@id='gsPlanoEmpresa']/div[2]/div[2]/div[2]/ul/li[1]/a") (condição: present, timeout: 30s)
+
+2025-08-18 18:06:15 - INFO - SUCCESS: Clicando na aba Contratos e tirando print realizada com sucesso
+2025-08-18 18:07:19 - ERROR - Falha ao clicar em ('xpath', "//*[@id='gsPlanoEmpresa']/div[2]/div[2]/div[2]/ul/li[2]/a"): Message: invalid session id: session deleted as the browser has closed the connection
+from disconnected: not connected to DevTools
+  (Session info: chrome=138.0.7204.185); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidsessionidexception
+Stacktrace:
+	GetHandleVerifier [0x0x33ba83+63395]
+	GetHandleVerifier [0x0x33bac4+63460]
+	(No symbol) [0x0x182113]
+	(No symbol) [0x0x171b20]
+	(No symbol) [0x0x18f922]
+	(No symbol) [0x0x1f5c9c]
+	(No symbol) [0x0x210099]
+	(No symbol) [0x0x1ef1a6]
+	(No symbol) [0x0x1be7b2]
+	(No symbol) [0x0x1bf654]
+	GetHandleVerifier [0x0x5b8883+2672035]
+	GetHandleVerifier [0x0x5b3cba+2652634]
+	GetHandleVerifier [0x0x362bca+223466]
+	GetHandleVerifier [0x0x352cb8+158168]
+	GetHandleVerifier [0x0x35978d+185517]
+	GetHandleVerifier [0x0x343b78+96408]
+	GetHandleVerifier [0x0x343d02+96802]
+	GetHandleVerifier [0x0x32e90a+9770]
+	BaseThreadInitThunk [0x0x75abfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x776d82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x776d827e+238]
+	(No symbol) [0x0]
+
+2025-08-18 18:07:20 - INFO - SUCCESS: Clicando na aba Títulos e tirando print realizada com sucesso
+2025-08-18 18:07:23 - ERROR - Erro ao tirar screenshot clicando_na_aba_títulos_e_tirando_print: Message: invalid session id; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidsessionidexception
+Stacktrace:
+	GetHandleVerifier [0x0x33ba83+63395]
+	GetHandleVerifier [0x0x33bac4+63460]
+	(No symbol) [0x0x181f70]
+	(No symbol) [0x0x1bdaa8]
+	(No symbol) [0x0x1ef266]
+	(No symbol) [0x0x1eae65]
+	(No symbol) [0x0x1ea3e6]
+	(No symbol) [0x0x153a45]
+	(No symbol) [0x0x153f9e]
+	(No symbol) [0x0x15442d]
+	GetHandleVerifier [0x0x5b8883+2672035]
+	GetHandleVerifier [0x0x5b3cba+2652634]
+	GetHandleVerifier [0x0x362bca+223466]
+	GetHandleVerifier [0x0x352cb8+158168]
+	GetHandleVerifier [0x0x35978d+185517]
+	(No symbol) [0x0x153710]
+	(No symbol) [0x0x152f1d]
+	GetHandleVerifier [0x0x6edb9c+3938492]
+	BaseThreadInitThunk [0x0x75abfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x776d82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x776d827e+238]
+	(No symbol) [0x0]
+
+2025-08-18 18:07:23 - ERROR - Falha ao clicar em ('css selector', '#gsPlanoEmpresa > div.wdTop.ui-draggable-handle > div.wdClose > a'): Message: invalid session id; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidsessionidexception
+Stacktrace:
+	GetHandleVerifier [0x0x33ba83+63395]
+	GetHandleVerifier [0x0x33bac4+63460]
+	(No symbol) [0x0x181f70]
+	(No symbol) [0x0x1bdaa8]
+	(No symbol) [0x0x1ef266]
+	(No symbol) [0x0x1eae65]
+	(No symbol) [0x0x1ea3e6]
+	(No symbol) [0x0x153a45]
+	(No symbol) [0x0x153f9e]
+	(No symbol) [0x0x15442d]
+	GetHandleVerifier [0x0x5b8883+2672035]
+	GetHandleVerifier [0x0x5b3cba+2652634]
+	GetHandleVerifier [0x0x362bca+223466]
+	GetHandleVerifier [0x0x352cb8+158168]
+	GetHandleVerifier [0x0x35978d+185517]
+	(No symbol) [0x0x153710]
+	(No symbol) [0x0x152f1d]
+	GetHandleVerifier [0x0x6edb9c+3938492]
+	BaseThreadInitThunk [0x0x75abfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x776d82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x776d827e+238]
+	(No symbol) [0x0]
+
+2025-08-18 18:07:23 - INFO - SUCCESS: Fechando modal realizada com sucesso
+2025-08-18 18:07:23 - ERROR - Erro ao tirar screenshot fechando_modal: Message: invalid session id; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidsessionidexception
+Stacktrace:
+	GetHandleVerifier [0x0x33ba83+63395]
+	GetHandleVerifier [0x0x33bac4+63460]
+	(No symbol) [0x0x181f70]
+	(No symbol) [0x0x1bdaa8]
+	(No symbol) [0x0x1ef266]
+	(No symbol) [0x0x1eae65]
+	(No symbol) [0x0x1ea3e6]
+	(No symbol) [0x0x153a45]
+	(No symbol) [0x0x153f9e]
+	(No symbol) [0x0x15442d]
+	GetHandleVerifier [0x0x5b8883+2672035]
+	GetHandleVerifier [0x0x5b3cba+2652634]
+	GetHandleVerifier [0x0x362bca+223466]
+	GetHandleVerifier [0x0x352cb8+158168]
+	GetHandleVerifier [0x0x35978d+185517]
+	(No symbol) [0x0x153710]
+	(No symbol) [0x0x152f1d]
+	GetHandleVerifier [0x0x6edb9c+3938492]
+	BaseThreadInitThunk [0x0x75abfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x776d82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x776d827e+238]
+	(No symbol) [0x0]
+
+2025-08-18 18:07:30 - INFO - Driver encerrado
