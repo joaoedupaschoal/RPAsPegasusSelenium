@@ -1582,9 +1582,9 @@ def executar_teste():
                    abrir_modal_e_selecionar_robusto(
                        '#gsCallCenter > div.wdTelas > div.telaCobranca.telaConsulta.relative > div.formRow.formLastLine > div:nth-child(1) > div > a',
                        'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input',
-                       'VENDEDOR TESTE SELENIUM AUTOMATIZADO',
+                       'JOSÉ DA SILVA',
                        'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(4) > a',
-                       "//td[contains(text(), 'VENDEDOR TESTE SELENIUM AUTOMATIZADO')]"
+                       "//td[contains(text(), 'JOSÉ DA SILVA')]"
                    ))
 
 
@@ -1593,23 +1593,25 @@ def executar_teste():
                    abrir_modal_e_selecionar_robusto(
                        '#gsCallCenter > div.wdTelas > div.telaCobranca.telaConsulta.relative > div.formRow.formLastLine > div:nth-child(2) > div > a',
                        'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input',
-                       'PRO MAX TITANIUM',
+                       'PACOTE TESTE JP',
                        'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a',
-                       "//td[contains(text(), 'PRO MAX TITANIUM')]"
+                       "//td[contains(text(), 'PACOTE TESTE JP')]"
                    ))
 
 
 
 
         safe_action(doc, "Preenchendo Números do Contrato", 
-                   preencher_campo_robusto('#gsCallCenter > div.wdTelas > div.telaCobranca.telaConsulta.relative > div.formRow.formLastLine > div:nth-child(3) > input[type=text]:nth-child(2)', '113060'),
-                   preencher_campo_robusto('#gsCallCenter > div.wdTelas > div.telaCobranca.telaConsulta.relative > div.formRow.formLastLine > div:nth-child(3) > input.marginLeft5', '113060'),
+                   preencher_campo_robusto('#gsCallCenter > div.wdTelas > div.telaCobranca.telaConsulta.relative > div.formRow.formLastLine > div:nth-child(3) > input[type=text]:nth-child(2)', '112106'),
+                   preencher_campo_robusto('#gsCallCenter > div.wdTelas > div.telaCobranca.telaConsulta.relative > div.formRow.formLastLine > div:nth-child(3) > input.marginLeft5', '112106'),
         )
 
 
         safe_action(doc, "Preenchendo Cidade", 
-                   preencher_campo_robusto('#gsCallCenter > div.wdTelas > div.telaCobranca.telaConsulta.relative > div.formRow.formLastLine > div:nth-child(4) > input', 'SÃO JOSÉ DO RIO PRETO - SP'))
+                   preencher_campo_robusto('#gsCallCenter > div.wdTelas > div.telaCobranca.telaConsulta.relative > div.formRow.formLastLine > div:nth-child(4) > input', 'São José do Rio Preto - SP'),
+                   clicar_elemento_robusto("#ui-id-15")
 
+                   )
         safe_action(doc, "Preenchendo quntidade de Parcelas em atraso", 
                    preencher_campo_robusto('#gsCallCenter > div.wdTelas > div.telaCobranca.telaConsulta.relative > div.formRow.formLastLine > div:nth-child(5) > input[type=text]:nth-child(2)', '1'),
                    preencher_campo_robusto('#gsCallCenter > div.wdTelas > div.telaCobranca.telaConsulta.relative > div.formRow.formLastLine > div:nth-child(5) > input.marginLeft5', '10'),
@@ -1617,13 +1619,13 @@ def executar_teste():
                    )
 
         safe_action(doc, "Preenchendo Data da Venda Inicial", 
-                   preencher_datepicker_por_indice(0, "14/08/2024"))
+                   preencher_datepicker_por_indice(0, "14/08/2010"))
 
         safe_action(doc, "Preenchendo Data da Venda Final", 
                    preencher_datepicker_por_indice(1, "24/11/2025"))
 
         safe_action(doc, "Preenchendo Data de Vencimento Inicial", 
-                   preencher_datepicker_por_indice(2, "14/08/2024"))
+                   preencher_datepicker_por_indice(2, "14/08/2010"))
 
         safe_action(doc, "Preenchendo Data de Vencimento Final", 
                    preencher_datepicker_por_indice(3, "24/11/2025"))
@@ -1638,12 +1640,6 @@ def executar_teste():
             "Filial Gold 1"
         ))
         
-        safe_action(doc, "Selecionando Status", 
-                   clicar_elemento_robusto("#gsCallCenter > div.wdTelas > div.telaCobranca.telaConsulta.relative > div.formRow.formLastLine > div:nth-child(12) > div > button > span"),
-                   clicar_elemento_robusto("#gsCallCenter > div.wdTelas > div.telaCobranca.telaConsulta.relative > div.formRow.formLastLine > div:nth-child(12) > div > div > ul > li.ms-select-all > label > input[type=checkbox]"),
-                   )
-
-
 
         # 7. Execução da consulta
         safe_action(doc, "Realizando consulta", realizar_consulta())
@@ -1696,10 +1692,10 @@ def executar_teste():
 
 
         safe_action(doc, "Definindo período de exibição - Data Inicial", 
-                   preencher_datepicker_por_indice(0, "14/08/2025"))
+                   preencher_datepicker_por_indice(4, "14/08/2025"))
 
         safe_action(doc, "Definindo período de exibição - Data Final", 
-                   preencher_datepicker_por_indice(1, "24/11/2025"))
+                   preencher_datepicker_por_indice(5, "24/11/2025"))
 
         safe_action(doc, "Confirmando mensagem", 
                    clicar_elemento_xpath_robusto("//a[contains(@class,'hAlign') and contains(normalize-space(.),'Confirmar')]"))
@@ -1710,7 +1706,7 @@ def executar_teste():
 
 
         safe_action(doc, "Fechando aba de mensagens", 
-                   clicar_elemento_xpath_robusto("/html/body/div[21]/div[2]/a"))
+                   clicar_elemento_xpath_robusto("/html/body/div[20]/div[2]/div[1]/div[2]/a"))
 
         # 12. Títulos do contrato
         safe_action(doc, "Visualizando títulos do Contrato", 
@@ -1732,7 +1728,7 @@ def executar_teste():
 
 
         safe_action(doc, "Abrindo Dados Cadastrais do Titular e capturando Screenshot da aba 'Dados Pessoais'", 
-                   clicar_elemento_xpath_robusto("//a[contains(@class,'materializacaoPeglink') and @ref='1|21582908']"),
+                   clicar_elemento_xpath_robusto("//a[@class='sprites sp-pegLink materializacaoPeglink' and @ref='1|21403192']"),
                    )
 
         safe_action(doc, "Clicando na aba 'Dados Complementares' e capturando Screenshot", 
@@ -1748,10 +1744,14 @@ def executar_teste():
                    clicar_elemento_xpath_robusto("//a[contains(@class,'btsave') and contains(normalize-space(.),'Salvar')]"),
                    )
 
+
+
         log(doc, "🔍 Verificando mensagens de alerta após salvar titular...")
         encontrar_mensagem_alerta()
   
-
+        safe_action(doc, "Clicando na aba 'Títulos' e capturando Screenshot", 
+                   clicar_elemento_xpath_robusto("//a[@ref='titulos' and normalize-space(text())='Títulos']"),
+                   )
 
         safe_action(doc, "Clicando na aba 'Contratos' e capturando Screenshot", 
                    clicar_elemento_xpath_robusto("//a[@ref='contratos' and normalize-space(text())='Contratos']"),
@@ -1764,7 +1764,7 @@ def executar_teste():
                    )
         
         safe_action(doc, "Fechando aba de Busca Rápida", 
-                   clicar_elemento_robusto("#gsViewer_21582908 > div.wdTop.ui-draggable-handle > div > a"),
+                   clicar_elemento_robusto("#gsViewer_21403192 > div.wdTop.ui-draggable-handle > div > a"),
                    )
 
         # 14. Finalização
