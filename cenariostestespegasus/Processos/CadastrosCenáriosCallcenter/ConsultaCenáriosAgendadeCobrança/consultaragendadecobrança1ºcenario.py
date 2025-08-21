@@ -527,6 +527,23 @@ def aguardar_elemento_xpath(xpath, timeout=TIMEOUT_DEFAULT, estado='clickable'):
     }.get(estado, EC.element_to_be_clickable((By.XPATH, xpath)))
     return WebDriverWait(driver, timeout).until(cond)
 
+
+
+def selecionar_opcao(selector, texto):
+    def acao():
+        select_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+        Select(select_element).select_by_visible_text(texto)
+    return acao
+
+
+def selecionar_opcao_xpath(xpath, texto):
+    def acao():
+        select_element = wait.until(EC.presence_of_element_located((By.XPATH, xpath)))
+        Select(select_element).select_by_visible_text(texto)
+    return acao
+
+
+
 def preencher_campo_robusto_xpath(xpath, valor, limpar_primeiro=True, timeout=TIMEOUT_DEFAULT):
     """Mesma lógica do preencher_campo_robusto, mas localizando o elemento por XPATH."""
     def acao():
@@ -1656,13 +1673,19 @@ def executar_teste():
                clicar_elemento_xpath_robusto("//a[@class='sprites sp-openLov']"),
              time.sleep(2)   
 )       
+        
+        safe_action(doc, "Selecionando para filtrar por Código Referência", selecionar_opcao_xpath(
+            "//select[@class='tipoFiltro']",
+            "Código Referência"
+        ))
+
 
         safe_action(
             doc,
-            "Preenchendo campo de pesquisa",
+            "Preenchendo campo de pesquisa como Código Referência do Vendedor",
             preencher_campo_robusto_xpath(
                 "//input[@class='nomePesquisa' and @style='width:210px;']",
-                "COBRADOR TESTE SELENIUM AUTOMATIZADO"
+                "31"
             )
         )
 
@@ -1676,19 +1699,23 @@ def executar_teste():
         safe_action(doc, "Selecionando Cobrador no Lov", 
                clicar_elemento_xpath_robusto("//td[contains(text(), 'COBRADOR TESTE SELENIUM AUTOMATIZADO')]")
         )
-        time.sleep(15)   
-
-        safe_action(doc, driver, wait, "Procurando compromissos na Agenda", lambda: 
-                    clicar_ate_achar_contrato()
+        time.sleep(10)
+        safe_action(
+            doc,
+            "Procurando compromissos na Agenda",
+            lambda: clicar_ate_achar_contrato(driver, wait)
         )
 
+
         safe_action(doc, "Fechando aba do contrato", 
-                   clicar_elemento_xpath_robusto("/html/body/div[20]/div[2]/a"))
+                   clicar_elemento_xpath_robusto("/html/body/div[18]/div[2]/a"))
 
-
+        time.sleep(1)
 
         safe_action(doc, "Fechando Agenda de Cobranças", 
-                   clicar_elemento_xpath_robusto("/html/body/div[19]/div[2]/a"))
+                   clicar_elemento_xpath_robusto("//a[@class='fa fa-close' and @style='top: 15px; right: 15px;']"),
+
+                   )
 
 
 
