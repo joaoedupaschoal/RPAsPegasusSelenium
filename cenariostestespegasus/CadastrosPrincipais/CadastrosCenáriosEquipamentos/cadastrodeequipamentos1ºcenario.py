@@ -199,7 +199,7 @@ try:
     ))
 
     safe_action(doc, "Preenchendo nome do equipamento", lambda: (
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_dadosEquipamento.categoriaHolder > div > div > div > div:nth-child(4) > input"))).send_keys("TESTE CADEIRA DE RODAS SELENIUM AUTOMATIZADO")
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_dadosEquipamento.categoriaHolder > div > div > div > div:nth-child(4) > input"))).send_keys("EQUIPAMENTO SELENIUM 12")
     ))
 
     safe_action(doc, "Preenchendo observação", lambda: (
@@ -221,7 +221,7 @@ try:
     time.sleep(1)
 
     safe_action(doc, "Preenchendo descrição adicional", lambda: (
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_informacoesAdicionais.categoriaHolder > div > div > div > input"))).send_keys("TESTE DESCRIÇÃO CADEIRA DE RODAS SELENIUM AUTOMATIZADO")
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_informacoesAdicionais.categoriaHolder > div > div > div > input"))).send_keys("EQUIPAMENTO SELENIUM 12")
     ))
 
     safe_action(doc, "Clicando em Salvar", lambda: (

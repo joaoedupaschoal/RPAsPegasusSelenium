@@ -200,7 +200,7 @@ def abrir_modal_e_selecionar_robusto(btn_selector, pesquisa_selector, termo_pesq
 
 def finalizar_relatorio():
     global driver, doc
-    nome_arquivo = f"relatorio_agenda_crm_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_locacao_equipamentos_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     try:
         doc.save(nome_arquivo)
         log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
@@ -807,12 +807,12 @@ def executar_teste():
                         "113060"
                     ))
 
-        time.sleep(0.5)
+        time.sleep(3)
 
 
 
         safe_action(doc, "Preenchendo Observações", lambda:
-            preencher_textarea_por_indice(1,
+            preencher_textarea_por_indice(0,
                  "TESTE OBSERVAÇÃO SELENIUM AUTOMATIZADO (Automação de Testes): Teste de observação longa para validar o campo textarea no sistema. "))
 
         safe_action(doc, "Avançando para a aba: 'Adicionar Equipamentos'", lambda:
@@ -831,7 +831,7 @@ def executar_teste():
         safe_action(doc, "Preenchendo Equipamento", lambda:
                     preencher_campo_xpath_com_retry(
                         driver, wait, "/html/body/div[18]/div[2]/div[1]/div[1]/div[2]/input",
-                        "EQUIPAMENTO SELENIUM 01"
+                        "EQUIPAMENTO SELENIUM 04"
                     ))
 
 
@@ -842,7 +842,7 @@ def executar_teste():
         )
 
         safe_action(doc, "Selecionando equipamento", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "//tr[td[1][normalize-space()='EQUIPAMENTO SELENIUM 01']]"))).click()
+            wait.until(EC.element_to_be_clickable((By.XPATH, "//tr[td[1][normalize-space()='EQUIPAMENTO SELENIUM 04']]"))).click()
         )
 
 
@@ -861,7 +861,7 @@ def executar_teste():
         safe_action(doc, "Preenchendo Equipamento", lambda:
                     preencher_campo_xpath_com_retry(
                         driver, wait, "/html/body/div[19]/div[2]/div[1]/div[1]/div[2]/input",
-                        "EQUIPAMENTO SELENIUM 02"
+                        "EQUIPAMENTO SELENIUM 05"
                     ))
 
         safe_action(doc, "Pesquisando equipamento", lambda: 
@@ -871,7 +871,7 @@ def executar_teste():
         )
 
         safe_action(doc, "Selecionando equipamento", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "//tr[td[1][normalize-space()='EQUIPAMENTO SELENIUM 02']]"))).click()
+            wait.until(EC.element_to_be_clickable((By.XPATH, "//tr[td[1][normalize-space()='EQUIPAMENTO SELENIUM 05']]"))).click()
         )
 
 
@@ -893,7 +893,7 @@ def executar_teste():
         safe_action(doc, "Preenchendo Equipamento", lambda:
                     preencher_campo_xpath_com_retry(
                         driver, wait, "/html/body/div[19]/div[2]/div[1]/div[1]/div[2]/input",
-                        "EQUIPAMENTO SELENIUM 03"
+                        "EQUIPAMENTO SELENIUM 06"
                     ))
 
         safe_action(doc, "Pesquisando equipamento", lambda: 
@@ -903,7 +903,7 @@ def executar_teste():
         )
 
         safe_action(doc, "Selecionando equipamento", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "//tr[td[1][normalize-space()='EQUIPAMENTO SELENIUM 03']]"))).click()
+            wait.until(EC.element_to_be_clickable((By.XPATH, "//tr[td[1][normalize-space()='EQUIPAMENTO SELENIUM 06']]"))).click()
         )
 
         safe_action(doc, "Adicionando equipamento", lambda: 

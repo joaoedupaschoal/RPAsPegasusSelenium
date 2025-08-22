@@ -1,0 +1,29 @@
+2025-08-22 17:45:35,290 - INFO - ====== WebDriver manager ======
+2025-08-22 17:45:40,826 - INFO - Get LATEST chromedriver version for google-chrome
+2025-08-22 17:45:40,909 - INFO - Get LATEST chromedriver version for google-chrome
+2025-08-22 17:45:40,985 - INFO - Driver [C:\Users\Gold System\.wdm\drivers\chromedriver\win64\139.0.7258.138\chromedriver-win32/chromedriver.exe] found in cache
+2025-08-22 17:46:35,319 - ERROR - Erro na seleção de pessoa: Message: 
+Stacktrace:
+	GetHandleVerifier [0x0xf6ffc3+65331]
+	GetHandleVerifier [0x0xf70004+65396]
+	(No symbol) [0x0xd63f63]
+	(No symbol) [0x0xdac99e]
+	(No symbol) [0x0xdacd3b]
+	(No symbol) [0x0xdf53d2]
+	(No symbol) [0x0xdd1524]
+	(No symbol) [0x0xdf2bcb]
+	(No symbol) [0x0xdd12d6]
+	(No symbol) [0x0xda0910]
+	(No symbol) [0x0xda1784]
+	GetHandleVerifier [0x0x11b38b3+2439203]
+	GetHandleVerifier [0x0x11aeae2+2419282]
+	GetHandleVerifier [0x0xf9712a+225434]
+	GetHandleVerifier [0x0xf86e08+159096]
+	GetHandleVerifier [0x0xf8dd5d+187597]
+	GetHandleVerifier [0x0xf77ad8+96840]
+	GetHandleVerifier [0x0xf77c62+97234]
+	GetHandleVerifier [0x0xf6277a+9962]
+	BaseThreadInitThunk [0x0x76b1fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x776a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x776a827e+238]
+
