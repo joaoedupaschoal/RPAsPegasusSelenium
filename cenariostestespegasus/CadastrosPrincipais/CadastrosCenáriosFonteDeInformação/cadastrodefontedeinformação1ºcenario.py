@@ -182,7 +182,7 @@ try:
     safe_action(doc, "Preechendo a Descrição da Fonte da Informação", lambda: (
         time.sleep(2),
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10069 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroFonteInformacao > div.catWrapper > div > div > div > div > div > div:nth-child(2) > input"))
-        ).send_keys('TESTE FONTE DE INFORMAÇÃO SELENIUM AUTOMATIZADO')
+        ).send_keys('TESTE FONTE DE INFORMAÇÃO SELENIUM AUTOMATIZADO' + random.choice(['', ' 1', ' 2', ' 3', ' 4', ' 5']))
     ))
 
     safe_action(doc, "Salvando cadastro", lambda: driver.find_element(

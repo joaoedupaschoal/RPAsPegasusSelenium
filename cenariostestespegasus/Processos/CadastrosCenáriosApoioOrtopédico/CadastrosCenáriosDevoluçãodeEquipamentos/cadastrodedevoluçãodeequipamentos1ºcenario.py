@@ -108,7 +108,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== INICIALIZAÇÃO DE VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Cadastro de Locação de Equipamentos - Apoio Ortopédico – Cenário 1: Preenchimento completo e salvamento")
+doc.add_paragraph("Consulta de Devolução de Equipamentos - Apoio Ortopédico – Cenário 1: Preenchimento completo e salvamento")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -1102,6 +1102,12 @@ def executar_teste():
         safe_action(doc, "Salvando Detalhes da Locação", lambda:
             clicar_elemento_xpath_robusto(driver, "//a[contains(@class,'btSave')]")
         )
+
+        safe_action(doc, "Registrando Devolução para os Itens marcados", lambda:
+            clicar_elemento_css_robusto(driver, "#BtYes")
+        )
+
+
 
         safe_action(doc, "Fechando modal Apoio Ortopédico", lambda:
             clicar_elemento_css_robusto(driver, "#gsApoioOrtopedico > div.wdTop.ui-draggable-handle > div.wdClose > a")
