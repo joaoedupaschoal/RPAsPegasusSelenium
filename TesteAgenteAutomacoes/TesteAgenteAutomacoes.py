@@ -1,10 +1,20 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 # força coleta no build do PyInstaller
+# força coleta no build do PyInstaller
+# força coleta no build do PyInstaller (ajuda a embutir libs usadas nos cenários)
 try:
-    import selenium, selenium.webdriver  # noqa
-    import urllib3, certifi, requests    # noqa
+    import selenium, selenium.webdriver                  # noqa
+    import webdriver_manager, webdriver_manager.chrome   # noqa
+    import requests, urllib3, certifi                    # noqa
+    import dotenv                                        # noqa
+    import docx                                          # noqa  (python-docx)
+    import lxml, lxml.etree                              # noqa
+    import pyautogui, pyperclip, pyscreeze, pygetwindow, pymsgbox, pyrect  # noqa
+    import faker                                         # noqa  (Faker)
+    import validate_docbr                                # noqa
+    import trio, trio_websocket, wsproto, websocket      # noqa  (websocket-client = módulo 'websocket')
+    import getpass
+
 except Exception:
     pass
 
@@ -16,7 +26,8 @@ import threading
 import subprocess
 from pathlib import Path
 # ========== CONFIGURAÇÕES ==========
-ENV_PASSWORD_KEY = "j2e0j1p0#"
+# Senha fixa (Windows)
+SENHA_FIXA = "071999gs"  # <- ajuste aqui a sua senha
 MAX_TRIES = 3
 
 from pathlib import Path
@@ -32,7 +43,6 @@ BASE_SCRIPTS = get_base_scripts_dir()
 SCRIPTS = {
     "cadastros": {
         "adicionais": {
-            # Exemplo de itens (adicione seus próprios caminhos depois)
             "1": {"label": "Cenários dos cadastros de Abastecimento", "scenarios": {}},
             "2": {"label": "Cenários dos cadastros de Áreas", "scenarios": {}},
             "3": {"label": "Cenários dos cadastros de Atendentes", "scenarios": {}},
@@ -49,19 +59,18 @@ SCRIPTS = {
                     },
                     "2": {
                         "label": 'Cenário 2: Nesse teste, serão preenchidos todos os campos do cadastro, e clicará em "Cancelar".',
-                        "file": BASE_SCRIPTS / "CadastrosPrincipais" /  "CadastrosCenáriosAgendaDeCompromissos" / "cadastrodeagendadecompromissos2ºcenario.py",
+                        "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosAgendaDeCompromissos" / "cadastrodeagendadecompromissos2ºcenario.py",
                     },
                     "3": {
                         "label": 'Cenário 3: Nesse teste, serão preenchidos APENAS os campos obrigatórios, e clicará em "Salvar".',
-                        "file": BASE_SCRIPTS / "CadastrosPrincipais" /  "CadastrosCenáriosAgendaDeCompromissos" / "cadastrodeagendadecompromissos3ºcenario.py",
+                        "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosAgendaDeCompromissos" / "cadastrodeagendadecompromissos3ºcenario.py",
                     },
                     "4": {
                         "label": 'Cenário 4: Nesse teste, serão preenchidos APENAS os campos NÃO obrigatórios, e clicará em "Salvar", para disparo de alertas.',
-                        "file": BASE_SCRIPTS /"CadastrosPrincipais" /  "CadastrosCenáriosAgendaDeCompromissos" / "cadastrodeagendadecompromissos4ºcenario.py",
+                        "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosAgendaDeCompromissos" / "cadastrodeagendadecompromissos4ºcenario.py",
                     },
                 },
             },
-
             "2": {
                 "label": "Cenários dos cadastros de Carteira de Cobrança",
                 "scenarios": {
@@ -73,35 +82,38 @@ SCRIPTS = {
                         "label": 'Cenário 2: Nesse teste, serão preenchidos todos os campos do cadastro, e clicará em "Cancelar".',
                         "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCarteiraDeCobrança" / "cadastrodecarteiradecobrança2ºcenario.py",
                     },
-                }
+                },
             },
-            
             "3": {
                 "label": "Cenários dos cadastros de Cemitérios",
                 "scenarios": {
                     "1": {
-                        "label": "Cenário 1: TESTE CENARIO 1",
+                        "label": "Cenário 1: Nesse teste, serão preenchidos todos os campos do cadastro, e clicará em 'Salvar'.",
                         "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemitérios1ºcenario.py",
                     },
                     "2": {
-                        "label": "Cenário 2: TESTE CENARIO 2",
+                        "label": 'Cenário 2: Nesse teste, serão preenchidos todos os campos do cadastro, e clicará em "Cancelar".',
                         "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemitérios2ºcenario.py",
                     },
                     "3": {
                         "label": "Cenário 3: TESTE CENARIO 3",
                         "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemitérios3ºcenario.py",
+                    },
                     "4": {
                         "label": "Cenário 4: TESTE CENARIO 4",
                         "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemitérios4ºcenario.py",
                     },
+                },
+            },
+            "4": {
+                "label": "Cenários dos cadastros de Cesta Básica",
+                "scenarios": {
+
                 }
             },
-
-            "4": {"label": "Cenários dos cadastros de Cesta Básica", "scenarios": {}},
             "5": {"label": "Cenários dos cadastros de Cobrador Teste", "scenarios": {}},
         },
     },
-
     "processos": {
         "1": {"label": "Cenários do Processo: Gestor de Cemitérios", "scenarios": {}},
         "2": {"label": "Cenários do Processo: Gestor de Financeiro", "scenarios": {}},
@@ -111,7 +123,7 @@ SCRIPTS = {
             "scenarios": {
                 "1": {
                     "label": "Cenário teste Histórico de falecidos 1: TESTE CENARIO 1",
-                    "file": BASE_SCRIPTS / "historico_falecidos" / "cenario_1.py",
+                    "file": BASE_SCRIPTS / "historico_falecidos" / "cenario_1.py",  # ajuste este caminho conforme sua pasta real
                 },
                 "2": {
                     "label": "Cenário teste Histórico de falecidos 2: TESTE CENARIO 2",
@@ -130,7 +142,7 @@ SCRIPTS = {
         "5": {"label": "Cenários do Processo: Títulos", "scenarios": {}},
     },
 }
-}
+
 # ========== SUPORTE A TECLAS (Windows/Unix) ==========
 IS_WIN = (os.name == "nt")
 
@@ -310,50 +322,88 @@ def confirm_yn(question: str) -> bool:
             if s in valid:
                 return valid[s]
 
-# ========== AUTENTICAÇÃO ==========
-def authenticate_or_exit():
+
+# =========================
+# Login com senha fixa (Windows)
+# =========================
+import os, sys
+
+SENHA_FIXA = "071999gs"     # <- Ajuste aqui a sua senha
+MAX_TENTATIVAS = 3
+
+# limpar tela
+def clear_screen():
+    os.system("cls" if os.name == "nt" else "clear")
+
+# ---------- leitura com asteriscos + bloqueio de colar (Windows) ----------
+if os.name == "nt":
+    import msvcrt, ctypes
+    _user32 = ctypes.windll.user32
+    _VK_SHIFT = 0x10
+
+    def _is_shift_pressed():
+        return (_user32.GetAsyncKeyState(_VK_SHIFT) & 0x8000) != 0
+
+    def input_senha_asteriscos(prompt="Senha: "):
+        """Lê senha mostrando '*' e bloqueando Ctrl+V / Shift+Insert."""
+        sys.stdout.write(prompt)
+        sys.stdout.flush()
+        buf = []
+        while True:
+            ch = msvcrt.getwch()  # wide-char (suporta acentos)
+
+            # ENTER finaliza
+            if ch in ("\r", "\n"):
+                print()
+                return "".join(buf)
+
+            # BACKSPACE apaga 1 caractere
+            if ch == "\x08":
+                if buf:
+                    buf.pop()
+                    sys.stdout.write("\b \b")
+                    sys.stdout.flush()
+                continue
+
+            # Ctrl+C
+            if ch == "\x03":
+                raise KeyboardInterrupt
+
+            # Ctrl+V (colar)
+            if ch == "\x16":
+                continue  # ignora
+
+            # Teclas estendidas (setas, Insert, etc.)
+            if ch in ("\x00", "\xe0"):
+                ext = msvcrt.getwch()
+                # Shift+Insert (colar clássico)
+                if ext.upper() == "R" and _is_shift_pressed():
+                    continue  # ignora colagem
+                # ignora demais teclas especiais
+                continue
+
+            # caractere normal
+            buf.append(ch)
+            sys.stdout.write("*")
+            sys.stdout.flush()
+else:
+    # Fallback simples para Unix (sem bloqueio de colar)
+    def input_senha_asteriscos(prompt="Senha: "):
+        return getpass.getpass(prompt)
+
+def validar_senha():
+    """Mostra banner e valida a senha com até MAX_TENTATIVAS tentativas."""
     clear_screen()
     print("--- AUTOMAÇÕES PEGASUS ---")
-    pwd_env = os.environ.get(ENV_PASSWORD_KEY, "")
-
-    # Se não houver APP_PASS, informa e mantém a janela aberta
-    if not pwd_env:
-        print(f"[ERRO] Defina a variável de ambiente {ENV_PASSWORD_KEY} com a senha.")
-        if IS_WIN:
-            print('Ex.: PowerShell ->  $env:APP_PASS="minha_senha_forte"')
-            # mantém janela aberta no duplo clique
-            try:
-                os.system("pause")
-            except Exception:
-                pass
-        else:
-            try:
-                input("Pressione Enter para sair...")
-            except Exception:
-                pass
-        sys.exit(1)
-
-    # Tentativas de senha
-    tries = 0
-    while tries < MAX_TRIES:
-        pwd = read_masked_password("Digite a senha de acesso para entrar: ")
-        if pwd == pwd_env:
-            return
-        print("Senha incorreta, tente novamente.")
-        tries += 1
-
+    tent = 0
+    while tent < MAX_TENTATIVAS:
+        senha = input_senha_asteriscos("Digite a senha de acesso para entrar: ")
+        if senha == SENHA_FIXA:
+            return True
+        tent += 1
+        if tent < MAX_TENTATIVAS:
+            print("Senha incorreta, tente novamente.")
     print("Acesso bloqueado.")
-    # também pausa aqui para o caso de duplo clique
-    if IS_WIN:
-        try:
-            os.system("pause")
-        except Exception:
-            pass
-    else:
-        try:
-            input("Pressione Enter para sair...")
-        except Exception:
-            pass
     sys.exit(1)
 
 
@@ -404,12 +454,10 @@ def run_script_with_interrupt(py_file: Path):
 
     try:
         # 4) monta o comando
-        # - no exe (PyInstaller): chama a si próprio com --run-script
-        # - no modo dev: chama o Python do sistema com o .py
         cmd = (
             [sys.executable, "--run-script", str(py_file)]
-            if getattr(sys, "frozen", False)
-            else [sys.executable, str(py_file)]
+            if getattr(sys, "frozen", False)     # quando estiver no .exe
+            else [sys.executable, str(py_file)]  # modo dev
         )
 
         popen_kwargs = {}
@@ -449,7 +497,6 @@ def run_script_with_interrupt(py_file: Path):
     finally:
         stop_event.set()
         watcher.join(timeout=0.5)
-
 
 
     # Confirmação (y/n)
@@ -676,11 +723,9 @@ def tela_tipo_automacao():
 
 # ========== MAIN ==========
 def main():
-    # Banner + senha
     print("--- AUTOMAÇÕES PEGASUS ---")
-    authenticate_or_exit()
 
-    # Etapa 2
+
     tela_tipo_automacao()
 
     # Saída
@@ -704,15 +749,24 @@ if __name__ == "__main__":
     from pathlib import Path
 
     try:
-        # Modo worker: o próprio EXE executa um cenário específico
+        # Modo worker: o próprio EXE executa um cenário específico (sem pedir senha)
         if "--run-script" in sys.argv:
             import runpy
             i = sys.argv.index("--run-script")
             runpy.run_path(sys.argv[i + 1], run_name="__main__")
             sys.exit(0)
 
+        # >>> LOGIN (senha com asteriscos) <<<
+        # Só no fluxo principal do agente:
+        validar_senha()   # retorna ao prosseguir; encerra se falhar
+
         # Fluxo normal do agente
         main()
+
+    except KeyboardInterrupt:
+        print("\nEncerrado pelo usuário.")
+        _pause_if_frozen_main()
+        sys.exit(130)
 
     except Exception as e:
         # Loga qualquer crash e mostra na tela
@@ -731,4 +785,3 @@ if __name__ == "__main__":
     finally:
         # Mesmo sem erro, mantém a janela aberta no duplo clique
         _pause_if_frozen_main()
-
