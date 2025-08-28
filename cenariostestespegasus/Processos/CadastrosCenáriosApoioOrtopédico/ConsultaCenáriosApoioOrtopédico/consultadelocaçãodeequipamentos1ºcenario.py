@@ -729,7 +729,7 @@ def executar_teste():
 
         # 6. Preenchimento dos campos
         safe_action(doc, "Preenchendo Número da Locação", lambda:
-            preencher_campo_robusto("//input[@class='numeroLocacao']", "306", By.XPATH)
+            preencher_campo_robusto("//input[@class='numeroLocacao']", "311", By.XPATH)
         )
 
         safe_action(doc, "Abrindo LOV de Equipamentos", lambda:
@@ -739,18 +739,20 @@ def executar_teste():
         time.sleep(2)
 
         safe_action(doc, "Pesquisando equipamento", lambda: (
-            ("/html/body/div[20]/div[2]/div[1]/div[1]/div[2]/input", "EQUIPAMENTO SELENIUM 01", By.XPATH),
-            clicar_elemento_robusto("/html/body/div[20]/div[2]/div[1]/div[1]/div[3]/a", By.XPATH),
+            ("/html/body/div[21]/div[2]/div[1]/div[1]/div[2]/input", "TESTE SELENIUM", By.XPATH), Keys.ENTER,
+            
             time.sleep(2),
-            clicar_elemento_robusto("//tr[td[2][contains(normalize-space(.),'EQUIPAMENTO SELENIUM 01')]]", By.XPATH)
+            clicar_elemento_robusto("//tr[td[2][contains(normalize-space(.),'TESTE SELENIUM')]]", By.XPATH)
         ))
+
+        time.sleep(10)
 
         safe_action(doc, "Preenchendo Número do Contrato", lambda:
             preencher_campo_robusto("//input[@class='numeroContrato']", "113060", By.XPATH)
         )
 
         safe_action(doc, "Preenchendo Número do Patrimônio", lambda:
-            preencher_campo_robusto("//input[@name='numeroPatrimonio']", "876*&", By.XPATH)
+            preencher_campo_robusto("//input[@name='numeroPatrimonio']", "1000", By.XPATH)
         )
 
         safe_action(doc, "Abrindo LOV do Responsável", lambda:
@@ -761,18 +763,20 @@ def executar_teste():
 
         safe_action(doc, "Pesquisando responsável", lambda: (   
             preencher_campo_robusto("//*[@id='txtPesquisa']", "TESTE TITULAR 233", By.XPATH),
-            clicar_elemento_robusto("/html/body/div[22]/div[2]/div[1]/div[1]/div[2]/a", By.XPATH),
+            Keys.ENTER,
             time.sleep(2),
             clicar_elemento_robusto("//tr[td[2][contains(normalize-space(.),'TESTE TITULAR 233')]]", By.XPATH)
         ))
 
+        time.sleep(10)
+
         # 7. Preenchimento das datas
         safe_action(doc, "Preenchendo Data Locação Inicial", lambda:
-            preencher_datepicker(0, "21/08/2025")
+            preencher_datepicker(0, "28/08/2025")
         )
 
         safe_action(doc, "Preenchendo Data Locação Final", lambda:
-            preencher_datepicker(1, "21/08/2025")
+            preencher_datepicker(1, "28/08/2025")
         )
 
         # 8. Realizando consulta
@@ -849,6 +853,10 @@ def executar_teste():
 
         safe_action(doc, "Fechando modal de digitalização", lambda:
             clicar_elemento_robusto("//a[contains(@class,'fa') and contains(@class,'fa-close')]", By.XPATH)
+        )
+
+        safe_action(doc, "Limpando campos", lambda:
+            clicar_elemento_robusto("#gsApoioOrtopedico > div.wdTelas > div.telaConsulta > div > div.btnHolder > a.btModel.btGray.btclear")
         )
 
         # 14. Finalização

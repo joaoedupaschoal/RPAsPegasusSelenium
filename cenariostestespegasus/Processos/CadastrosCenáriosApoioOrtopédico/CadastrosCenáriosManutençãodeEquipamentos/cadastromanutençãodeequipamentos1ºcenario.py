@@ -116,9 +116,48 @@ driver = None
 wait = None
 
 # ==== UTILITÁRIOS ====
-def log(doc, msg):
-    print(msg)
-    doc.add_paragraph(msg)
+from datetime import datetime
+import traceback
+
+def log(doc, msg, nivel="INFO"):
+    """
+    Registra mensagem no console e no documento,
+    com suporte a níveis (INFO, WARN, ERROR).
+    """
+    try:
+        nivel = (nivel or "INFO").upper()
+        prefixo = {
+            "INFO": "ℹ️ [INFO]",
+            "WARN": "⚠️ [WARN]",
+            "ERROR": "❌ [ERROR]",
+        }.get(nivel, f"[{nivel}]")
+
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        linha = f"{timestamp} {prefixo} {msg}"
+
+        print(linha)
+        doc.add_paragraph(linha)
+    except Exception:
+        # fallback para não travar automação se algo der errado
+        try:
+            print(f"[LOG_FAIL] {msg}")
+        except Exception:
+            pass
+
+
+def log_exception(doc, descricao, e, critico=False):
+    """
+    Registra uma exceção formatada.
+    Se critico=True, também adiciona o stacktrace completo.
+    """
+    msg = f"{descricao} falhou: {type(e).__name__}: {str(e)}"
+    log(doc, msg, "ERROR")
+
+    if critico:
+        stack = traceback.format_exc()
+        log(doc, "— stacktrace —", "ERROR")
+        for linha in stack.splitlines():
+            log(doc, linha, "ERROR")
 
 def _sanitize_filename(name: str) -> str:
     name = name.strip().lower()
@@ -1075,21 +1114,20 @@ def executar_teste():
         encontrar_mensagem_alerta()
 
 
-        safe_action(doc, "Vendendo equipamento da lista", lambda:
-            clicar_elemento_xpath_robusto(driver, "//span[  contains(concat(' ', normalize-space(@class), ' '), ' sp-inutilizar ')and @title='Inutilizar Equipamento']")
-        )
 
-        safe_action(doc, "Fechando modal Apoio Ortopédico", lambda:
-            clicar_elemento_css_robusto(driver, "//span[  contains(concat(' ', normalize-space(@class), ' '), ' sp-pagar ')  and @title='Vender Equipamento']")
+
+        safe_action(doc, "Vendendo equipamento da lista", lambda:
+            clicar_elemento_xpath_robusto(driver, "//span[contains(concat(' ', normalize-space(@class), ' '), ' sp-pagar ') and @title='Vender Equipamento']")
         )
 
         safe_action(doc, "Preenchendo o Número do Contrato", lambda:
-        preencher_campo_xpath_com_retry(driver, wait, 
-            "//input[@maxlength='30' and contains(@class,'mandatory')]"
-            "113060"
+            preencher_campo_xpath_com_retry(
+                driver, wait, 
+                "//input[@maxlength='30' and contains(@class,'mandatory')]", 
+                "113060"
             )
-        
         )
+
         time.sleep(3)
 
 
@@ -1105,7 +1143,7 @@ def executar_teste():
         log(doc, "🔍 Verificando mensagens de alerta...")
         encontrar_mensagem_alerta()
 
-
+        time.sleep(5)
 
         safe_action(doc, "Enviando equipamento da lista para Manutenção", lambda:
             clicar_elemento_xpath_robusto(driver, "//span[@title='Enviar para Manutenção']")
@@ -1126,7 +1164,7 @@ def executar_teste():
 
 
         safe_action(doc, "Fechando modal de Apoio Ortopédico", lambda:
-            clicar_elemento_css_robusto("#gsApoioOrtopedico > div.wdTop.ui-draggable-handle > div.wdClose > a")
+            clicar_elemento_css_robusto(driver, "#gsApoioOrtopedico > div.wdTop.ui-draggable-handle > div.wdClose > a")
         )
         return True
 
