@@ -351,6 +351,7 @@ def clicar_elemento_robusto(driver, wait, seletor_css, timeout=10):
         log(doc, f"❌ Erro ao clicar robusto: {e}")
         return False
 
+
 # ==== DATEPICKER ====
 def encontrar_campos_datepicker():
     global driver

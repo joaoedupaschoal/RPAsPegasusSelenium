@@ -1537,6 +1537,7 @@ def executar_teste():
             )
         )
 
+
         safe_action(doc, "Reagrupando Rateios", lambda: 
             wait.until(EC.element_to_be_clickable((By.XPATH, "//a[normalize-space(text())='Reagrupar']"))).click(),
         )

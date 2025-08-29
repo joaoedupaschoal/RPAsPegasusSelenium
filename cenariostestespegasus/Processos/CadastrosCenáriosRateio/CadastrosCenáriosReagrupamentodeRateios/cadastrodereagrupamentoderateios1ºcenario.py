@@ -1522,6 +1522,7 @@ def executar_teste():
             force_click(driver, By.CSS_SELECTOR, "#gsRateio > div.wdTop.ui-draggable-handle > div.wdClose > a")
         )
 
+
         log(doc, "🔍 Verificando mensagens de alerta...")
         encontrar_mensagem_alerta()
 

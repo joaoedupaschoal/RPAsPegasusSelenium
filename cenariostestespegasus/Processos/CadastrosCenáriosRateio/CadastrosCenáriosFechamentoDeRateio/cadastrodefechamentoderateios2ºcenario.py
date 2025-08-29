@@ -225,6 +225,7 @@ def abrir_modal_e_selecionar_robusto(btn_selector, pesquisa_selector, termo_pesq
     return acao
 
 
+
 def finalizar_relatorio():
     global driver, doc
     nome_arquivo = f"relatorio_fechamento_rateios_cenario_2_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
