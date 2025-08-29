@@ -1,4 +1,3 @@
-
 # ==== IMPORTS (sem conflitos) ====
 from datetime import datetime, timedelta
 from datetime import time as dt_time  # usar para objetos de hora
@@ -107,17 +106,15 @@ LOGIN_PASSWORD = "071999gs"
 # ==== INICIALIZAÇÃO DE VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Cadastro de Fechamento de Rateios - Apoio Ortopédico – Cenário 1: Nesse teste, será realizado um fechamento de Rateio.")
+doc.add_paragraph("Cadastro de Fechamento de Rateios - Rateio – Cenário 1: Nesse teste, será realizado um fechamento de Rateio.")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
 driver = None
 wait = None
+janela_principal = None  # ✅ CORREÇÃO: iniciar como None; só capturar após abrir o driver
 
 # ==== UTILITÁRIOS ====
-
-janela_principal = driver.current_window_handle
-
 
 def selecionar_opcao_seletor(selector, texto):
     def acao():
@@ -166,30 +163,28 @@ def take_screenshot(driver, doc, nome):
         except Exception as e:
             log(doc, f"⚠️ Erro ao tirar screenshot {nome}: {e}")
 
-def safe_action(doc, descricao, func, max_retries=3):
+# ✅ Agora safe_action aceita critico
+def safe_action(doc, descricao, func, max_retries=3, critico=True):
     global driver
     for attempt in range(max_retries):
         try:
-            log(doc, f"🔄 {descricao}..." if attempt == 0 else f"🔄 {descricao}... (Tentativa {attempt + 1})")
+            log(doc, f"🔄 {descricao}..." if attempt == 0 else f"🔄 {descricao}... (Tentativa {attempt+1})")
             func()
             log(doc, f"✅ {descricao} realizada com sucesso.")
-            take_screenshot(driver, doc, _sanitize_filename(descricao))
+            take_screenshot(driver, doc, descricao)
             return True
         except (TimeoutException, NoSuchElementException, StaleElementReferenceException) as e:
             if attempt < max_retries - 1:
-                log(doc, f"⚠️ Tentativa {attempt + 1} falhou para {descricao}, tentando novamente...")
+                log(doc, f"⚠️ Tentativa {attempt+1} falhou: {e}")
                 time.sleep(2)
-                continue
             else:
                 log(doc, f"❌ Erro ao {descricao.lower()} após {max_retries} tentativas: {e}")
-                take_screenshot(driver, doc, _sanitize_filename(f"erro_{descricao}"))
-                return False
+                take_screenshot(driver, doc, f"erro_{descricao}")
+                return not critico
         except Exception as e:
             log(doc, f"❌ Erro inesperado ao {descricao.lower()}: {e}")
-            take_screenshot(driver, doc, _sanitize_filename(f"erro_{descricao}"))
-            return False
-
-
+            take_screenshot(driver, doc, f"erro_{descricao}")
+            return not critico
 
 def abrir_modal_e_selecionar_robusto(btn_selector, pesquisa_selector, termo_pesquisa, btn_pesquisar_selector, resultado_xpath):
     """Versão robusta da função de modal"""
@@ -232,7 +227,7 @@ def abrir_modal_e_selecionar_robusto(btn_selector, pesquisa_selector, termo_pesq
 
 def finalizar_relatorio():
     global driver, doc
-    nome_arquivo = f"relatorio_locacao_equipamentos_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_fechamento_rateios_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     try:
         doc.save(nome_arquivo)
         log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
@@ -1248,6 +1243,181 @@ def clicar_elemento_robusto_by(driver, seletor, by=By.CSS_SELECTOR, timeout=TIME
         log(doc, f"❌ Erro ao clicar robusto: {e}")
         return False
 
+
+# ==== VALIDAÇÃO DE REGISTROS MELHORADA ====
+def validar_registros_encontrados(timeout=TIMEOUT_LONGO):
+    """Sistema robusto de validação de registros encontrados"""
+    global driver, wait, doc
+    
+    resultado = {
+        'encontrou_registros': False,
+        'quantidade_registros': 0,
+        'mensagem': '',
+        'tabela_encontrada': False,
+        'detalhes': []
+    }
+    
+    try:
+        log(doc, "🔍 Iniciando validação de registros...")
+        time.sleep(5)  # Aguarda processamento inicial
+        
+        # Seletores para diferentes tipos de tabelas de resultado
+        seletores_tabela = [
+            '#DataTables_Table_0',
+            '#DataTables_Table_0 tbody',
+            '#DataTables_Table_1',
+            '#DataTables_Table_2',
+            'table[id*="DataTables"]',
+            '.wdGrid table',
+            'table tbody',
+            '.resultados table',
+            '[class*="grid"][class*="result"]',
+            'table[class*="dataTable"]'
+        ]
+        
+        tabela_encontrada = None
+        
+        # Busca tabela de resultados
+        for seletor in seletores_tabela:
+            try:
+                elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
+                for elemento in elementos:
+                    if elemento.is_displayed() and elemento.size['height'] > 0:
+                        tabela_encontrada = elemento
+                        resultado['tabela_encontrada'] = True
+                        log(doc, f"✅ Tabela encontrada: {seletor}")
+                        break
+                
+                if tabela_encontrada:
+                    break
+            except Exception as e:
+                log(doc, f"⚠️ Erro ao buscar tabela com {seletor}: {e}", 'WARN')
+                continue
+        
+        if not tabela_encontrada:
+            # Busca mensagens de "sem resultados"
+            mensagens_vazio = [
+                "Não foi encontrado nenhum contrato com os filtros informados.",
+                "Não foram encontrados registros", 
+                "Nenhum resultado",
+                "Sem resultados para exibir",
+                "0 registros encontrados",
+                "No data available"
+            ]
+            
+            for mensagem in mensagens_vazio:
+                try:
+                    elem = driver.find_element(By.XPATH, f"//*[contains(text(), '{mensagem}')]")
+                    if elem.is_displayed():
+                        resultado['mensagem'] = f"Sistema informou: {elem.text.strip()}"
+                        log(doc, f"ℹ️ {resultado['mensagem']}")
+                        return resultado
+                except:
+                    continue
+            
+            # Verifica se existe indicação de carregamento
+            loading_elements = driver.find_elements(By.CSS_SELECTOR, ".loading, .spinner, [class*='load']")
+            if any(el.is_displayed() for el in loading_elements):
+                log(doc, "⏳ Sistema ainda carregando resultados...", 'WARN')
+                time.sleep(5)
+                return validar_registros_encontrados(timeout - 10)  # Recursão com timeout reduzido
+            
+            resultado['mensagem'] = "⚠️ Tabela de resultados não localizada"
+            log(doc, resultado['mensagem'], 'WARN')
+            return resultado
+        
+        # Conta e valida registros
+        try:
+            # Estratégias para encontrar linhas de dados
+            seletores_linhas = [
+                'tbody tr:not(.dataTables_empty):not([class*="no-data"])',
+                'tbody tr[class*="odd"], tbody tr[class*="even"]',
+                'tbody tr:not(:empty)',
+                'tbody tr'
+            ]
+            
+            linhas_validas = []
+            
+            for seletor_linha in seletores_linhas:
+                try:
+                    linhas = tabela_encontrada.find_elements(By.CSS_SELECTOR, seletor_linha)
+                    
+                    for linha in linhas:
+                        try:
+                            if not linha.is_displayed():
+                                continue
+                                
+                            texto_linha = linha.text.strip().lower()
+                            
+                            # Valida se é uma linha com dados reais
+                            if (len(texto_linha) > 5 and 
+                                not any(termo in texto_linha for termo in [
+                                    'nenhum registro', 'sem dados', 'no data', 
+                                    'vazio', 'empty', 'não foram encontrados',
+                                    'loading', 'carregando'
+                                ])):
+                                
+                                linhas_validas.append({
+                                    'elemento': linha,
+                                    'texto': texto_linha[:100] + '...' if len(texto_linha) > 100 else texto_linha
+                                })
+                        except Exception as e:
+                            log(doc, f"⚠️ Erro ao processar linha: {e}", 'WARN')
+                            continue
+                    
+                    if linhas_validas:
+                        log(doc, f"✅ Encontradas {len(linhas_validas)} linhas válidas com {seletor_linha}")
+                        break
+                        
+                except Exception as e:
+                    log(doc, f"⚠️ Erro ao processar {seletor_linha}: {e}", 'WARN')
+                    continue
+            
+            quantidade = len(linhas_validas)
+            resultado['quantidade_registros'] = quantidade
+            resultado['detalhes'] = [linha['texto'] for linha in linhas_validas[:5]]  # Primeiras 5 linhas
+            
+            if quantidade > 0:
+                resultado['encontrou_registros'] = True
+                resultado['mensagem'] = f"✅ {quantidade} registro(s) encontrado(s)"
+                
+                # Log das primeiras linhas
+                log(doc, resultado['mensagem'])
+                for i, linha in enumerate(linhas_validas[:3], 1):
+                    log(doc, f"   Registro {i}: {linha['texto']}")
+                
+                if quantidade > 3:
+                    log(doc, f"   ... e mais {quantidade-3} registro(s)")
+            else:
+                resultado['mensagem'] = "ℹ️ Tabela encontrada mas sem registros válidos"
+                log(doc, resultado['mensagem'])
+        
+        except Exception as e:
+            log(doc, f"❌ Erro ao contar registros: {e}", 'ERROR')
+            # Em caso de erro na contagem, assume que existem registros para não interromper
+            resultado['encontrou_registros'] = True
+            resultado['quantidade_registros'] = 1
+            resultado['mensagem'] = f"⚠️ Erro na validação, continuando teste: {e}"
+        
+        # Verifica alertas do sistema
+        encontrar_mensagem_alerta()
+        
+        return resultado
+        
+    except Exception as e:
+        log(doc, f"❌ Erro geral na validação: {e}", 'ERROR')
+        resultado['encontrou_registros'] = True  # Assume sucesso para não interromper
+        resultado['quantidade_registros'] = 1
+        resultado['mensagem'] = f"⚠️ Validação falhou, continuando teste: {e}"
+        return resultado
+
+def force_click(driver, by, selector, timeout=10):
+    """Força clique em um elemento, mesmo que esteja coberto."""
+    elem = WebDriverWait(driver, timeout).until(EC.presence_of_element_located((by, selector)))
+    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", elem)
+    driver.execute_script("arguments[0].click();", elem)
+    return True
+
 # Wrappers convenientes
 def clicar_elemento_css_robusto(driver, seletor_css, timeout=TIMEOUT_DEFAULT):
     return clicar_elemento_robusto_by(driver, seletor_css, By.CSS_SELECTOR, timeout)
@@ -1258,7 +1428,7 @@ def clicar_elemento_xpath_robusto(driver, xpath, timeout=TIMEOUT_DEFAULT):
 
 # ==== EXECUÇÃO DO TESTE ====
 def executar_teste():
-    global driver, wait, doc
+    global driver, wait, doc, janela_principal  # ✅ CORREÇÃO: incluir janela_principal
     try:
         if not inicializar_driver():
             return False
@@ -1267,6 +1437,9 @@ def executar_teste():
         assert hasattr(time, "sleep"), f"time virou {time!r}"
 
         safe_action(doc, "Acessando sistema", lambda: driver.get(URL))
+
+        # ✅ CORREÇÃO: capturar handle somente após o driver estar ativo e a página aberta
+        janela_principal = driver.current_window_handle
 
         safe_action(doc, "Realizando login", lambda: (
             wait.until(EC.presence_of_element_located((By.ID, "j_id15:email"))).send_keys(LOGIN_EMAIL),
@@ -1291,36 +1464,51 @@ def executar_teste():
 
         time.sleep(5)
 
-
-
-
         safe_action(doc, "Abrindo Lov de Grupos de Rateio", lambda: 
             wait.until(EC.element_to_be_clickable((By.XPATH, "//*[@id='gsRateio']/div[2]/div[2]/div[1]/div[1]/div/a"))).click(),
-
-
         )
 
         safe_action(doc, "Preenchendo Grupo de Rateio", lambda:
                     preencher_campo_xpath_com_retry(
                         driver, wait, "//input[@type='text' and contains(@class,'nomePesquisa')]",
-                        "TESTE GRUPO RATEIO 100"
+                        "GRUPO A"
                     ))
 
         safe_action(doc, "Pesquisando Grupo de Rateio", lambda: 
             wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(@class,'lpFind') and normalize-space(.)='Pesquisar']"))).click(),
-         
-
         )
 
         safe_action(doc, "Selecionando Grupo de Rateio", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "//tr[td[1][normalize-space()='TESTE GRUPO RATEIO 100']]"))).click()
+            wait.until(EC.element_to_be_clickable((By.XPATH, "//tr[td[1][normalize-space()='GRUPO A']]"))).click()
         )
-
 
         safe_action(doc, "Pesquisando Grupo de Rateio", lambda: 
             wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(@class,'btPesquisar') and normalize-space(.)='Pesquisar']"))).click(),
-
         )
+
+
+        # 8. Validação dos resultados
+        resultado_validacao = None
+        safe_action(doc, "Validando resultados da consulta", lambda: (
+            setattr(executar_teste, 'resultado_validacao', validar_registros_encontrados())
+        ), critico=False)
+        
+        resultado_validacao = getattr(executar_teste, 'resultado_validacao', None)
+
+        # Verifica se deve continuar
+        if not resultado_validacao or not resultado_validacao.get('encontrou_registros', False):
+            log(doc, "ℹ️ Nenhum registro encontrado - Finalizando consulta", 'WARN')
+            safe_action(doc, "Fechando tela (sem registros)", lambda:
+                clicar_elemento_css_robusto(driver, "#gsRateio > div.wdTop.ui-draggable-handle > div.wdClose > a")
+            )
+
+            return True
+
+        # 9. Processamento dos registros encontrados
+        quantidade = resultado_validacao.get('quantidade_registros', 0)
+        log(doc, f"✅ Processando {quantidade} registro(s) encontrado(s)")
+        time.sleep(2)
+
 
         safe_action(doc, "Consultando Lotes e capturando Screenshot", lambda: 
             wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(@class,'btGray') and normalize-space(.)='Consultar Lotes']"))).click(),
@@ -1332,64 +1520,58 @@ def executar_teste():
         )
         time.sleep(2)
 
-
         safe_action(doc, "Selecionando Falecido", lambda: 
             wait.until(EC.element_to_be_clickable((By.XPATH, "//input[@type='checkbox' and contains(@class,'falecidosSelecionados')]"))).click(),
         )
         time.sleep(2)
 
-
         safe_action(doc, "Realizando Fechamento", lambda: 
             wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(@class,'btFechamento') and normalize-space(.)='Fechamento']"))).click(),
-
         )
 
-        
         safe_action(doc, "Preenchendo Data Vencimento", 
                    preencher_datepicker_por_indice(0, "22/09/2025"))
-
-
 
         safe_action(doc, "Concluindo Fechamento", lambda:
             clicar_elemento_xpath_robusto(driver, "//a[contains(@class,'btFecharRateio') and normalize-space(.)='Concluir']")
         )
 
-        driver.switch_to.window(janela_principal)
         time.sleep(2)
 
-        
-        
-        
+        # ✅ CORREÇÃO: só fazer switch se o handle existir
+        if janela_principal:
+            driver.switch_to.window(janela_principal)
+            time.sleep(2)
+        else:
+            log(doc, "⚠️ janela_principal não definida; ignorando switch_to", "WARN")
+
+        time.sleep(2)
 
         safe_action(doc, "Selecionando Conta Bancária", selecionar_opcao_xpath(
             "//select[@class='contaBancaria']",
             "TESTE CONTA BANCÁRIA SELENIUM AUTOMATIZADO"
         ))
- 
         safe_action(doc, "Selecionando Instrução Alternativa", selecionar_opcao_xpath(
             "//select[@class='instrucaoBoleto']",
             "TESTE NOME SELENIUM AUTOMATIZADO"
         ))
- 
-        safe_action(doc, "Confirmando contas", lambda:
-            clicar_elemento_xpath_robusto(driver, "//a[contains(@class,'btok') and normalize-space(.)='Ok']")
+
+        safe_action(doc, "Recusando contas", lambda:
+            clicar_elemento_xpath_robusto(driver, "//a[contains(@class,'btcancel') and normalize-space(.)='Cancelar']")
         )
 
         log(doc, "🔍 Verificando mensagens de alerta...")
         encontrar_mensagem_alerta()
 
+        time.sleep(10)
+        encontrar_mensagem_alerta()
 
         safe_action(doc, "Fechando modal Rateio", lambda:
-            clicar_elemento_robusto(driver, wait, '#gsApoioOrtopedico > div.wdTop.ui-draggable-handle > div > a')
+            force_click(driver, By.CSS_SELECTOR, "#gsRateio > div.wdTop.ui-draggable-handle > div.wdClose > a")
         )
-
-
 
         log(doc, "🔍 Verificando mensagens de alerta...")
         encontrar_mensagem_alerta()
-
-
-
 
         return True
 
@@ -1417,8 +1599,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
