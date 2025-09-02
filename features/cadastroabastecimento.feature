@@ -20,7 +20,8 @@ Funcionalidade: Cadastro de Abastecimento
     E eu seleciono o posto de combustível
     E eu preencho os dados complementares
     E eu preencho os dados do abastecimento
-    E eu clico em salvar
+    Quando eu clico em salvar
+    E eu recuso o lançamento no Contas à Pagar
     Então o sistema deve exibir mensagem de sucesso
 
   Cenário: Cadastro de abastecimento sem preencher data obrigatória
@@ -31,7 +32,7 @@ Funcionalidade: Cadastro de Abastecimento
     E eu seleciono o veículo
     E eu seleciono o posto de combustível
     E eu preencho os dados do abastecimento
-    E eu clico em salvar
+    Quando eu clico em salvar
     Então o sistema deve exibir mensagem de alerta
 
   Cenário: Cadastro de abastecimento sem selecionar combustível
@@ -42,7 +43,7 @@ Funcionalidade: Cadastro de Abastecimento
     E eu seleciono o veículo
     E eu seleciono o posto de combustível
     E eu preencho os dados do abastecimento
-    E eu clico em salvar
+    Quando eu clico em salvar
     Então o sistema deve exibir mensagem de alerta
 
   Cenário: Cadastro de abastecimento sem selecionar motorista
@@ -53,7 +54,7 @@ Funcionalidade: Cadastro de Abastecimento
     E eu seleciono o veículo
     E eu seleciono o posto de combustível
     E eu preencho os dados do abastecimento
-    E eu clico em salvar
+    Quando eu clico em salvar
     Então o sistema deve exibir mensagem de alerta
 
   Cenário: Cadastro de abastecimento sem selecionar veículo
@@ -64,7 +65,7 @@ Funcionalidade: Cadastro de Abastecimento
     E eu seleciono o motorista
     E eu seleciono o posto de combustível
     E eu preencho os dados do abastecimento
-    E eu clico em salvar
+    Quando eu clico em salvar
     Então o sistema deve exibir mensagem de alerta
 
   Cenário: Cadastro de abastecimento com dados inválidos
@@ -75,7 +76,7 @@ Funcionalidade: Cadastro de Abastecimento
     E eu seleciono o motorista
     E eu seleciono o veículo
     E eu preencho os dados do abastecimento com valores inválidos
-    E eu clico em salvar
+    Quando eu clico em salvar
     Então o sistema deve exibir mensagem de alerta
 
   @smoke @regression
@@ -83,5 +84,6 @@ Funcionalidade: Cadastro de Abastecimento
     Quando eu acesso o módulo de abastecimento
     E eu clico em cadastrar novo abastecimento
     E eu preencho apenas os campos obrigatórios para abastecimento
-    E eu clico em salvar
+    Quando eu clico em salvar
+    E eu recuso o lançamento no Contas à Pagar
     Então o sistema deve exibir mensagem de sucesso
