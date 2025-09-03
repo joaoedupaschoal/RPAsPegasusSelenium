@@ -28,7 +28,7 @@ screenshot_registradas = set()
 # ============ INICIALIZAÇÃO DOC ============
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Cadastro de Equipamentos – Cenário 1: Preenchimento completo e salvamento.")
+doc.add_paragraph("Cadastro de Equipamentos – Cenário 1: Preenchimento dos campos NÃO obrigatórios e salvamento.")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 # ============ FUNÇÕES UTILITÁRIAS PADRÃO ============

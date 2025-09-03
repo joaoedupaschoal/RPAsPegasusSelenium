@@ -34,7 +34,7 @@ def main():
     doc.add_heading("RELATÓRIO DO TESTE", 0)
     doc.add_paragraph("Cadastro de Cesta Básica.")
     doc.add_paragraph(f"🗕️ Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-    doc.add_paragraph("Neste teste, o robô preencherá os campos obrigatórios e salvará o cadastro de uma nova Cesta Básica.")
+    doc.add_paragraph("Neste teste, o robô preencherá os campos obrigatórios e cancelará o cadastro de uma nova Cesta Básica.")
 
     chrome_options = Options()
     chrome_options.add_argument("--start-maximized")
