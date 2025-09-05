@@ -136,7 +136,7 @@ SCRIPTS = {
                     },
                 }
             },
-        },
+        
             "6": {
                 "label": "Cenários dos cadastros de Cartões",
                 "scenarios": {
@@ -1077,6 +1077,7 @@ SCRIPTS = {
                     },
                 }
             }, 
+        },
         "principais": {
             "1": {
                 "label": "Cenários dos cadastros de Agenda de Compromissos",
