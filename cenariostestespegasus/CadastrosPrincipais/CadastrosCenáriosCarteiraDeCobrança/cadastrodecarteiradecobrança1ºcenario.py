@@ -196,7 +196,7 @@ try:
     encontrar_mensagem_alerta()
 
     safe_action("Adicionar pessoa à carteira", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_200027 .btnAddGroup"))).click()
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_200027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div.btnListHolder > a.btAddGroup"))).click()
     ))
 
     safe_action("Salvar carteira de cobrança", lambda: (
@@ -207,7 +207,7 @@ try:
     encontrar_mensagem_alerta()
 
     safe_action("Fechar modal", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_200027 .wdClose > a"))).click()
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_200027 > div.wdTop.ui-draggable-handle > div.wdClose > a"))).click()
     ))
 
 except Exception as e:

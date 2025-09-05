@@ -1,0 +1,38 @@
+Nesse teste, o robô preencherá todos os dados e clicará em Cancelar
+Traceback (most recent call last):
+  File "C:\RPASelenium\RPAsPegasusSelenium\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosProcedimentos\cadastrodeprocedimentos2ºcenario.py", line 118, in <module>
+    cadastrar = driver.find_element(By.CSS_SELECTOR, "#fmod_10085 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span")
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 926, in find_element
+    return self.execute(Command.FIND_ELEMENT, {"using": by, "value": value})["value"]
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 458, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.NoSuchElementException: Message: no such element: Unable to locate element: {"method":"css selector","selector":"#fmod_10085 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span"}
+  (Session info: chrome=139.0.7258.155); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Stacktrace:
+	GetHandleVerifier [0x0xeaa8a3+63283]
+	GetHandleVerifier [0x0xeaa8e4+63348]
+	(No symbol) [0x0xce3e43]
+	(No symbol) [0x0xd2c8de]
+	(No symbol) [0x0xd2cc7b]
+	(No symbol) [0x0xd74ef2]
+	(No symbol) [0x0xd51464]
+	(No symbol) [0x0xd7271a]
+	(No symbol) [0x0xd51216]
+	(No symbol) [0x0xd20855]
+	(No symbol) [0x0xd216f4]
+	GetHandleVerifier [0x0x111bb43+2623955]
+	GetHandleVerifier [0x0x1116daa+2604090]
+	GetHandleVerifier [0x0xed069a+218410]
+	GetHandleVerifier [0x0xec0ed8+154984]
+	GetHandleVerifier [0x0xec742d+180925]
+	GetHandleVerifier [0x0xeb22b8+94536]
+	GetHandleVerifier [0x0xeb2442+94930]
+	GetHandleVerifier [0x0xe9d5ea+9338]
+	BaseThreadInitThunk [0x0x76b1fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x776a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x776a827e+238]
+
