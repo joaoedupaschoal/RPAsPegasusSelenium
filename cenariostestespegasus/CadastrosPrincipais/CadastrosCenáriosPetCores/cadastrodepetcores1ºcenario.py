@@ -151,7 +151,7 @@ try:
     safe_action(doc, "Preenchendo o Nome da Cor do PET", lambda: (
         time.sleep(2),
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_200006 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div > input")))
-        .send_keys('TESTE COR DO PET SELENIUM AUTOMATIZADO')
+        .send_keys('TESTE COR DO PET SELENIUM AUTOMATIZADO' + fake.random_int(min=1, max= 1000))
     ))
 
     safe_action(doc, "Salvando cadastro", lambda: driver.find_element(

@@ -18,6 +18,10 @@ import subprocess
 import os
 import time
 import random
+import sys 
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 # ==== PROVIDERS CUSTOMIZADOS ====
 class BrasilProvider(BaseProvider):
@@ -182,7 +186,7 @@ try:
     safe_action(doc, "Preechendo a Descrição do Modo Envio de Cobrança", lambda: (
         time.sleep(2),
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10075 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroModoEnvioCobranca > div.catWrapper > div > div > div > div > div > div:nth-child(2) > input"))
-        ).send_keys('TESTE MODO ENVIO COBRANÇA SELENIUM AUTOMATIZADO')
+        ).send_keys(  'TESTE MODO ENVIO COBRANÇA SELENIUM AUTOMATIZADO ' + str(fake.random_int(min=1, max=1000)))
     ))
 
     safe_action(doc, "Salvando cadastro", lambda: driver.find_element(

@@ -182,7 +182,7 @@ try:
     safe_action(doc, "Preechendo a Descrição do Modo Envio de Cobrança", lambda: (
         time.sleep(2),
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10075 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroModoEnvioCobranca > div.catWrapper > div > div > div > div > div > div:nth-child(2) > input"))
-        ).send_keys('TESTE MODO ENVIO COBRANÇA SELENIUM AUTOMATIZADO')
+        ).send_keys(  'TESTE MODO ENVIO COBRANÇA SELENIUM AUTOMATIZADO ' + str(fake.random_int(min=1, max=1000)))
     ))
 
     safe_action(doc, "Cancelando cadastro", lambda: driver.find_element(

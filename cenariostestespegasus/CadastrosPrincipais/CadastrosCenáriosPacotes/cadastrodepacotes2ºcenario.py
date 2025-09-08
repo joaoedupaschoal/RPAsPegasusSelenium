@@ -229,7 +229,7 @@ try:
         driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2),
         time.sleep(1),
         wait.until(EC.visibility_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']"))).send_keys("Pacotes", Keys.ENTER),
-        wait.until(EC.visibility_of_element_located((By.XPATH, "/html/body/div[17]/div[2]/ul/li[25]/a"))).click()
+        wait.until(EC.visibility_of_element_located((By.XPATH, "/html/body/div[17]/div[2]/ul/li[28]/a"))).click()
 
     ))
 

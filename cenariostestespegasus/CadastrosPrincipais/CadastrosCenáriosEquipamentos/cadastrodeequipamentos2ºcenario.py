@@ -17,6 +17,9 @@ import time
 import random
 import subprocess
 from datetime import datetime
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # ============ CONFIGURAÇÕES E VARIÁVEIS ============
 URL = "http://localhost:8080/gs/index.xhtml"
@@ -28,7 +31,7 @@ screenshot_registradas = set()
 # ============ INICIALIZAÇÃO DOC ============
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Cadastro de Equipamentos – Cenário 1: Preenchimento completo e cancelamento.")
+doc.add_paragraph("Cadastro de Equipamentos – Cenário 2: Preenchimento completo e cancelamento.")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 # ============ FUNÇÕES UTILITÁRIAS PADRÃO ============

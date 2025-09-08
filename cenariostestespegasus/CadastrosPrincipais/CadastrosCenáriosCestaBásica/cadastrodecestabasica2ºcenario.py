@@ -12,7 +12,11 @@ import subprocess
 import time
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+import faker
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 
 from utils.actions import log, take_screenshot, safe_action, encontrar_mensagem_alerta, ajustar_zoom
 
@@ -73,7 +77,7 @@ def main():
         log(doc, "🔄 Preenchendo o campo 'TITULAR CB'.")
         campo_titular_cb = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR,
             "#fmod_200009 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div.formCol > input")))
-        campo_titular_cb.send_keys("TESTE TITUALAR CB SELENIUM AUTOMATIZADO")
+        campo_titular_cb.send_keys("TESTE TITUALAR CB SELENIUM AUTOMATIZADO" + faker.random_int(min=1, max= 1000))
         log(doc, "✅ Campo 'TITULAR CB' preenchido.")
         registrar_screenshot_unico("titular_cb_preenchido", driver, doc)
         adicionar_cb= wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,

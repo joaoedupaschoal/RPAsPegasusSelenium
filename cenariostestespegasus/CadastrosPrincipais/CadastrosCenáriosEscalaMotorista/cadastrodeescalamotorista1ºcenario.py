@@ -19,6 +19,11 @@ import os
 import time
 import random
 
+import sys 
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 # ==== PROVIDERS CUSTOMIZADOS ====
 class BrasilProvider(BaseProvider):
     def rg(self):
@@ -125,6 +130,36 @@ def encontrar_mensagem_alerta():
     log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
 
+
+def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, btn_pesquisar_selector, resultado_xpath):
+    def acao():
+        # Abre o modal
+        open_lov = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, btn_selector)))
+        open_lov.click()
+
+        # Aguarda campo pesquisa
+        campo_pesquisa = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, pesquisa_selector)))
+        campo_pesquisa.clear()
+        campo_pesquisa.send_keys(termo_pesquisa)
+
+        # Clica pesquisar
+        pesquisar = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, btn_pesquisar_selector)))
+        pesquisar.click()
+        time.sleep(1)
+        # Espera o resultado carregar
+        wait.until(EC.presence_of_element_located((By.XPATH, resultado_xpath)))
+        wait.until(EC.visibility_of_element_located((By.XPATH, resultado_xpath)))
+        wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))
+
+        # Relocaliza no último instante (evita stale element)
+        resultado = driver.find_element(By.XPATH, resultado_xpath)
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", resultado)
+        time.sleep(0.2)
+        resultado.click()
+
+    return acao
+
+
 def ajustar_zoom():
     try:
         driver.execute_script("document.body.style.zoom='90%'")
@@ -179,140 +214,16 @@ try:
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_3000002 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span"))).click()
     ))
 
-    safe_action(doc, "Abrindo LOV Motorista", lambda: wait.until(
-        EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_3000002 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroEscalaMotorista > div.catWrapper > div > div > div > div > div > div:nth-child(2) > div > a"))
-    ).click())
 
-    safe_action(doc, "Criando novo registro de motorista", lambda: wait.until(
-        EC.visibility_of_element_located((By.CSS_SELECTOR, "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(4) > a"))
-    ).click())
 
-    safe_action(doc, "Abrindo LOV Pessoas", lambda: wait.until(
-        EC.visibility_of_element_located((By.CSS_SELECTOR, "#cg_10058 > div.wdTelas > div > div.catWrapper > div > div > div > div > div > div:nth-child(2) > div > a"))
-    ).click())
-
-    safe_action(doc, "Criando novo registro de pessoa", lambda: wait.until(
-        EC.visibility_of_element_located((By.CSS_SELECTOR, "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a"))
-    ).click())
-
-    # Preenchimento dos dados pessoais
-    safe_action(doc, "Preenchendo nome", lambda: wait.until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(2) > input"))
-    ).send_keys(fake.name()))
-
-    safe_action(doc, "Selecionando tipo de pessoa", selecionar_opcao(
-        "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(3) > select",
-        "Física"
+    safe_action(doc, "Selecionando Motorista", abrir_modal_e_selecionar(
+        "#fmod_3000002 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroEscalaMotorista > div.catWrapper > div > div > div > div > div > div:nth-child(2) > div > a",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div.formCol.divPesquisa > input",
+        "CRISPIM MALAFAIA",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
+        "//td[contains(text(), 'CRISPIM MALAFAIA')]/a[contains(@class, 'linkAlterar')]"
     ))
 
-    safe_action(doc, "Selecionando tipo de documento", selecionar_opcao(
-        "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(4) > select",
-        "Carteira de Identidade Classista"
-    ))
-
-    safe_action(doc, "Preenchendo RG", lambda: driver.find_element(
-        By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(1) > input"
-    ).send_keys(fake.rg()))
-
-    safe_action(doc, "Preenchendo data de expedição", lambda: (
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input.dataExpedicao"))).click(),
-        driver.find_element(By.CSS_SELECTOR, "input.dataExpedicao").send_keys(fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%d/%m/%Y"))
-    ))
-
-    safe_action(doc, "Preenchendo CPF", lambda: (
-        driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(3) > input").click(),
-        driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(3) > input").send_keys(cpf_valido)
-    ))
-
-    safe_action(doc, "Acessando aba Dados Complementares", lambda: driver.find_element(By.LINK_TEXT, "Dados Complementares").click())
-
-    safe_action(doc, "Preenchendo estado civil", selecionar_opcao(
-        "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(1) > select",
-        "Solteiro"
-    ))
-
-    safe_action(doc, "Preenchendo sexo", selecionar_opcao(
-        "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(2) > select",
-        "Feminino"
-    ))
-
-    safe_action(doc, "Preenchendo e-mail", lambda: driver.find_element(
-        By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(9) > input"
-    ).send_keys(fake.email()))
-
-    safe_action(doc, "Preenchendo data de nascimento", lambda: (
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input.dataNascimento"))).click(),
-        driver.find_element(By.CSS_SELECTOR, "input.dataNascimento").send_keys(fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%d/%m/%Y"))
-    ))
-
-    # Preenchimento dos campos de contato
-    safe_action(doc, "Preenchendo telefone 1", lambda: driver.find_element(
-        By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(5) > input"
-    ).send_keys(fake.phone_number()))
-
-    safe_action(doc, "Preenchendo telefone 2", lambda: driver.find_element(
-        By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(6) > input"
-    ).send_keys(fake.phone_number()))
-
-    safe_action(doc, "Preenchendo telefone 3", lambda: driver.find_element(
-        By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(7) > input"
-    ).send_keys(fake.phone_number()))
-
-    safe_action(doc, "Preenchendo naturalidade", lambda: driver.find_element(
-        By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(11) > input"
-    ).send_keys(fake.city()))
-
-    safe_action(doc, "Preenchendo nacionalidade", lambda: driver.find_element(
-        By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(12) > input"
-    ).send_keys(fake.country()))
-
-    safe_action(doc, "Preenchendo nome do pai", lambda: driver.find_element(
-        By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(13) > input"
-    ).send_keys(fake.first_name()))
-
-    safe_action(doc, "Preenchendo nome da mãe", lambda: driver.find_element(
-        By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(14) > input"
-    ).send_keys(fake.first_name()))
-
-    safe_action(doc, "Preenchendo profissão", lambda: driver.find_element(
-        By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(16) > input"
-    ).send_keys(fake.job()))
-
-    safe_action(doc, "Salvando cadastro de pessoa", lambda: driver.find_element(
-        By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.btnHolder > a.btModel.btGray.btsave"
-    ).click())
-
-    # Preenchimento dos dados do motorista
-    safe_action(doc, "Preenchendo data de admissão", lambda: (
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'input.dataAdmissao'))).click(),
-        driver.find_element(By.CSS_SELECTOR, 'input.dataAdmissao').send_keys(data_admissao)
-    ))
-
-    safe_action(doc, "Preenchendo carteira de trabalho", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#cg_10058 > div.wdTelas > div > div.catWrapper > div > div > div > div > div > div:nth-child(4) > input"))).click(),
-        driver.find_element(By.CSS_SELECTOR, "#cg_10058 > div.wdTelas > div > div.catWrapper > div > div > div > div > div > div:nth-child(4) > input").send_keys(carteira_trabalho)
-    ))
-
-    safe_action(doc, "Preenchendo PIS", lambda: wait.until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, '#cg_10058 > div.wdTelas > div > div.catWrapper > div > div > div > div > div > div:nth-child(5) > input'))
-    ).send_keys(pis))
-
-    safe_action(doc, "Preenchendo CNH", lambda: wait.until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, '#cg_10058 > div.wdTelas > div > div.catWrapper > div > div > div > div > div > div:nth-child(6) > input'))
-    ).send_keys(cnh))
-
-    safe_action(doc, "Preenchendo vencimento da CNH", lambda: wait.until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, 'input.vencimentoCnh'))
-    ).send_keys(vencimento_cnh))
-
-    safe_action(doc, "Selecionando vínculo empregatício", selecionar_opcao(
-        "#cg_10058 > div.wdTelas > div > div.catWrapper > div > div > div > div > div > div:nth-child(9) > select",
-        "Carteira Assinada"
-    ))
-
-    safe_action(doc, "Salvando cadastro de motorista", lambda: wait.until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, '#cg_10058 > div.wdTelas > div > div.btnHolder > a.btModel.btGray.btsave'))
-    ).click())
 
     # Preenchimento da escala
     safe_action(doc, "Preenchendo data início da escala", lambda: (
@@ -338,7 +249,7 @@ try:
 
 
 
-    time.sleep(5)
+    time.sleep(10)
     safe_action(doc, "Fechando modal após salvamento", lambda: wait.until(EC.element_to_be_clickable((
         By.CSS_SELECTOR, "#fmod_3000002 > div.wdTop.ui-draggable-handle > div.wdClose > a"
         ))

@@ -216,7 +216,7 @@ except Exception as e:
 
 finally:
 
-    log(doc, "✅ Teste concluído com sucesso.")
+    log("✅ Teste concluído com sucesso.")
 
     nome_arquivo = f"relatorio_carteira_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     doc.save(nome_arquivo)

@@ -182,7 +182,7 @@ try:
     safe_action(doc, "Preechendo o Nome do Subgrupo", lambda: (
         time.sleep(2),
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10025 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(2) > input"))
-        ).send_keys('TESTE SUBGRUPO SELENIUM AUTOMATIZADO')
+        ).send_keys('TESTE SUBGRUPO SELENIUM AUTOMATIZADO '  + fake.random_int(min=1, max= 1000))
     ))
 
 

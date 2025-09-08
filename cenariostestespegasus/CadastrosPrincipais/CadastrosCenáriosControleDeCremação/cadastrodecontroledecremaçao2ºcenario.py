@@ -18,7 +18,7 @@ import random
 import string
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.actions import log, take_screenshot, safe_action, encontrar_mensagem_alerta, ajustar_zoom
 

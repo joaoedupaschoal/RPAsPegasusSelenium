@@ -39,7 +39,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== DOCUMENTO ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Cadastro de Movimentação Bancária – Cenário 1: Preenchimento dos campos obrigatórios e salvamento.")
+doc.add_paragraph("Cadastro de Movimentação Bancária – Cenário 3: Preenchimento dos campos obrigatórios e salvamento.")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()

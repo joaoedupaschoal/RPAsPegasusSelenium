@@ -18,7 +18,10 @@ import random
 import string
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 from utils.actions import log, take_screenshot, safe_action, encontrar_mensagem_alerta, ajustar_zoom
 
@@ -89,7 +92,7 @@ def main():
         log(doc, "🔄 Preenchendo campo 'Nome'.")
         campo_nome = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 
             "#fmod_10052 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(2) > input")))
-        campo_nome.send_keys('TESTE 3 CONCESSIONÁRIA DE ENERGIA SELENIUM AUTOMATIZADO 3')
+        campo_nome.send_keys('TESTE CONCESSIONÁRIA DE ENERGIA SELENIUM AUTOMATIZADO' + fake.random_int(min=1, max= 1000))
         log(doc, "✅ Campo 'Nome' preenchido.")
 
     def preencher_codigo_concessionaria():

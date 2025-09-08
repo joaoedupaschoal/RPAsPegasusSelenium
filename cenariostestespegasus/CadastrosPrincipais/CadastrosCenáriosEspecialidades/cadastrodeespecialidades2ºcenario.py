@@ -18,6 +18,10 @@ import subprocess
 import os
 import time
 import random
+import sys 
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 # ==== PROVIDERS CUSTOMIZADOS ====
 class BrasilProvider(BaseProvider):
@@ -70,7 +74,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== DOCUMENTO ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Cadastro de Especialidades – Cenário 1: Preenchimento completo e cancelamento.")
+doc.add_paragraph("Cadastro de Especialidades – Cenário 2: Preenchimento completo e cancelamento.")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()

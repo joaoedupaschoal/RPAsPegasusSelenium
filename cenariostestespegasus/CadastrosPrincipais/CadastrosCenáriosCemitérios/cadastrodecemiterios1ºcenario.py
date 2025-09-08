@@ -15,6 +15,9 @@ import os, random, subprocess, time, sys
 from datetime import datetime, timedelta
 from selenium.webdriver import ActionChains
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 # ========================== CONFIGURAÇÃO ==========================
 URL = "http://localhost:8080/gs/index.xhtml"
 EMAIL = "joaoeduardo.gold@outlook.com"

@@ -16,10 +16,13 @@ from validate_docbr import CPF
 from datetime import datetime, timedelta
 import subprocess
 from selenium.webdriver import ActionChains
-import os
+import os, sys
 import time
 import random
 import re
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 # ==== PROVIDERS CUSTOMIZADOS ====
 class BrasilProvider(BaseProvider):

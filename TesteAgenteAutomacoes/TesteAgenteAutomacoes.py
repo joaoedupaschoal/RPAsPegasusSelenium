@@ -504,7 +504,7 @@ SCRIPTS = {
                     },
                 }
             }, 
-           "25": {
+            "25": {
                 "label": "Cenários dos cadastros de Grupo",
                 "scenarios": {
                     "1": {
@@ -521,7 +521,7 @@ SCRIPTS = {
                     },
                 }
             },
-           "26": {
+            "26": {
                 "label": "Cenários dos cadastros de Grupo de Óbito",
                 "scenarios": {
                     "1": {
@@ -580,7 +580,7 @@ SCRIPTS = {
                     },
                 }
             }, 
-           "29": {
+            "29": {
                 "label": "Cenários dos cadastros de Histórico Padrão",
                 "scenarios": {
                     "1": {
@@ -668,7 +668,7 @@ SCRIPTS = {
                     },
                 }
             }, 
-           "33": {
+            "33": {
                 "label": "Cenários dos cadastros de Local de Traslado",
                 "scenarios": {
                     "1": {
@@ -790,7 +790,7 @@ SCRIPTS = {
                     },
                 }
             }, 
-           "39": {
+            "39": {
                 "label": "Cenários dos cadastros de Profissão",
                 "scenarios": {
                     "1": {
@@ -828,7 +828,7 @@ SCRIPTS = {
                     },
                 }
             }, 
-           "41": {
+            "41": {
                 "label": "Cenários dos cadastros de Religião",
                 "scenarios": {
                     "1": {
@@ -866,7 +866,7 @@ SCRIPTS = {
                     },
                 }
             }, 
-           "43": {
+            "43": {
                 "label": "Cenários dos cadastros de Subgrupo",
                 "scenarios": {
                     "1": {
@@ -946,7 +946,7 @@ SCRIPTS = {
                     },
                 }
             }, 
-           "47": {
+            "47": {
                 "label": "Cenários dos cadastros de Tipo de Documento",
                 "scenarios": {
                     "1": {
@@ -963,7 +963,7 @@ SCRIPTS = {
                     },
                 }
             },
-           "48": {
+            "48": {
                 "label": "Cenários dos cadastros de Tipo de Gravidez",
                 "scenarios": {
                     "1": {
@@ -980,7 +980,7 @@ SCRIPTS = {
                     },
                 }
             },
-           "49": {
+            "49": {
                 "label": "Cenários dos cadastros de Tipo de Venda",
                 "scenarios": {
                     "1": {
@@ -1018,7 +1018,7 @@ SCRIPTS = {
                     },
                 }
             }, 
-           "51": {
+            "51": {
                 "label": "Cenários dos cadastros de Velório",
                 "scenarios": {
                     "1": {
@@ -1101,40 +1101,27 @@ SCRIPTS = {
                 },
             },
             "2": {
-                "label": "Cenários dos cadastros de Carteira de Cobrança",
-                "scenarios": {
-                    "1": {
-                        "label": 'Cenário 1: Nesse teste, serão preenchidos todos os campos do cadastro, e clicará em "Salvar".',
-                        "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCarteiraDeCobrança" / "cadastrodecarteiradecobrança1ºcenario.py",
-                    },
-                    "2": {
-                        "label": 'Cenário 2: Nesse teste, serão preenchidos todos os campos do cadastro, e clicará em "Cancelar".',
-                        "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCarteiraDeCobrança" / "cadastrodecarteiradecobrança2ºcenario.py",
-                    },
-                },
-            },
-            "3": {
                 "label": "Cenários dos cadastros de Cemitérios",
                 "scenarios": {
                     "1": {
                         "label": "Cenário 1: Nesse teste, serão preenchidos todos os campos do cadastro, e clicará em 'Salvar'.",
-                        "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemitérios1ºcenario.py",
+                        "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemiterios1ºcenario.py",
                     },
                     "2": {
                         "label": 'Cenário 2: Nesse teste, serão preenchidos todos os campos do cadastro, e clicará em "Cancelar".',
-                        "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemitérios2ºcenario.py",
+                        "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemiterios2ºcenario.py",
                     },
                     "3": {
                         "label": "Cenário 3: TESTE CENARIO 3",
-                        "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemitérios3ºcenario.py",
+                        "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemiterios3ºcenario.py",
                     },
                     "4": {
                         "label": "Cenário : TESTE CENARIO 4",
-                        "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemitérios4ºcenario.py",
+                        "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemiterios4ºcenario.py",
                     },
                 },
             },
-            "4": {
+            "3": {
                 "label": "Cenários dos cadastros de Cesta Básica",
                 "scenarios": {
                     "1": {
@@ -1151,7 +1138,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "5": {
+            "4": {
                 "label": "Cenários dos cadastros de Cobrador Teste", 
                 "scenarios": {
                     "1": {
@@ -1169,7 +1156,7 @@ SCRIPTS = {
                 }                
             },
 
-            "6": {
+            "5": {
                 "label": "Cenários dos cadastros de Comissão", 
                 "scenarios": {
                     "1": {
@@ -1186,7 +1173,7 @@ SCRIPTS = {
                     },
                 }                
             },
-            "7": {
+            "6": {
                 "label": "Cenários dos cadastros de Comissão de Campanhas", 
                 "scenarios": {
                     "1": {
@@ -1204,7 +1191,7 @@ SCRIPTS = {
                 }                
             },
 
-            "8": {
+            "7": {
                 "label": "Cenários dos cadastros de Concessionárias De Energia", 
                 "scenarios": {
                     "1": {
@@ -1221,7 +1208,7 @@ SCRIPTS = {
                     },
                 }                
             },
-            "9": {
+            "8": {
                 "label": "Cenários dos cadastros de Conciliação Bancária", 
                 "scenarios": {
                     "1": {
@@ -1239,7 +1226,7 @@ SCRIPTS = {
 
                 }                
             },
-            "10": {
+            "9": {
                 "label": "Cenários dos cadastros de Conta Bancária", 
                 "scenarios": {
                     "1": {
@@ -1260,7 +1247,7 @@ SCRIPTS = {
                     },
                 }                
             },
-            "11": {
+            "10": {
                 "label": "Cenários dos cadastros de Controle de Cremação", 
                 "scenarios": {
                     "1": {
@@ -1281,7 +1268,7 @@ SCRIPTS = {
                     },
                 }                
             },
-            "12": {
+            "11": {
                 "label": "Cenários dos cadastros de Cronograma de Faturamento", 
                 "scenarios": {
                     "1": {
@@ -1302,7 +1289,7 @@ SCRIPTS = {
                     },
                 }                
             },
-            "13": {
+            "12": {
                 "label": "Cenários dos cadastros de Documentos", 
                 "scenarios": {
                     "1": {
@@ -1323,7 +1310,7 @@ SCRIPTS = {
                     },
                 }                
             },
-            "14": {
+            "13": {
                 "label": "Cenários dos cadastros de Equipamentos", 
                 "scenarios": {
                     "1": {
@@ -1344,7 +1331,7 @@ SCRIPTS = {
                     },
                 }                
             },
-            "15": {
+            "14": {
                 "label": "Cenários dos cadastros de Escala de Motoristas", 
                 "scenarios": {
                     "1": {
@@ -1361,7 +1348,7 @@ SCRIPTS = {
                     },
                 }                
             },
-            "16": {
+            "15": {
                 "label": "Cenários dos cadastros de Especialidades", 
                 "scenarios": {
                     "1": {
@@ -1378,7 +1365,7 @@ SCRIPTS = {
                     },
                 }                
             },     
-            "17": {
+            "16": {
                 "label": "Cenários dos cadastros de Fonte de Informação", 
                 "scenarios": {
                     "1": {
@@ -1395,7 +1382,7 @@ SCRIPTS = {
                     },
                 }                
             },
-            "18": {
+            "17": {
                 "label": "Cenários dos cadastros de Grupo de Equipamento", 
                 "scenarios": {
                     "1": {
@@ -1416,7 +1403,7 @@ SCRIPTS = {
                     },
                 }                
             },
-            "19": {
+            "18": {
                 "label": "Cenários dos cadastros de Infração", 
                 "scenarios": {
                     "1": {
@@ -1433,7 +1420,7 @@ SCRIPTS = {
                     },
                 }                
             },
-            "20": {
+            "19": {
                 "label": "Cenários dos cadastros de Modo Envio de Cobrança", 
                 "scenarios": {
                     "1": {
@@ -1450,7 +1437,7 @@ SCRIPTS = {
                     },
                 }                
             },      
-            "21": {
+            "20": {
                 "label": "Cenários dos cadastros de Motoristas", 
                 "scenarios": {
                     "1": {
@@ -1471,7 +1458,7 @@ SCRIPTS = {
                     },
                 }                
             },
-            "22": {
+            "21": {
                 "label": "Cenários dos cadastros de Movimentação Bancária", 
                 "scenarios": {
                     "1": {
@@ -1492,7 +1479,7 @@ SCRIPTS = {
                     },
                 }                
             },    
-            "23": {
+            "22": {
                 "label": "Cenários dos cadastros de Movimentação do Caixa", 
                 "scenarios": {
                     "1": {
@@ -1513,7 +1500,7 @@ SCRIPTS = {
                     },
                 }                
             },            
-            "24": {
+            "23": {
                 "label": "Cenários dos cadastros de Multa", 
                 "scenarios": {
                     "1": {
@@ -1534,7 +1521,7 @@ SCRIPTS = {
                     },
                 }
             },                 
-            "25": {
+            "24": {
                 "label": "Cenários dos cadastros de Ocorrência", 
                 "scenarios": {
                     "1": {
@@ -1551,7 +1538,7 @@ SCRIPTS = {
                     },
                 }
             },     
-            "26": {
+            "25": {
                 "label": "Cenários dos cadastros de Pacote", 
                 "scenarios": {
                     "1": {
@@ -1572,7 +1559,7 @@ SCRIPTS = {
                     },
                 }
             }, 
-            "27": {
+            "26": {
                 "label": "Cenários dos cadastros de Pacote Pet", 
                 "scenarios": {
                     "1": {
@@ -1593,7 +1580,7 @@ SCRIPTS = {
                     },
                 }
             }, 
-            "28": {
+            "27": {
                 "label": "Cenários dos cadastros de Parâmetros MXM", 
                 "scenarios": {
                     "1": {
@@ -1614,7 +1601,7 @@ SCRIPTS = {
                     },
                 }
             }, 
-            "29": {
+            "28": {
                 "label": "Cenários dos cadastros de Parâmetros Omie", 
                 "scenarios": {
                     "1": {
@@ -1635,7 +1622,7 @@ SCRIPTS = {
                     },
                 }
             }, 
-            "30": {
+            "29": {
                 "label": "Cenários dos cadastros de Pessoas", 
                 "scenarios": {
                     "1": {
@@ -1656,7 +1643,7 @@ SCRIPTS = {
                     },
                 }
             }, 
-            "31": {
+            "30": {
                 "label": "Cenários dos cadastros de Pet", 
                 "scenarios": {
                     "1": {
@@ -1677,7 +1664,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "32": {
+            "31": {
                 "label": "Cenários dos cadastros de Pet - Cores", 
                 "scenarios": {
                     "1": {
@@ -1694,7 +1681,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "33": {
+            "32": {
                 "label": "Cenários dos cadastros de Pet - Espécies", 
                 "scenarios": {
                     "1": {
@@ -1711,7 +1698,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "34": {
+            "33": {
                 "label": "Cenários dos cadastros de Pet - Portes", 
                 "scenarios": {
                     "1": {
@@ -1728,7 +1715,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "35": {
+            "34": {
                 "label": "Cenários dos cadastros de Pet - Raças", 
                 "scenarios": {
                     "1": {
@@ -1745,7 +1732,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "36": {
+            "35": {
                 "label": "Cenários dos cadastros de Plano Empresa", 
                 "scenarios": {
                     "1": {
@@ -1766,7 +1753,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "37": {
+            "36": {
                 "label": "Cenários dos cadastros de Procedimentos", 
                 "scenarios": {
                     "1": {
@@ -1787,7 +1774,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "38": {
+            "37": {
                 "label": "Cenários dos cadastros de Produtos", 
                 "scenarios": {
                     "1": {
@@ -1808,7 +1795,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "39": {
+            "38": {
                 "label": "Cenários dos cadastros de Raças", 
                 "scenarios": {
                     "1": {
@@ -1825,7 +1812,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "40": {
+            "39": {
                 "label": "Cenários dos cadastros de Reclamações", 
                 "scenarios": {
                     "1": {
@@ -1838,7 +1825,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "41": {
+            "40": {
                 "label": "Cenários dos cadastros de Registro de Óbito Pet", 
                 "scenarios": {
                     "1": {
@@ -1859,7 +1846,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "42": {
+            "41": {
                 "label": "Cenários dos cadastros de Serviços", 
                 "scenarios": {
                     "1": {
@@ -1880,7 +1867,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "43": {
+            "42": {
                 "label": "Cenários dos cadastros de Táboa Biométrica", 
                 "scenarios": {
                     "1": {
@@ -1897,7 +1884,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "44": {
+            "43": {
                 "label": "Cenários dos cadastros de Tipo de Entrega", 
                 "scenarios": {
                     "1": {
@@ -1914,7 +1901,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "45": {
+            "44": {
                 "label": "Cenários dos cadastros de Transportes", 
                 "scenarios": {
                     "1": {
@@ -1935,7 +1922,7 @@ SCRIPTS = {
                     },
                 }
             },
-            "46": {
+            "45": {
                 "label": "Cenários dos cadastros de Vínculo Convênio/Conveniado", 
                 "scenarios": {
                     "1": {

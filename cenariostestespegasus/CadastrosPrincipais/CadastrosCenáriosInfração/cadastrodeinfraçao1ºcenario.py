@@ -18,6 +18,10 @@ import subprocess
 import os
 import time
 import random
+import sys 
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 # ==== PROVIDERS CUSTOMIZADOS ====
 class BrasilProvider(BaseProvider):
@@ -176,17 +180,17 @@ try:
 
     safe_action(doc, "Clicando em Cadastrar", lambda: (
         time.sleep(2),
-        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10093 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span"))).click()
+        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10092 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span"))).click()
     ))
 
     safe_action(doc, "Preechendo a Descrição da Infração", lambda: (
         time.sleep(2),
-        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10093 > div.wdTelas > div.telaCadastro.clearfix.telaInfracao > div.catWrapper > div > div > div > div > div > div > div > input"))
+        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaInfracao > div.catWrapper > div > div > div > div > div > div > div > input"))
         ).send_keys('TESTE INFRAÇÃO SELENIUM AUTOMATIZADO: ALTA VELOCIDADE')
     ))
 
     safe_action(doc, "Salvando cadastro", lambda: driver.find_element(
-        By.CSS_SELECTOR, "#fmod_10093 > div.wdTelas > div.telaCadastro.clearfix.telaInfracao > div.btnHolder > a.btModel.btGray.btsave"
+        By.CSS_SELECTOR, "#fmod_10092 > div.wdTelas > div.telaCadastro.clearfix.telaInfracao > div.btnHolder > a.btModel.btGray.btsave"
     ).click())
 
 
@@ -194,7 +198,7 @@ try:
 
 
     safe_action(doc, "Fechando modal após salvamento", lambda: wait.until(EC.element_to_be_clickable((
-        By.CSS_SELECTOR, "#fmod_10093 > div.wdTop.ui-draggable-handle > div.wdClose > a"
+        By.CSS_SELECTOR, "#fmod_10092 > div.wdTop.ui-draggable-handle > div.wdClose > a"
         ))
     ).click())
 
