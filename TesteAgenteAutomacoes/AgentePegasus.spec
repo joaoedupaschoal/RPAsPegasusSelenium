@@ -1,58 +1,38 @@
-
-
-
 # -*- mode: python ; coding: utf-8 -*-
-from pathlib import Path
-from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT
-from PyInstaller.utils.hooks import collect_submodules
-from PyInstaller.utils.hooks import collect_data_files
-from PyInstaller.building.datastruct import Tree
 
-project_dir = Path(__file__).resolve().parent
-main_script = project_dir / "TesteAgenteAutomacoes" / "TesteAgenteAutomacoes.py"
-
-# inclua aqui outros dados/binários se necessário (drivers, templates, etc.)
-datas = [
-    # embute TODOS os seus cenários dentro do exe
-    Tree(str(project_dir / "cenariostestespegasus"), prefix="cenariostestespegasus"),
-    # exemplos extras:
-    # Tree(str(project_dir / "reports"), prefix="reports"),
-    # (str(project_dir / "drivers" / "chromedriver.exe"), "drivers"),
-]
-
-binaries = [
-    # exemplo: (str(project_dir / "drivers" / "chromedriver.exe"), "drivers")
-]
-
-hiddenimports = collect_submodules("")  # normalmente vazio; ajuste se usar libs dinâmicas
 
 a = Analysis(
-    [str(main_script)],
-    pathex=[str(project_dir)],
-    binaries=binaries,
-    datas=datas,
-    hiddenimports=hiddenimports,
+    ['TesteAgenteAutomacoes.py'],
+    pathex=[],
+    binaries=[],
+    datas=[('..\\cenariostestespegasus', 'cenariostestespegasus'), ('..\\utils', 'utils')],
+    hiddenimports=[],
     hookspath=[],
+    hooksconfig={},
     runtime_hooks=[],
     excludes=[],
     noarchive=False,
+    optimize=0,
 )
-
-pyz = PYZ(a.pure, a.zipped_data, cipher=None)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
-    a.zipfiles,
     a.datas,
-    name="AgentePegasus",
-    icon=None,  # opcional: str(project_dir / "icone.ico")
+    [],
+    name='AgentePegasus',
     debug=False,
+    bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,   # deixe True (console é útil p/ ver saídas e prompts)
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
 )
-
-# onefile: entregue apenas 1 exe
-# (se preferir onefolder, troque por COLLECT abaixo)

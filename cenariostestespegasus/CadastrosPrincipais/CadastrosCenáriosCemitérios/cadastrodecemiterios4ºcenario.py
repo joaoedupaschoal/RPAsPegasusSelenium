@@ -26,7 +26,7 @@ fake = Faker("pt_BR")
 faker = Faker("pt_BR")
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Cadastro de Cemitérios – Cenário 1: Preenchimento completo e salvamento.")
+doc.add_paragraph("Cadastro de Cemitérios – Cenário 4: Preenchimento dos campos NÃO obrigatórios e salvamento.")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 wait = None

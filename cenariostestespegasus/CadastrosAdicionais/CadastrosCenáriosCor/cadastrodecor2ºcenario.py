@@ -193,7 +193,7 @@ try:
     safe_action(doc, "Preechendo o Nome da Cor", lambda: (
         time.sleep(2),
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10030 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCor > div.catWrapper > div > div > div > div > div > div:nth-child(2) > input"))
-        ).send_keys('TESTE COR SELENIUM AUTOMATIZADO '  + fake.random_int(min=1, max= 1000))
+        ).send_keys('TESTE COR SELENIUM AUTOMATIZADO '  + str(fake.random_int(min=1, max=1000)))
     ))
 
     safe_action(doc, "Cancelando cadastro", lambda: driver.find_element(

@@ -151,7 +151,7 @@ try:
     safe_action(doc, "Preenchendo o campo Descrição", lambda: (
         time.sleep(2),
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10078 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroTipoEntrega > div.catWrapper > div > div > div > div > div > div:nth-child(2) > input")))
-        .send_keys('TESTE DESCRIÇÃO' + fake.random_int(min=1, max= 1000))
+        .send_keys('TESTE DESCRIÇÃO' + str(fake.random_int(min=1, max=1000)))
     ))
 
     safe_action(doc, "Salvando cadastro", lambda: driver.find_element(

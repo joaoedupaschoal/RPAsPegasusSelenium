@@ -31,7 +31,7 @@ fake.add_provider(BrasilProvider)
 
 # ==== CONFIGURAÇÕES ====
 URL = "http://localhost:8080/gs/index.xhtml"
-LOGIN_EMAIL = "goldusuario@somatem.com.br"
+LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
 LOGIN_PASSWORD = "071999gs"
 
 # ==== DOCUMENTO ====

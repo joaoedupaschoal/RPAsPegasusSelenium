@@ -185,7 +185,8 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
         # Clica pesquisar
         pesquisar = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, btn_pesquisar_selector)))
         pesquisar.click()
-        time.sleep(1)
+        time.sleep(3)
+        pesquisar.click()
 
         # Espera o resultado e clica
         wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))

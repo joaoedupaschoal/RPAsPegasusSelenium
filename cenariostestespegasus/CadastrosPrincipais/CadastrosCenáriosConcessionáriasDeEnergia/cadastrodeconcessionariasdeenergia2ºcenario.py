@@ -91,7 +91,7 @@ def main():
         log(doc, "🔄 Preenchendo campo 'Nome'.")
         campo_nome = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 
             "#fmod_10052 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(2) > input")))
-        campo_nome.send_keys('TESTE 3 CONCESSIONÁRIA DE ENERGIA SELENIUM AUTOMATIZADO' + fake.random_int(min=1, max= 1000))
+        campo_nome.send_keys('TESTE 3 CONCESSIONÁRIA DE ENERGIA SELENIUM AUTOMATIZADO' + str(fake.random_int(min=1, max=1000)))
         log(doc, "✅ Campo 'Nome' preenchido.")
 
     def preencher_codigo_concessionaria():

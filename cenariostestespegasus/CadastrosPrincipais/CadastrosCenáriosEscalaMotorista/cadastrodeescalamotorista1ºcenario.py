@@ -130,12 +130,13 @@ def encontrar_mensagem_alerta():
     log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
 
-
 def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, btn_pesquisar_selector, resultado_xpath):
+    """Abre modal e seleciona um item"""
     def acao():
         # Abre o modal
         open_lov = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, btn_selector)))
         open_lov.click()
+        time.sleep(3)
 
         # Aguarda campo pesquisa
         campo_pesquisa = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, pesquisa_selector)))
@@ -145,13 +146,11 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
         # Clica pesquisar
         pesquisar = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, btn_pesquisar_selector)))
         pesquisar.click()
-        time.sleep(1)
-        # Espera o resultado carregar
-        wait.until(EC.presence_of_element_located((By.XPATH, resultado_xpath)))
-        wait.until(EC.visibility_of_element_located((By.XPATH, resultado_xpath)))
-        wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))
+        time.sleep(3)
+        pesquisar.click()
 
-        # Relocaliza no último instante (evita stale element)
+        # Espera o resultado e clica
+        wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))
         resultado = driver.find_element(By.XPATH, resultado_xpath)
         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", resultado)
         time.sleep(0.2)
@@ -221,7 +220,7 @@ try:
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div.formCol.divPesquisa > input",
         "CRISPIM MALAFAIA",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
-        "//td[contains(text(), 'CRISPIM MALAFAIA')]/a[contains(@class, 'linkAlterar')]"
+        "//td[contains(text(), 'CRISPIM MALAFAIA')]"
     ))
 
 

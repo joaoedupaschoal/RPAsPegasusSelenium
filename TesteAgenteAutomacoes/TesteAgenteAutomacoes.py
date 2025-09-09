@@ -1,44 +1,75 @@
+# ==== IMPORTS BÁSICOS ====
+import os
+import sys
+import time
+import uuid
+import subprocess      # para Popen/execução externa, se usar
+import threading       # para Thread/Event/Lock, se usar
+from pathlib import Path
+from datetime import datetime
 
-# força coleta no build do PyInstaller
-# força coleta no build do PyInstaller
-# força coleta no build do PyInstaller (ajuda a embutir libs usadas nos cenários)
+# (opcional) garante acentuação correta no console
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
+# ==== Mensagem imediata ao abrir o .exe ====
+def mostrar_boas_vindas():
+    print("Carregando... Estamos preparando tudo pra você.")
+    sys.stdout.flush()
+    time.sleep(1)  # opcional: dá tempo de o usuário ler
+
+mostrar_boas_vindas()
+
+# ==== Onde estão os cenários (funciona em .py e no .exe) ====
+def dir_cenarios() -> Path:
+    if getattr(sys, "frozen", False):
+        # PyInstaller extrai os dados em _MEIPASS
+        return Path(sys._MEIPASS) / "cenariostestespegasus"
+    # arquivo está em ...\TesteAgenteAutomacoes\TesteAgenteAutomacoes.py
+    # cenariostestespegasus está na raiz do projeto (um nível acima)
+    return Path(__file__).resolve().parent.parent / "cenariostestespegasus"
+
+# ==== Pré-carregamento de libs pesadas (opcional) ====
 try:
     import selenium, selenium.webdriver                  # noqa
     import webdriver_manager, webdriver_manager.chrome   # noqa
     import requests, urllib3, certifi                    # noqa
     import dotenv                                        # noqa
-    import docx                                          # noqa  (python-docx)
+    import docx                                          # noqa  # (python-docx)
     import lxml, lxml.etree                              # noqa
     import pyautogui, pyperclip, pyscreeze, pygetwindow, pymsgbox, pyrect  # noqa
-    import faker                                         # noqa  (Faker)
+    import faker                                         # noqa  # (Faker)
     import validate_docbr                                # noqa
-    import trio, trio_websocket, wsproto, websocket      # noqa  (websocket-client = módulo 'websocket')
-    import faker_vehicle
-
+    import trio, trio_websocket, wsproto, websocket      # noqa  # (websocket-client)
+    import faker_vehicle                                 # noqa
 except Exception:
+    # Se alguma faltar, seguimos — os cenários que precisarem vão reclamar
     pass
 
-
-import os
-import sys
-import time
-import threading
-import subprocess
-from pathlib import Path
-# ========== CONFIGURAÇÕES ==========
-# Senha fixa (Windows)
-SENHA_FIXA = "071999gs"  # <- ajuste aqui a sua senha
+# ==== Configurações gerais ====
+SENHA_FIXA = "071999gs"   # ajuste se necessário
 MAX_TENTATIVAS = 3
 
-from pathlib import Path
-import sys
+# ==== Workspace por execução na Área de Trabalho ====
+DESKTOP = Path(os.path.expandvars(r"%USERPROFILE%\Desktop"))
+RUN_ID = datetime.now().strftime("%Y%m%d_%H%M%S_") + str(uuid.uuid4())[:8]
+OUT_BASE = DESKTOP / "AutomacoesPegasus" / RUN_ID
 
-def get_base_scripts_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys._MEIPASS) / "cenariostestespegasus"
-    return Path(__file__).parent.parent / "cenariostestespegasus"
+DIR_REPORTS = OUT_BASE / "reports"
+DIR_SHOTS   = OUT_BASE / "screenshots"
+DIR_LOGS    = OUT_BASE / "logs"
+DIR_DLS     = OUT_BASE / "downloads"
 
-BASE_SCRIPTS = get_base_scripts_dir()
+for d in (DIR_REPORTS, DIR_SHOTS, DIR_LOGS, DIR_DLS):
+    d.mkdir(parents=True, exist_ok=True)
+
+print(f"[RUN] Workspace criado em: {OUT_BASE}")
+
+
+
+BASE_SCRIPTS = dir_cenarios()
 # Mapeie aqui os arquivos .py que cada cenário deve rodar:
 SCRIPTS = {
     "cadastros": {

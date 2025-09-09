@@ -184,7 +184,7 @@ try:
     safe_action(doc, "Preechendo o Nome da Grupo", lambda: (
         time.sleep(2),
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10024 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div > input"))
-        ).send_keys('TESTE GRUPO SELENIUM AUTOMATIZADO '  + fake.random_int(min=1, max= 1000))
+        ).send_keys('TESTE GRUPO SELENIUM AUTOMATIZADO '  + str(fake.random_int(min=1, max=1000)))
     ))
 
     safe_action(doc, "Cancelando cadastro", lambda: driver.find_element(
