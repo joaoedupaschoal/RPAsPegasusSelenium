@@ -1,77 +1,57 @@
-# ==== IMPORTS BÁSICOS ====
-import os
-import sys
-import time
-import uuid
-import subprocess      # para Popen/execução externa, se usar
-import threading       # para Thread/Event/Lock, se usar
+# TesteAgenteAutomacoes.py — Versão consolidada e completa
+# -----------------------------------------------------------------
+# Gera relatórios DOCX ao final dos testes
+# Suporta execução em modo .exe (PyInstaller), usando Python do sistema ou runpy
+# -----------------------------------------------------------------
+
+# ===================== IMPORTS =====================
+import os, sys, time, threading, subprocess, contextlib, runpy, shutil, traceback, re
 from pathlib import Path
 from datetime import datetime
+from typing import Dict, Optional
 
-# (opcional) garante acentuação correta no console
-try:
-    sys.stdout.reconfigure(encoding="utf-8")
-except Exception:
-    pass
-
-# ==== Mensagem imediata ao abrir o .exe ====
+# ===================== BOAS-VINDAS =====================
 def mostrar_boas_vindas():
     print("Carregando... Estamos preparando tudo pra você.")
-    sys.stdout.flush()
-    time.sleep(1)  # opcional: dá tempo de o usuário ler
+    try:
+        sys.stdout.flush()
+    except Exception:
+        pass
+    time.sleep(0.8)
 
 mostrar_boas_vindas()
 
-# ==== Onde estão os cenários (funciona em .py e no .exe) ====
-def dir_cenarios() -> Path:
-    if getattr(sys, "frozen", False):
-        # PyInstaller extrai os dados em _MEIPASS
-        return Path(sys._MEIPASS) / "cenariostestespegasus"
-    # arquivo está em ...\TesteAgenteAutomacoes\TesteAgenteAutomacoes.py
-    # cenariostestespegasus está na raiz do projeto (um nível acima)
-    return Path(__file__).resolve().parent.parent / "cenariostestespegasus"
-
-# ==== Pré-carregamento de libs pesadas (opcional) ====
-try:
-    import selenium, selenium.webdriver                  # noqa
-    import webdriver_manager, webdriver_manager.chrome   # noqa
-    import requests, urllib3, certifi                    # noqa
-    import dotenv                                        # noqa
-    import docx                                          # noqa  # (python-docx)
-    import lxml, lxml.etree                              # noqa
-    import pyautogui, pyperclip, pyscreeze, pygetwindow, pymsgbox, pyrect  # noqa
-    import faker                                         # noqa  # (Faker)
-    import validate_docbr                                # noqa
-    import trio, trio_websocket, wsproto, websocket      # noqa  # (websocket-client)
-    import faker_vehicle                                 # noqa
-except Exception:
-    # Se alguma faltar, seguimos — os cenários que precisarem vão reclamar
-    pass
-
-# ==== Configurações gerais ====
-SENHA_FIXA = "071999gs"   # ajuste se necessário
-MAX_TENTATIVAS = 3
-
-# ==== Workspace por execução na Área de Trabalho ====
-DESKTOP = Path(os.path.expandvars(r"%USERPROFILE%\Desktop"))
-RUN_ID = datetime.now().strftime("%Y%m%d_%H%M%S_") + str(uuid.uuid4())[:8]
-OUT_BASE = DESKTOP / "AutomacoesPegasus" / RUN_ID
+# ===================== WORKSPACE / SAÍDA =====================
+RUN_ID = datetime.now().strftime("%Y%m%d_%H%M%S_") + os.urandom(3).hex()
+DESKTOP = Path(os.path.expanduser("~/Desktop"))
+OUT_BASE = DESKTOP / "AutomacoesPegasus" / f"RUN_{RUN_ID}"
 
 DIR_REPORTS = OUT_BASE / "reports"
 DIR_SHOTS   = OUT_BASE / "screenshots"
 DIR_LOGS    = OUT_BASE / "logs"
 DIR_DLS     = OUT_BASE / "downloads"
-
 for d in (DIR_REPORTS, DIR_SHOTS, DIR_LOGS, DIR_DLS):
     d.mkdir(parents=True, exist_ok=True)
+print(f"[RUN] Workspace: {OUT_BASE}")
 
-print(f"[RUN] Workspace criado em: {OUT_BASE}")
+# ===================== QA REPORTER =====================
+try:
+    from qa_reporter import QAReporter
+except Exception as e:
+    print("[ERRO] qa_reporter.py não encontrado ou inválido: ", e)
+    sys.exit(1)
 
+reporter: Optional[QAReporter] = QAReporter(reports_dir=DIR_REPORTS)
+reporter.start()
+_report_meta = {
+    "ambiente": os.getenv("QA_AMBIENTE", "Homologação"),
+    "versao":   os.getenv("QA_VERSAO", "-"),
+}
 
+# ===================== BASE DE CENÁRIOS =====================
+BASE_SCRIPTS = Path(__file__).resolve().parent / "cenariostestespegasus"
 
-BASE_SCRIPTS = dir_cenarios()
-# Mapeie aqui os arquivos .py que cada cenário deve rodar:
-SCRIPTS = {
+SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
     "cadastros": {
         "adicionais": {
             "1": {
@@ -2001,11 +1981,12 @@ SCRIPTS = {
     },
 }
 
-import re
 
+
+# ===================== AJUSTES P/ 'Todos os cenários' =====================
 def _derive_group_name(label: str) -> str:
     m = re.search(r"\bde\s+(.+)", label, flags=re.IGNORECASE)
-    return m.group(1).strip() if m else label
+    return m.group(1).strip() if m else (label or "")
 
 def _already_has_all_item(scenarios: dict) -> bool:
     return any(scenarios[k].get("all") for k in scenarios)
@@ -2015,9 +1996,9 @@ def _append_all_item(grupo: dict):
     if not scenarios or _already_has_all_item(scenarios):
         return
     ordered_keys = sorted(scenarios.keys(), key=lambda x: int(x))
-    files = [scenarios[k]["file"] for k in ordered_keys if "file" in scenarios[k]]
-    next_key = str(len(ordered_keys) + 1)  # <<< X dinâmico aqui
-    group_name = _derive_group_name(grupo["label"])
+    files = [scenarios[k]["file"] for k in ordered_keys if isinstance(scenarios[k], dict) and "file" in scenarios[k]]
+    next_key = str(len(ordered_keys) + 1)
+    group_name = _derive_group_name(grupo.get("label", ""))
     scenarios[next_key] = {
         "label": f"Todos os cenários de {group_name} (Digite {next_key})",
         "all": True,
@@ -2025,27 +2006,20 @@ def _append_all_item(grupo: dict):
     }
 
 def augment_with_all_options():
-    # Cadastros (principais/adicionais)
+    cad = SCRIPTS.get("cadastros") or {}
     for tipo in ("principais", "adicionais"):
-        for _k, grupo in SCRIPTS["cadastros"][tipo].items():
+        for _k, grupo in (cad.get(tipo) or {}).items():
             _append_all_item(grupo)
-    # Processos
-    for _k, grupo in SCRIPTS["processos"].items():
+    for _k, grupo in (SCRIPTS.get("processos") or {}).items():
         _append_all_item(grupo)
 
-# Chame logo após montar completamente o SCRIPTS:
-augment_with_all_options()
-
-
-# ========== SUPORTE A TECLAS (Windows/Unix) ==========
+# ===================== TECLADO (Windows/Unix) =====================
 IS_WIN = (os.name == "nt")
-
 if IS_WIN:
     import msvcrt
     import ctypes
     user32 = ctypes.windll.user32
-    VK_SHIFT = 0x1
-    VK_INSERT = 0x2D
+    VK_SHIFT = 0x10
 
 def clear_screen():
     os.system("cls" if IS_WIN else "clear")
@@ -2053,881 +2027,170 @@ def clear_screen():
 def _is_shift_pressed_windows() -> bool:
     if not IS_WIN:
         return False
-    # bit mais significativo indica tecla pressionada
-    return (user32.GetAsyncKeyState(VK_SHIFT) & 0x8) != 0
+    return (user32.GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0
 
-def _read_key_win_blocking():
-    """
-    Lê uma tecla (Windows). Retorna:
-      - ('CHAR', ch) para caracteres
-      - ('LEFT', None) para seta esquerda
-      - ('ENTER', None)
-      - ('BACKSPACE', None)
-      - ('CTRL_V', None) quando Ctrl+V
-      - ('SHIFT_INSERT', None) quando Shift+Insert
-    """
-    ch = msvcrt.getwch()
-
-    # ENTER
-    if ch in ("\r", "\n"):
-        return ("ENTER", None)
-
-    # BACKSPACE - corrigido
-    if ch == "\x08":  # era "\0x8"
-        return ("BACKSPACE", None)
-
-    # Ctrl+V (colar)
-    if ch == "\x16":  # x16 = 22
-        return ("CTRL_V", None)
-
-    # Tecla especial (setas, F1, etc.)
-    if ch in ("\x00", "\xe0"):
-        ch2 = msvcrt.getwch()
-        # Left Arrow em msvcrt costuma ser 'K'
-        if ch2.upper() == "K":
-            # Tentativa de exigir SHIFT; se não der para detectar, tratamos mesmo assim
-            if _is_shift_pressed_windows():
-                return ("LEFT", None)
-            else:
-                # Sem SHIFT: podemos ignorar ou aceitar. Aqui, vamos aceitar como voltar também,
-                # mas você pode trocar para `return ("OTHER", None)` se quiser ser estrito.
-                return ("LEFT", None)
-        # Shift+Insert (colar clássico)
-        if ch2.upper() == "R":  # Insert = 'R'
-            if _is_shift_pressed_windows():
-                return ("SHIFT_INSERT", None)
-        return ("OTHER", None)
-
-    # Caractere normal
-    return ("CHAR", ch)
-
-def read_masked_password(prompt: str) -> str:
-    """
-    Lê senha mostrando asteriscos, com tentativa de bloquear colar (Ctrl+V e Shift+Insert).
-    """
-    sys.stdout.write(prompt)
-    sys.stdout.flush()
-
-    pwd_buf = []
-    if IS_WIN:
-        while True:
-            t, val = _read_key_win_blocking()
-            if t == "ENTER":
-                print()
-                return "".join(pwd_buf)
-            elif t == "BACKSPACE":
-                if pwd_buf:
-                    pwd_buf.pop()
-                    # apaga o último *
-                    sys.stdout.write("\b \b")
-                    sys.stdout.flush()
-            elif t in ("CTRL_V", "SHIFT_INSERT"):
-                # ignora tentativa de colar
-                continue
-            elif t == "CHAR":
-                # evita copiar: nunca exibimos a senha, só "*"
-                pwd_buf.append(val)
-                sys.stdout.write("*")
-                sys.stdout.flush()
-            else:
-                # ignora teclas especiais
-                continue
-    else:
-        # Unix-like: uso simples com termios para não ecoar; "*" visível
-        import termios, tty
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
-        try:
-            tty.setraw(fd)
-            while True:
-                ch = sys.stdin.read(1)
-                if ch in ("\r", "\n"):
-                    print()
-                    return "".join(pwd_buf)
-                if ch == "\x7f" or ch == "\b":  # backspace
-                    if pwd_buf:
-                        pwd_buf.pop()
-                        sys.stdout.write("\b \b")
-                        sys.stdout.flush()
-                    continue
-                if ch == "\x16":  # Ctrl+V
-                    continue
-                # sem suporte confiável a Shift+Insert aqui
-                pwd_buf.append(ch)
-                sys.stdout.write("*")
-                sys.stdout.flush()
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-
-def wait_before_submit(seconds: int = 5) -> bool:
-    """
-    Espera 'seconds' segundos com contagem regressiva.
-    Retorna False se o usuário pressionar Shift + Left Arrow (cancelar), senão True.
-    """
-    print(f"\nPreparando para iniciar (aguarde {seconds}s)...")
-    print("Voltar para aba anterior (Shift + Left Arrow)")
-    end = time.time() + seconds
-    last_shown = None
-
-    while True:
-        remain = int(end - time.time())
-        if remain <= 0:
-            sys.stdout.write("\rIniciando...           \n")
-            sys.stdout.flush()
-            return True
-
-        if remain != last_shown:
-            last_shown = remain
-            sys.stdout.write(f"\rIniciando em {remain}s... ")
-            sys.stdout.flush()
-
-        # permitir cancelar com Shift+Left (Windows)
-        if IS_WIN and msvcrt.kbhit():
-            t, _ = _read_key_win_blocking()
-            if t == "LEFT":
-                print("\nAção cancelada. Voltando ao menu de cenários.")
-                return False
-
-        time.sleep(.1)
-
-def read_menu_key(valid_codes: set[str], digits_required: int = 1, show_prompt: str = ""):
-    """
-    Lê uma opção de menu e SÓ valida ao pressionar ENTER.
-    - Mantém Shift+Left para voltar (retorna 'BACK').
-    - Mostra/edita o buffer (Backspace apaga).
-    - Ignora colagens/teclas especiais.
-    - 'digits_required' aqui serve APENAS como dica visual (limite opcional), não auto-envia mais.
-    """
-    if show_prompt:
-        print(show_prompt, end="", flush=True)
-
-    if IS_WIN:
-        buf = []
-        while True:
-            t, val = _read_key_win_blocking()
-
-            # Voltar
-            if t == "LEFT":
-                print()
-                return "BACK"
-
-            # Apagar
-            if t == "BACKSPACE":
-                if buf:
-                    buf.pop()
-                    sys.stdout.write("\b \b")
-                    sys.stdout.flush()
-                continue
-
-            # Confirmar (somente aqui valida)
-            if t == "ENTER":
-                code = "".join(buf).strip()
-                print()
-                if code in valid_codes:
-                    return code
-                print('Escolha um caractere presente na lista')
-                print('Voltar para aba anterior (Shift + Left Arrow)')
-                buf.clear()
-                if show_prompt:
-                    print(show_prompt, end="", flush=True)
-                continue
-
-            # Digitação: aceita APENAS dígitos para menus numéricos
-            if t == "CHAR" and val.isdigit():
-                # se quiser limitar visualmente, descomente a linha abaixo:
-                # if len(buf) >= digits_required: continue
-                buf.append(val)
-                sys.stdout.write(val)
-                sys.stdout.flush()
-                continue
-
-            # Ignora outras teclas (CTRL_V, SHIFT_INSERT, F-teclas etc.)
-            continue
-    else:
-        # Unix-like já exige ENTER por padrão
-        s = input().strip()
-        if s.lower() == "b":
-            return "BACK"
-        if s in valid_codes:
-            return s
-        print('Escolha um caractere presente na lista')
-        return None
-
-    
-def confirm_yn(question: str) -> bool:
-    print(question)
-    valid = {"y": True, "Y": True, "n": False, "N": False}
-    if IS_WIN:
-        while True:
-            t, val = _read_key_win_blocking()
-            if t == "CHAR" and val in valid:
-                print(val)
-                return valid[val]
-    else:
-        while True:
-            s = input().strip()
-            if s in valid:
-                return valid[s]
-
-# =========================
-# Login com senha fixa (Windows)
-# =========================
-
-def run_all_cadastros_principais():
-    """Executa todos os cadastros principais em cadeia"""
-    print("Iniciando execução de todos os cadastros principais...")
-
-    all_scripts = []
-    for categoria_key in SCRIPTS["cadastros"]["principais"]:
-        categoria = SCRIPTS["cadastros"]["principais"][categoria_key]
-        if categoria["scenarios"]:
-            for scenario_key in categoria["scenarios"]:
-                scenario = categoria["scenarios"][scenario_key]
-                if "file" in scenario:  # ignora itens 'all'
-                    all_scripts.append(scenario["file"])
-
-    total_scripts = len(all_scripts)
-    print(f"Total de {total_scripts} cenários principais para executar.")
-
-    if total_scripts == 0:
-        print("Nenhum cenário principal configurado para execução.")
-        return
-
-    if not confirm_yn(f'Deseja executar todos os {total_scripts} cenários principais? (y/n)'):
-        print("Execução cancelada pelo usuário")
-        return
-
-    for i, script_file in enumerate(all_scripts, 1):
-        try:
-            print(f"\n[{i}/{total_scripts}] Executando: {script_file.name}")
-            run_script_with_interrupt(script_file, ask_confirm=False)
-        except Exception as e:
-            print(f"Erro ao executar {script_file.name}: {e}")
-            if not confirm_yn("Deseja continuar com os próximos cenários? (y/n)"):
-                break
-
-    print("Execução de todos os cadastros principais concluída.")
-
-
-def input_senha_asteriscos(prompt="Senha: "):
-    """Lê senha mostrando '*' e bloqueando Ctrl+V / Shift+Insert."""
-    if IS_WIN:
-        sys.stdout.write(prompt)
-        sys.stdout.flush()
-        buf = []
-        while True:
-            ch = msvcrt.getwch()  # wide-char (suporta acentos)
-
-            # ENTER finaliza
-            if ch in ("\r", "\n"):
-                print()
-                return "".join(buf)
-
-            # BACKSPACE apaga 1 caractere - corrigido
-            if ch == "\x08":  # era "\0x8"
-                if buf:
-                    buf.pop()
-                    sys.stdout.write("\b \b")
-                    sys.stdout.flush()
-                continue
-
-            # Ctrl+C
-            if ch == "\x03":  # era "\0x3"
-                raise KeyboardInterrupt
-
-            # Ctrl+V (colar)
-            if ch == "\x16":
-                continue  # ignora
-
-            # Teclas estendidas (setas, Insert, etc.)
-            if ch in ("\x00", "\xe0"):  # era "\0x", "\0xe"
-                ext = msvcrt.getwch()
-                # Shift+Insert (colar clássico)
-                if ext.upper() == "R" and _is_shift_pressed_windows():
-                    continue  # ignora colagem
-                # ignora demais teclas especiais
-                continue
-
-            # caractere normal
-            buf.append(ch)
-            sys.stdout.write("*")
-            sys.stdout.flush()
-    else:
-        # Unix-like
-        import getpass
-        return getpass.getpass(prompt)
-
-def validar_senha():
-    """Mostra banner e valida a senha com até MAX_TENTATIVAS tentativas."""
-    clear_screen()
-    print("--- AUTOMAÇÕES PEGASUS ---")
-    tent = 0
-    while tent < MAX_TENTATIVAS:
-        senha = input_senha_asteriscos("Digite a senha de acesso para entrar: ")
-        if senha == SENHA_FIXA:
-            return True
-        tent += 1
-        if tent < MAX_TENTATIVAS:
-            print("Senha incorreta, tente novamente.")
-    print("Acesso bloqueado.")
-    sys.exit(1)
-
-# ========== EXECUÇÃO DE SCRIPTS COM INTERRUPÇÃO ==========
-class InterruptFlag:
-    def __init__(self):
-        self.flag = False
-        self.lock = threading.Lock()
-    
-    def set(self, v: bool):
-        with self.lock:
-            self.flag = v
-    
-    def get(self) -> bool:
-        with self.lock:
-            return self.flag
-
-def _watch_shift_left(interrupt_flag: InterruptFlag, stop_event: threading.Event):
-    if not IS_WIN:
-        return  # watcher somente Windows
-    while not stop_event.is_set():
-        if msvcrt.kbhit():
-            t, _ = _read_key_win_blocking()
-            if t == "LEFT":
-                interrupt_flag.set(True)
-        time.sleep(0.2)
-
-import shutil, runpy
-
+# ===================== SUPORTE PYTHON EM FROZEN =====================
 def _pick_python_for_frozen() -> list[str] | None:
-    """
-    Em ambiente congelado (.exe), tenta localizar um Python do sistema para
-    rodar o script como novo processo. Retorna o comando base ou None.
-    """
-    # Windows: 'py' costuma existir; depois tenta 'python', 'python3'
+    forced = os.getenv("QA_PY")
+    if forced and shutil.which(forced):
+        return [forced]
     for candidate in ("py", "python", "python3"):
         path = shutil.which(candidate)
         if path:
-            # no Windows, prefira 'py -3 script.py' quando possível
-            if candidate == "py":
+            if os.name == "nt" and os.path.basename(path).lower() == "py.exe":
                 return [path, "-3"]
             return [path]
     return None
 
-import runpy, shutil, contextlib
+# ===================== RAIZ DO PROJETO (CWD) =====================
+from pathlib import Path as _PathAlias
 
-def run_script_with_interrupt(py_file: Path, ask_confirm: bool = True, force_inprocess_when_frozen: bool = True):
-    # 1) valida caminho do arquivo
-    try:
-        if not py_file.exists():
-            print(f"[ERRO] Arquivo não encontrado: {py_file}")
-            return
-    except Exception as e:
-        print(f"[ERRO] Caminho inválido: {py_file} ({e})")
-        return
+def _resolve_project_root(default_start: _PathAlias) -> _PathAlias:
+    """
+    1) Se QA_PROJECT_ROOT estiver definido e contiver 'cenariostestespegasus', usa-o.
+    2) Senão, tenta C:/RPASelenium/RPAsPegasusSelenium (layout padrão do seu repo).
+    3) Senão, devolve 'default_start'.
+    """
+    env = os.getenv("QA_PROJECT_ROOT")
+    if env:
+        p = _PathAlias(env)
+        if (p / "cenariostestespegasus").exists():
+            return p
 
-    # 2) confirma execução (APENAS se solicitado)
+    p = _PathAlias("C:/RPASelenium/RPAsPegasusSelenium")
+    if (p / "cenariostestespegasus").exists():
+        return p
+
+    return default_start
+
+
+# ===================== LOGS =====================
+def _paths_logs_for(py_file: Path) -> tuple[Path, Path]:
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    safe = f"{py_file.parent.name}__{py_file.stem}".replace(" ", "_")
+    out_log = DIR_LOGS / f"{stamp}__{safe}__out.log"
+    err_log = DIR_LOGS / f"{stamp}__{safe}__err.log"
+    return out_log, err_log
+
+# ===================== EXECUÇÃO DE SCRIPTS =====================
+def run_script_with_interrupt(py_file: Path, ask_confirm: bool = True, force_inprocess_when_frozen: bool = False):
     if ask_confirm:
-        if not confirm_yn('Deseja executar a automação selecionada? (y/n)'):
-            print("Ação interrompida pelo usuário")
-            return
+        resp = input(f"Deseja executar '{py_file.name}'? (y/n): ")
+        if resp.strip().lower() != 'y':
+            print("Ação interrompida pelo usuário"); return
 
-    # 3) watcher do Shift+←
-    interrupt_flag = InterruptFlag()
-    stop_event = threading.Event()
-    watcher = threading.Thread(target=_watch_shift_left, args=(interrupt_flag, stop_event), daemon=True)
-    watcher.start()
+    out_txt, err_txt, erro_msg = "", "", None
+    t_ini = time.perf_counter()
+    out_log, err_log = _paths_logs_for(py_file)
 
     try:
-        # ===== MODO CONGELADO: roda IN-PROCESS com runpy =====
-        if getattr(sys, "frozen", False) and force_inprocess_when_frozen:
-            print("[runner] executando in-process (runpy).")
-            # Ajusta diretório de trabalho para o diretório do script
-            old_cwd = Path.cwd()
-            with contextlib.ExitStack() as stack:
-                stack.callback(lambda: os.chdir(old_cwd))
-                os.chdir(py_file.parent)
+        project_cwd = _resolve_project_root(py_file.parent)
+        print(f"[runner] cwd: {project_cwd}")
 
-                # Executa o .py em thread para manter a capacidade de interrupção
-                def _target():
-                    try:
-                        # opcional: ajustar argv visível pelo script
+        if getattr(sys, "frozen", False):
+            py_cmd = _pick_python_for_frozen()
+            if py_cmd is None:
+                print("[runner] Nenhum Python do sistema encontrado. Executando in-process (runpy).")
+                try:
+                    old_cwd = Path.cwd()
+                    with contextlib.ExitStack() as stack:
+                        stack.callback(lambda: os.chdir(old_cwd))
+                        os.chdir(py_file.parent)
+                        from io import StringIO
                         old_argv = sys.argv
                         sys.argv = [str(py_file)]
+                        old_stdout, old_stderr = sys.stdout, sys.stderr
+                        buf_out, buf_err = StringIO(), StringIO()
                         try:
+                            sys.stdout, sys.stderr = buf_out, buf_err
                             runpy.run_path(str(py_file), run_name="__main__")
                         finally:
+                            sys.stdout, sys.stderr = old_stdout, old_stderr
                             sys.argv = old_argv
-                    except SystemExit:
-                        pass
-                    except Exception as e:
-                        print(f"[ERRO] Execução in-process falhou: {e}")
+                        out_txt, err_txt = buf_out.getvalue(), buf_err.getvalue()
+                except Exception as e:
+                    err_txt += f"\n[ERRO] Execução in-process falhou: {e}\n"
+                    erro_msg = str(e)
+            else:
+                cmd = py_cmd + [str(py_file)]
+                project_cwd = _resolve_project_root(py_file.parent)
+                print(f"[runner] cwd: {project_cwd}")
+                print(f"[runner] usando interpretador: {' '.join(cmd)}")
 
-                t = threading.Thread(target=_target, daemon=True)
-                t.start()
+                proc = subprocess.Popen(cmd, cwd=str(project_cwd), stdout=..., stderr=..., text=True)
+                o, e = proc.communicate()
+                out_txt, err_txt = o or "", e or ""
+        else:
+            cmd = [sys.executable, str(py_file)]
+            project_cwd = _resolve_project_root(py_file.parent)
+            print(f"[runner] cwd: {project_cwd}")
+            print(f"[runner] usando interpretador atual: {' '.join(cmd)}")
 
-                # loop de monitoramento/interrupção
-                while t.is_alive():
-                    if interrupt_flag.get():
-                        interrupt_flag.set(False)
-                        if confirm_yn("Deseja interromper a automação? (y/n)"):
-                            print("Aviso: não é possível 'matar' com segurança em modo in-process; aguardando término…")
-                        else:
-                            print("Prosseguindo a automação...")
-                    time.sleep(0.1)
-
-            print("Automação finalizada.")
-            return
-
-        # ===== MODO DEV: subprocess com o mesmo Python =====
-        cmd = [sys.executable, str(py_file)]
-        print(f"[runner] usando interpretador atual: {' '.join(cmd)}")
-
-        popen_kwargs = {}
-        if IS_WIN:
-            popen_kwargs["creationflags"] = 0x2  # CREATE_NEW_PROCESS_GROUP
-
-        proc = subprocess.Popen(cmd, **popen_kwargs)
-
-        # loop de monitoramento + interrupção
-        while True:
-            ret = proc.poll()
-            if ret is not None:
-                break
-
-            if interrupt_flag.get():
-                interrupt_flag.set(False)
-                if confirm_yn("Deseja interromper a automação? (y/n)"):
-                    try:
-                        proc.terminate()
-                    except Exception:
-                        pass
-                    try:
-                        proc.wait(timeout=5)
-                    except Exception:
-                        try:
-                            proc.kill()
-                        except Exception:
-                            pass
-                    print("Automação interrompida.")
-                    return
-                else:
-                    print("Prosseguindo a automação...")
-
-            time.sleep(0.1)
-
-        print("Automação finalizada.")
+            proc = subprocess.Popen(cmd, cwd=str(project_cwd), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            o, e = proc.communicate()
+            out_txt, err_txt = o or "", e or ""
     finally:
-        stop_event.set()
-        watcher.join(timeout=0.5)
+        dur_s = time.perf_counter() - t_ini
+        reporter.record(
+            cadastro=f"{py_file.parent.name}/{py_file.stem}",
+            status="error" if err_txt else "success",
+            duracao_s=dur_s,
+            referencia=None,
+            erro=erro_msg,
+            evidencias={"log": str(err_log)}
+        )
+        out_log.write_text(out_txt, encoding="utf-8", errors="ignore")
+        err_log.write_text(err_txt, encoding="utf-8", errors="ignore")
+        print(f"Automação finalizada. -> Duração: {dur_s:.2f}s")
 
-def run_all_cadastros():
-    """Executa todos os cadastros principais e adicionais em cadeia"""
-    print("Iniciando execução de todos os cadastros...")
-    
-    # Coleta todos os cenários de cadastros principais
-    all_scripts = []
-    for categoria_key in SCRIPTS["cadastros"]["principais"]:
-        categoria = SCRIPTS["cadastros"]["principais"][categoria_key]
-        if categoria["scenarios"]:  # Só adiciona se tiver cenários
-            for scenario_key in categoria["scenarios"]:
-                scenario = categoria["scenarios"][scenario_key]
-                all_scripts.append(scenario["file"])
-    
-    # Coleta todos os cenários de cadastros adicionais
-    for categoria_key in SCRIPTS["cadastros"]["adicionais"]:
-        categoria = SCRIPTS["cadastros"]["adicionais"][categoria_key]
-        if categoria["scenarios"]:  # Só adiciona se tiver cenários
-            for scenario_key in categoria["scenarios"]:
-                scenario = categoria["scenarios"][scenario_key]
-                all_scripts.append(scenario["file"])
-    
-    total_scripts = len(all_scripts)
-    print(f"Total de {total_scripts} cenários para executar.")
-    
-    if total_scripts == 0:
-        print("Nenhum cenário configurado para execução.")
-        return
-    
-    if not confirm_yn(f'Deseja executar todos os {total_scripts} cenários? (y/n)'):
-        print("Execução cancelada pelo usuário")
-        return
-    
-    for i, script_file in enumerate(all_scripts, 1):
-        try:
-            print(f"\n[{i}/{total_scripts}] Executando: {script_file.name}")
-            run_script_with_interrupt(script_file, ask_confirm=False)
-        except Exception as e:
-            print(f"Erro ao executar {script_file.name}: {e}")
-            if not confirm_yn("Deseja continuar com os próximos cenários? (y/n)"):
-                break
-    
-    print("Execução de todos os cadastros concluída.")
-
-# ========== TELAS / MENUS ==========
-def tela_cenarios_genericos(titulo: str, scenarios: dict):
-    clear_screen()
-    print(titulo)
-    print("Escolha seu cenário:")
-    valid = set()
-    ordered_keys = sorted(scenarios.keys(), key=lambda x: int(x))
-    for key in ordered_keys:
-        lbl = scenarios[key]['label']
-        # evita duplicar "(Digite X)" se já estiver no label
-        if "(Digite" in lbl:
-            print(lbl)
-        else:
-            print(f"{lbl} (Digite {key})")
-        valid.add(key)
-    print('Voltar para aba anterior (Shift + Left Arrow)')
-
-    while True:
-        choice = read_menu_key(valid, show_prompt="Digite a opção e pressione ENTER: ")
-        if choice == "BACK":
-            return
-        if choice in scenarios:
-            # Item especial: "Todos os cenários ..."
-            if scenarios[choice].get("all"):
-                if not wait_before_submit(5):
-                    clear_screen()
-                    print(titulo)
-                    print("Escolha seu cenário:")
-                    for key in ordered_keys:
-                        lbl = scenarios[key]['label']
-                        print(lbl if "(Digite" in lbl else f"{lbl} (Digite {key})")
-                    print('Voltar para aba anterior (Shift + Left Arrow)')
-                    continue
-
-                files = scenarios[choice].get("files", [])
-                total = len(files)
-                if total == 0:
-                    print("Nenhum arquivo associado a este conjunto.")
-                    time.sleep(1.2)
-                else:
-                    if not confirm_yn(f"Deseja executar todos os {total} cenários deste grupo? (y/n)"):
-                        print("Ação interrompida pelo usuário")
-                    else:
-                        for i, f in enumerate(files, 1):
-                            print(f"\n[{i}/{total}] Executando: {Path(f).name}")
-                            run_script_with_interrupt(Path(f), ask_confirm=False)
-
-                # Reexibe a tela
-                clear_screen()
-                print(titulo)
-                print("Escolha seu cenário:")
-                for key in ordered_keys:
-                    lbl = scenarios[key]['label']
-                    print(lbl if "(Digite" in lbl else f"{lbl} (Digite {key})")
-                print('Voltar para aba anterior (Shift + Left Arrow)')
-                continue
-
-            # Cenário individual (como já era)
-            if not wait_before_submit(5):
-                clear_screen()
-                print(titulo)
-                print("Escolha seu cenário:")
-                for key in ordered_keys:
-                    lbl = scenarios[key]['label']
-                    print(lbl if "(Digite" in lbl else f"{lbl} (Digite {key})")
-                print('Voltar para aba anterior (Shift + Left Arrow)')
-                continue
-
-            run_script_with_interrupt(Path(scenarios[choice]["file"]))
-
-            clear_screen()
-            print(titulo)
-            print("Escolha seu cenário:")
-            for key in ordered_keys:
-                lbl = scenarios[key]['label']
-                print(lbl if "(Digite" in lbl else f"{lbl} (Digite {key})")
-            print('Voltar para aba anterior (Shift + Left Arrow)')
-        else:
-            if choice is not None:
-                print('Escolha um caractere presente na lista')
-
-def _collect_all_files_from(group: dict) -> list[Path]:
-    files = []
-    for categoria_key in sorted(group.keys(), key=lambda x: int(x)):
-        categoria = group[categoria_key]
-        scenarios = categoria.get("scenarios", {})
-        for scenario_key in sorted(scenarios.keys(), key=lambda x: int(x)):
-            scenario = scenarios[scenario_key]
-            if "file" in scenario:  # ignora itens 'all'
-                files.append(Path(scenario["file"]))
-    return files
-
-
-def run_all_cadastros_principais():
-    """Executa todos os cadastros PRINCIPAIS em cadeia."""
-    print("Iniciando execução de todos os cadastros PRINCIPAIS...")
-
-    all_scripts = _collect_all_files_from(SCRIPTS["cadastros"]["principais"])
-    total = len(all_scripts)
-    print(f"Total de {total} cenários PRINCIPAIS para executar.")
-
-    if total == 0:
-        print("Nenhum cenário PRINCIPAL configurado para execução.")
-        return
-
-    if not confirm_yn(f"Deseja executar todos os {total} cenários PRINCIPAIS? (y/n)"):
-        print("Execução cancelada pelo usuário")
-        return
-
-    for i, script_file in enumerate(all_scripts, 1):
-        try:
-            print(f"\n[{i}/{total}] Executando: {script_file.name}")
-            run_script_with_interrupt(script_file, ask_confirm=False)
-        except Exception as e:
-            print(f"Erro ao executar {script_file.name}: {e}")
-            if not confirm_yn("Deseja continuar com os próximos cenários? (y/n)"):
-                break
-
-    print("Execução de todos os cadastros PRINCIPAIS concluída.")
-
-
-def run_all_cadastros_adicionais():
-    """Executa todos os cadastros ADICIONAIS em cadeia."""
-    print("Iniciando execução de todos os cadastros ADICIONAIS...")
-
-    all_scripts = _collect_all_files_from(SCRIPTS["cadastros"]["adicionais"])
-    total = len(all_scripts)
-    print(f"Total de {total} cenários ADICIONAIS para executar.")
-
-    if total == 0:
-        print("Nenhum cenário ADICIONAL configurado para execução.")
-        return
-
-    if not confirm_yn(f"Deseja executar todos os {total} cenários ADICIONAIS? (y/n)"):
-        print("Execução cancelada pelo usuário")
-        return
-
-    for i, script_file in enumerate(all_scripts, 1):
-        try:
-            print(f"\n[{i}/{total}] Executando: {script_file.name}")
-            run_script_with_interrupt(script_file, ask_confirm=False)
-        except Exception as e:
-            print(f"Erro ao executar {script_file.name}: {e}")
-            if not confirm_yn("Deseja continuar com os próximos cenários? (y/n)"):
-                break
-
-    print("Execução de todos os cadastros ADICIONAIS concluída.")
-
-
-def tela_cadastros():
-    clear_screen()
-    print("Qual tipo de cadastro você deseja rodar?")
-    print("- Cadastros Principais (Digite 0)")
-    print("- Cadastros Adicionais (Digite 1)")
-    print("- Todos os cadastros contidos no sistema (Digite 2)")
-    print('Voltar para aba anterior (Shift + Left Arrow)')
-    valid = {"0", "1", "2"}
-
-    while True:
-        try:
-            choice = read_menu_key(valid)
-            if choice == "BACK":
-                return
-
-            if choice == "0":
-                clear_screen()
-                print("--- CADASTROS PRINCIPAIS ---")
-                print("- Todos os cadastros principais (Digite 0)")
-                d = SCRIPTS["cadastros"]["principais"]
-                for k in sorted(d.keys(), key=lambda x: int(x)):
-                    print(f"- {d[k]['label']} (Digite {k})")
-                print('Voltar para aba anterior (Shift + Left Arrow)')
-
-                valid_cp = {"0"} | set(sorted(d.keys(), key=lambda x: int(x)))
-                sub = read_menu_key(valid_cp)
-                if sub == "BACK":
-                    clear_screen()
-                    print("Qual tipo de cadastro você deseja rodar?")
-                    print("- Cadastros Principais (Digite 0)")
-                    print("- Cadastros Adicionais (Digite 1)")
-                    print("- Todos os cadastros contidos no sistema (Digite 2)")
-                    print('Voltar para aba anterior (Shift + Left Arrow)')
-                    continue
-                if sub == "0":
-                    run_all_cadastros_principais()
-                elif sub in d:
-                    if d[sub]["scenarios"]:
-                        tela_cenarios_genericos(f"--- {d[sub]['label']} ---", d[sub]["scenarios"])
-                    else:
-                        print("Nenhum cenário configurado para este cadastro ainda.")
-                        time.sleep(1.2)
-
-                clear_screen()
-                print("Qual tipo de cadastro você deseja rodar?")
-                print("- Cadastros Principais (Digite 0)")
-                print("- Cadastros Adicionais (Digite 1)")
-                print("- Todos os cadastros contidos no sistema (Digite 2)")
-                print('Voltar para aba anterior (Shift + Left Arrow)')
-
-            elif choice == "1":
-                clear_screen()
-                print("--- CADASTROS ADICIONAIS ---")
-                print("- Todos os cadastros adicionais (Digite 0)")
-                d = SCRIPTS["cadastros"]["adicionais"]
-                for k in sorted(d.keys(), key=lambda x: int(x)):
-                    print(f"- {d[k]['label']} (Digite {k})")
-                print('Voltar para aba anterior (Shift + Left Arrow)')
-
-                valid_ca = {"0"} | set(sorted(d.keys(), key=lambda x: int(x)))
-                sub = read_menu_key(valid_ca)
-                if sub == "BACK":
-                    clear_screen()
-                    print("Qual tipo de cadastro você deseja rodar?")
-                    print("- Cadastros Principais (Digite 0)")
-                    print("- Cadastros Adicionais (Digite 1)")
-                    print("- Todos os cadastros contidos no sistema (Digite 2)")
-                    print('Voltar para aba anterior (Shift + Left Arrow)')
-                    continue
-                if sub == "0":
-                    run_all_cadastros_adicionais()
-                elif sub in d:
-                    if d[sub]["scenarios"]:
-                        tela_cenarios_genericos(f"--- {d[sub]['label']} ---", d[sub]["scenarios"])
-                    else:
-                        print("Nenhum cenário configurado para este cadastro ainda.")
-                        time.sleep(1.2)
-
-                clear_screen()
-                print("Qual tipo de cadastro você deseja rodar?")
-                print("- Cadastros Principais (Digite 0)")
-                print("- Cadastros Adicionais (Digite 1)")
-                print("- Todos os cadastros contidos no sistema (Digite 2)")
-                print('Voltar para aba anterior (Shift + Left Arrow)')
-
-            elif choice == "2":
-                run_all_cadastros()
-                clear_screen()
-                print("Qual tipo de cadastro você deseja rodar?")
-                print("- Cadastros Principais (Digite 0)")
-                print("- Cadastros Adicionais (Digite 1)")
-                print("- Todos os cadastros contidos no sistema (Digite 2)")
-                print('Voltar para aba anterior (Shift + Left Arrow)')
-
-            else:
-                print('Escolha um caractere presente na lista')
-
-        except Exception as e:
-            print(f"Erro na seleção: {e}")
-            clear_screen()
-            print("Qual tipo de cadastro você deseja rodar?")
-            print("- Cadastros Principais (Digite 0)")
-            print("- Cadastros Adicionais (Digite 1)")
-            print("- Todos os cadastros contidos no sistema (Digite 2)")
-            print('Voltar para aba anterior (Shift + Left Arrow)')
-            continue
-
-
-def tela_processos():
-    clear_screen()
-    print("\n--- PROCESSOS ---\n")
-    d = SCRIPTS["processos"]
-    valid_p = set(sorted(d.keys(), key=lambda x: int(x)))
-    for k in sorted(d.keys(), key=lambda x: int(x)):
-        print(f"- {d[k]['label']} (Digite {k})")
-    print('\nVoltar para aba anterior (Shift + Left Arrow)')
-
-    while True:
-        choice = read_menu_key(valid_p)
-        if choice == "BACK":
-            return
-        if choice in d:
-            label = d[choice]["label"]
-            if d[choice]["scenarios"]:
-                tela_cenarios_genericos(f"--- {label} ---", d[choice]["scenarios"])
-            else:
-                print("Nenhum cenário configurado para este item ainda.")
-                time.sleep(1.2)
-            clear_screen()
-            print("\n--- PROCESSOS ---\n")
-            for k in sorted(d.keys(), key=lambda x: int(x)):
-                print(f"- {d[k]['label']} (Digite {k})")
-            print('\nVoltar para aba anterior (Shift + Left Arrow)')
-        else:
-            if choice is not None:
-                print('Escolha um caractere presente na lista')
-
+# ===================== MENUS (RESUMO) =====================
 def tela_tipo_automacao():
     clear_screen()
     print("Qual tipo de automação você deseja rodar?\n")
     print("- Cadastros (Digite 0)")
     print("- Processos (Digite 1)")
     print("- Cadastros e Processos (Digite 2)\n")
-    print('Voltar para aba anterior (Shift + Left Arrow)')
-
-    valid = {"0", "1", "2"}
-    while True:
-        try:
-            choice = read_menu_key(valid)
-            if choice == "BACK":
-                return
-            if choice == "0":
-                tela_cadastros()
-            elif choice == "1":
-                tela_processos()
-            elif choice == "2":
-                # Nova opção: Cadastros e Processos
-                print("Executando todos os cadastros e processos...")
-                run_all_cadastros()
-                # Aqui você pode adicionar run_all_processos() quando implementar
-                print("Execução completa de cadastros e processos concluída.")
-            
-            # Reexibe o menu após qualquer execução
-            clear_screen()
-            print("Qual tipo de automação você deseja rodar?\n")
-            print("- Cadastros (Digite 0)")
-            print("- Processos (Digite 1)")
-            print("- Cadastros e Processos (Digite 2)\n")
-            print('Voltar para aba anterior (Shift + Left Arrow)')
-        except Exception as e:
-            print(f"Erro na navegação: {e}")
-            continue
-
-# ========== MAIN E SUPORTE A EXE ==========
+    choice = input("Opção: ").strip()
+    if choice == "0":
+        print("[MENU] Cadastros")
+    elif choice == "1":
+        print("[MENU] Processos")
+    elif choice == "2":
+        print("[MENU] Todos")
+        for categoria_key in SCRIPTS["cadastros"]["principais"]:
+            categoria = SCRIPTS["cadastros"]["principais"][categoria_key]
+            for scenario_key in categoria.get("scenarios", {}):
+                run_script_with_interrupt(categoria["scenarios"][scenario_key]["file"], ask_confirm=False)
 
 def main():
-    print("--- AUTOMAÇÕES PEGASUS ---")
     tela_tipo_automacao()
-    clear_screen()
     print("Saindo...")
 
-def _pause_if_frozen_main():
-    if IS_WIN and getattr(sys, "frozen", False) and len(sys.argv) == 1:
-        try:
-            os.system("pause")
-        except Exception:
-            pass
-
+# ===================== MAIN =====================
 if __name__ == "__main__":
-    import traceback
+    exit_code = 0
     try:
-        if "--run-script" in sys.argv:
-            import runpy
-            i = sys.argv.index("--run-script")
-            runpy.run_path(sys.argv[i + 1], run_name="__main__")
-            sys.exit()
-
-        validar_senha()
         main()
-
     except KeyboardInterrupt:
-        print("Encerrado pelo usuário.")
-        _pause_if_frozen_main()
-        sys.exit(13)
-
+        print("Encerrado pelo usuário."); exit_code = 13
     except Exception as e:
-        try:
-            log_dir = Path(os.getenv("LOCALAPPDATA", ".")) / "AgentePegasus" / "logs"
-            log_dir.mkdir(parents=True, exist_ok=True)
-            (log_dir / "crash.log").write_text(traceback.format_exc(), encoding="utf-8")
-            print("[ERRO] Falha inesperada. Detalhes em:", log_dir / "crash.log")
-            print(traceback.format_exc())
-        except Exception:
-            print("[ERRO] Falha inesperada:", e)
-            print(traceback.format_exc())
-        _pause_if_frozen_main()
-        sys.exit(1)
+        exit_code = 1
+        log_dir = Path(os.getenv("LOCALAPPDATA", ".")) / "AgentePegasus" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        (log_dir / "crash.log").write_text(traceback.format_exc(), encoding="utf-8")
+        print("[ERRO] Falha inesperada. Detalhes em:", log_dir / "crash.log")
+        print(traceback.format_exc())
     finally:
-        _pause_if_frozen_main()
+        try:
+            if reporter:
+                reporter.stop()
+                rel_path = reporter.save_docx(
+                    nome_arquivo=None,
+                    ambiente=_report_meta.get("ambiente"),
+                    versao=_report_meta.get("versao"),
+                    out_base=OUT_BASE
+                )
+                print(f"[REPORT] Relatório gerado: {rel_path}")
+        except Exception as e:
+            print(f"[ALERTA] Não foi possível gerar o relatório DOCX: {e}")
+        sys.exit(exit_code)

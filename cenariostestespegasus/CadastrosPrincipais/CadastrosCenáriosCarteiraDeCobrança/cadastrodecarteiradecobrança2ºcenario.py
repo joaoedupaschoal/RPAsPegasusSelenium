@@ -5,568 +5,59 @@ from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver import ActionChains
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from webdriver_manager.chrome import ChromeDriverManager
-import time
-from faker import Faker  
-from validate_docbr import CPF
-from faker.providers import BaseProvider
-import random
+from docx import Document
+from docx.shared import Inches
 from faker import Faker
-import string
-from selenium.common.exceptions import TimeoutException
-import sys
-import subprocess
-from selenium import webdriver
-# Redireciona saída padrão e erros para o arquivo log.txt
-sys.stdout = open("log.txt", "w", encoding="utf-8")
-sys.stderr = sys.stdout  # Erros também vão para o mesmo arquivo
+from validate_docbr import CPF
+import random, string, os, subprocess, time
+from datetime import datetime
+from datetime import timedelta
 
 
-faker = Faker()
-numero_aleatorio = random.randint(1, 100)  # Gera um número aleatório entre 1 e 100
-letra_aleatoria = random.choice(string.ascii_uppercase)  # Gera uma letra maiúscula aleatória
-
-cemetery_name = f"Cemitério {faker.last_name()} {faker.random.choice(['Eterno', 'da Paz', 'Memorial', 'Descanso'])}"
-
-qtd_parcelas_em_atraso = int(faker.random.choice(['1', '2', '3', '4', '5']))
-
-
-dias_para_exumar = int(faker.random.choice(['365', '730', '1095', '1460', '1825']))
-
-def gerar_jazigos():
-    quantidade_ruas = random.randint(1, 10)  # Ex: entre 1 e 10 ruas
-    max_jazigos_por_rua = random.randint(1, 20)  # Ex: entre 1 e 20 jazigos por rua
-    quantidade_total_jazigos = quantidade_ruas * max_jazigos_por_rua
-    return quantidade_ruas, max_jazigos_por_rua, quantidade_total_jazigos
-
-ruas, jazigos_por_rua, total_jazigos = gerar_jazigos()
-altura_cm = random.randint(100, 200)
-largura_cm = random.randint(100, 200)
-comprimento_cm = random.randint(100, 200)
-# Gera valor aleatório com centavos
-valor_taxa_adesao = round(random.uniform(2000, 10000), 2)
-cemetery_name = f"Cemitério {faker.last_name()} {faker.random.choice(['Eterno', 'da Paz', 'Memorial', 'Descanso'])}"
-
-qtd_parcelas_em_atraso = int(faker.random.choice(['1', '2', '3', '4', '5']))
-
-
-dias_para_exumar = int(faker.random.choice(['365', '730', '1095', '1460', '1825']))
-
-'''Nesse teste, o robô preencherá todos os dados e clicará em Cancelar'''
-
-print('Nesse teste, o robô preencherá todos os dados e clicará em Cancelar')
-
-
-
-class BrasilProvider(BaseProvider):
-    def rg(self):
-        numeros = [str(random.randint(0, 9)) for _ in range(8)]
-        return ''.join(numeros) + '-' + str(random.randint(0, 9))
-
-fake = Faker("pt_BR")
-fake.add_provider(BrasilProvider)  # Adiciona o provedor
-
-
+# ==== CONFIGURAÇÕES ====
 URL = "http://localhost:8080/gs/index.xhtml"
+LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
+LOGIN_PASSWORD = "071999gs"
+fake = Faker("pt_BR")
+cpf_generator = CPF()
+
+doc = Document()
+doc.add_heading("RELATÓRIO DO TESTE", 0)
+doc.add_paragraph("Cadastro de Carteira de Cobrança – Cenário 2: Preenchimento completo e cancelamento")
+doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+screenshot_registradas = set()
+
+def log(msg):
+    print(msg)
+    doc.add_paragraph(msg)
+
+def take_screenshot(driver, nome):
+    if nome not in screenshot_registradas:
+        path = f"screenshots/{nome}.png"
+        os.makedirs("screenshots", exist_ok=True)
+        driver.save_screenshot(path)
+        doc.add_paragraph(f"📸 Screenshot: {nome}")
+        doc.add_picture(path, width=Inches(5.5))
+        screenshot_registradas.add(nome)
+
+def safe_action(descricao, func):
+    try:
+        log(f"🔄 {descricao}...")
+        func()
+        log(f"✅ {descricao} concluída.")
+        take_screenshot(driver, descricao.lower().replace(" ", "_"))
+    except Exception as e:
+        log(f"❌ Erro ao {descricao.lower()}: {e}")
+        take_screenshot(driver, f"erro_{descricao.lower().replace(' ', '_')}")
 
 def ajustar_zoom(driver):
-    """ Ajusta o zoom da página sem interferir em outras guias. """
-    driver.execute_script("document.body.style.zoom='90%'")
-
-# Configuração do ChromeDriver
-chrome_options = Options()
-chrome_options.add_argument("--start-maximized")  # Maximiza a janela
-
-# Inicializando o driver
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-
-# Acessa a URL
-driver.get(URL)
-
-# Espera até que o campo de login esteja presente
-wait = WebDriverWait(driver, 10)
-email_input = wait.until(EC.presence_of_element_located((By.ID, "j_id15:email")))
-email_input.send_keys('joaoeduardo.gold@outlook.com')
-
-password_input = wait.until(EC.presence_of_element_located((By.ID, "j_id15:senha")))
-password_input.send_keys("071999gs", Keys.ENTER)
-
-# Aguarda a página carregar
-time.sleep(5)
-
-ajustar_zoom(driver)
-
-
-# Simula o pressionamento da tecla F2
-driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2)
-time.sleep(1)
-
-time.sleep(5)
-
-# Navegação inicial
-campo_pesquisa = driver.find_element(By.XPATH, "//input[@placeholder='Busque um cadastro']")
-campo_pesquisa.click()
-
-# Digita um texto na pesquisa
-campo_pesquisa.send_keys("Carteira de Cobrança", Keys.ENTER)
-
-
-
-time.sleep(3)
-
-cadastrar = driver.find_element(By.CSS_SELECTOR, "#fmod_200027 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span")
-cadastrar.click()
-
-time.sleep(2)
-
-
-open_lov_carteira_de_cobrança = WebDriverWait(driver, 10).until(
-    EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_200027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div.formCol > div > a"))
-)
-open_lov_carteira_de_cobrança.click()
-
-
-novo_registro_carteira_de_cobrança = WebDriverWait(driver, 10).until(
-    EC.visibility_of_element_located((By.CSS_SELECTOR, "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(4) > a"))
-)
-novo_registro_carteira_de_cobrança.click()
-
-
-# Preenchendo os dados pessoais com o Faker
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(2) > input").send_keys('VENDEDOR TESTE SELENIUM AUTOMATIZADO')  # Nome falso
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(3) > select")).select_by_visible_text("Física")
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(4) > select")).select_by_visible_text("Carteira de Identidade Classista")
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(1) > input").send_keys(fake.rg()) # Gerando RG falso
-time.sleep(0.5)
-
-# Data de Nascimento com o Faker
-campo_data = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "input.dataExpedicao"))
-) 
-campo_data.click()  # Clica no campo de data
-campo_data.send_keys(fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%d/%m/%Y"))  # Gerando uma data de nascimento aleatória
-
-time.sleep(0.5)
-
-# Gera um CPF válido
-cpf = CPF().generate()
-
-# Localiza o campo de CPF
-cpf_field = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(3) > input")
-
-# Preenche o campo com o CPF gerado
-cpf_field.click()
-cpf_field.send_keys(cpf)
-
-time.sleep(1)
-
-# Dados Complementares
-driver.find_element(By.LINK_TEXT, "Dados Complementares").click()
-
-time.sleep(1)
-
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(1) > select")).select_by_visible_text("Solteiro")
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(2) > select")).select_by_visible_text("Feminino")
-
-# Gerando um e-mail e preenchendo
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(9) > input").send_keys(fake.email())
-
-campo_data = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "input.dataNascimento"))
-) 
-campo_data.click()  # Clica no campo de data
-campo_data.send_keys(fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%d/%m/%Y"))  # Gerando uma data de nascimento aleatória
-
-time.sleep(0.5)
-
-
-# Contato
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(5) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(6) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(7) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(9) > input").send_keys(fake.email())  # Gerando um e-mail falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(11) > input").send_keys(fake.city())  # Gerando uma cidade fictícia
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(12) > input").send_keys(fake.country())  # Gerando um país fictício
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(13) > input").send_keys(fake.first_name())  # Gerando o nome do pai fictício
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(14) > input").send_keys(fake.first_name())  # Gerando o nome da mãe fictício
-
-time.sleep(0.5)
-
-# Profissão
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(16) > input").send_keys(fake.job())  # Gerando uma profissão fictícia
-
-time.sleep(0.5)
-
-time.sleep(0.5)
-
-
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.categorias.overflow.overflowY > ul > li.li_enderecos > a").click()
-
-
-time.sleep(3)
-
-# Aguarda até o elemento estar presente na página
-try:
-    elemento = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(2) > div:nth-child(1) > div > input"))
-    )
-
-
-    # Preenche o campo de endereço
-    elemento.send_keys("15081115")
-    
-
-    # Aguarda o botão aparecer e clica nele
-    botao = WebDriverWait(driver, 5).until(
-        EC.element_to_be_clickable((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(2) > div:nth-child(1) > div > a"))
-    )
-    botao.click()
-
-except Exception as e:
-    print(f"Erro: {e}")
-
-time.sleep(5)
-
-element = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#BtYes")))
-
-element.click()
-element.click()
-
-wait = WebDriverWait(driver, 1)  
-
-
-elemento = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(2) > input")
-elemento.send_keys("1733")
-
-
-
-elemento = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(3) > input")
-elemento.send_keys("Casa")
-
-
-
-time.sleep(3)
-
-
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(9) > label > input").click()
-
-time.sleep(2)
-
-# Clique no botão "Salvar"
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.btnHolder > a.btModel.btGray.btsave").click()
-
-
-adicionar = WebDriverWait(driver, 10).until(
-    EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_200027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div.btnListHolder > a.btAddGroup"))
-)
-adicionar.click()
-
-
-
-open_lov_carteira_de_cobrança = WebDriverWait(driver, 10).until(
-    EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_200027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div.formCol > div > a"))
-)
-open_lov_carteira_de_cobrança.click()
-
-
-novo_registro_carteira_de_cobrança = WebDriverWait(driver, 10).until(
-    EC.visibility_of_element_located((By.CSS_SELECTOR, "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(4) > a"))
-)
-novo_registro_carteira_de_cobrança.click()
-
-
-# Preenchendo os dados pessoais com o Faker
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(2) > input").send_keys('VENDEDOR TESTE SELENIUM AUTOMATIZADO')  # Nome falso
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(3) > select")).select_by_visible_text("Física")
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(4) > select")).select_by_visible_text("Carteira de Identidade Classista")
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(1) > input").send_keys(fake.rg()) # Gerando RG falso
-time.sleep(0.5)
-
-# Data de Nascimento com o Faker
-campo_data = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "input.dataExpedicao"))
-) 
-campo_data.click()  # Clica no campo de data
-campo_data.send_keys(fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%d/%m/%Y"))  # Gerando uma data de nascimento aleatória
-
-time.sleep(0.5)
-
-# Gera um CPF válido
-cpf = CPF().generate()
-
-# Localiza o campo de CPF
-cpf_field = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(3) > input")
-
-# Preenche o campo com o CPF gerado
-cpf_field.click()
-cpf_field.send_keys(cpf)
-
-time.sleep(1)
-
-# Dados Complementares
-driver.find_element(By.LINK_TEXT, "Dados Complementares").click()
-
-time.sleep(1)
-
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(1) > select")).select_by_visible_text("Solteiro")
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(2) > select")).select_by_visible_text("Feminino")
-
-# Gerando um e-mail e preenchendo
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(9) > input").send_keys(fake.email())
-
-campo_data = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "input.dataNascimento"))
-) 
-campo_data.click()  # Clica no campo de data
-campo_data.send_keys(fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%d/%m/%Y"))  # Gerando uma data de nascimento aleatória
-
-time.sleep(0.5)
-
-
-# Contato
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(5) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(6) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(7) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(9) > input").send_keys(fake.email())  # Gerando um e-mail falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(11) > input").send_keys(fake.city())  # Gerando uma cidade fictícia
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(12) > input").send_keys(fake.country())  # Gerando um país fictício
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(13) > input").send_keys(fake.first_name())  # Gerando o nome do pai fictício
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(14) > input").send_keys(fake.first_name())  # Gerando o nome da mãe fictício
-
-time.sleep(0.5)
-
-# Profissão
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(16) > input").send_keys(fake.job())  # Gerando uma profissão fictícia
-
-time.sleep(0.5)
-
-time.sleep(0.5)
-
-
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.categorias.overflow.overflowY > ul > li.li_enderecos > a").click()
-
-
-time.sleep(3)
-
-# Aguarda até o elemento estar presente na página
-try:
-    elemento = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(2) > div:nth-child(1) > div > input"))
-    )
-
-
-    # Preenche o campo de endereço
-    elemento.send_keys("15081115")
-    
-
-    # Aguarda o botão aparecer e clica nele
-    botao = WebDriverWait(driver, 5).until(
-        EC.element_to_be_clickable((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(2) > div:nth-child(1) > div > a"))
-    )
-    botao.click()
-
-except Exception as e:
-    print(f"Erro: {e}")
-
-time.sleep(5)
-
-element = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#BtYes")))
-
-element.click()
-element.click()
-
-wait = WebDriverWait(driver, 1)  
-
-
-elemento = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(2) > input")
-elemento.send_keys("1733")
-
-
-
-elemento = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(3) > input")
-elemento.send_keys("Casa")
-
-
-
-time.sleep(3)
-
-
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(9) > label > input").click()
-
-time.sleep(2)
-
-# Clique no botão "Salvar"
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.btnHolder > a.btModel.btGray.btsave").click()
-
-
-adicionar = WebDriverWait(driver, 10).until(
-    EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_200027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div.btnListHolder > a.btAddGroup"))
-)
-adicionar.click()
-
-
-open_lov_carteira_de_cobrança = WebDriverWait(driver, 10).until(
-    EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_200027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div.formCol > div > a"))
-)
-open_lov_carteira_de_cobrança.click()
-
-
-novo_registro_carteira_de_cobrança = WebDriverWait(driver, 10).until(
-    EC.visibility_of_element_located((By.CSS_SELECTOR, "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(4) > a"))
-)
-novo_registro_carteira_de_cobrança.click()
-
-
-# Preenchendo os dados pessoais com o Faker
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(2) > input").send_keys('VENDEDOR TESTE SELENIUM AUTOMATIZADO')  # Nome falso
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(3) > select")).select_by_visible_text("Física")
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(4) > select")).select_by_visible_text("Carteira de Identidade Classista")
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(1) > input").send_keys(fake.rg()) # Gerando RG falso
-time.sleep(0.5)
-
-# Data de Nascimento com o Faker
-campo_data = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "input.dataExpedicao"))
-) 
-campo_data.click()  # Clica no campo de data
-campo_data.send_keys(fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%d/%m/%Y"))  # Gerando uma data de nascimento aleatória
-
-time.sleep(0.5)
-
-# Gera um CPF válido
-cpf = CPF().generate()
-
-# Localiza o campo de CPF
-cpf_field = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(3) > input")
-
-# Preenche o campo com o CPF gerado
-cpf_field.click()
-cpf_field.send_keys(cpf)
-
-time.sleep(1)
-
-# Dados Complementares
-driver.find_element(By.LINK_TEXT, "Dados Complementares").click()
-
-time.sleep(1)
-
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(1) > select")).select_by_visible_text("Solteiro")
-Select(driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(2) > select")).select_by_visible_text("Feminino")
-
-# Gerando um e-mail e preenchendo
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(9) > input").send_keys(fake.email())
-
-campo_data = WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "input.dataNascimento"))
-) 
-campo_data.click()  # Clica no campo de data
-campo_data.send_keys(fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%d/%m/%Y"))  # Gerando uma data de nascimento aleatória
-
-time.sleep(0.5)
-
-
-# Contato
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(5) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(6) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(7) > input").send_keys(fake.phone_number())  # Gerando um número de telefone falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(9) > input").send_keys(fake.email())  # Gerando um e-mail falso
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(11) > input").send_keys(fake.city())  # Gerando uma cidade fictícia
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(12) > input").send_keys(fake.country())  # Gerando um país fictício
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(13) > input").send_keys(fake.first_name())  # Gerando o nome do pai fictício
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(14) > input").send_keys(fake.first_name())  # Gerando o nome da mãe fictício
-
-time.sleep(0.5)
-
-# Profissão
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(16) > input").send_keys(fake.job())  # Gerando uma profissão fictícia
-
-time.sleep(0.5)
-
-time.sleep(0.5)
-
-
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.categorias.overflow.overflowY > ul > li.li_enderecos > a").click()
-
-
-time.sleep(3)
-
-# Aguarda até o elemento estar presente na página
-try:
-    elemento = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(2) > div:nth-child(1) > div > input"))
-    )
-
-
-    # Preenche o campo de endereço
-    elemento.send_keys("15081115")
-    
-
-    # Aguarda o botão aparecer e clica nele
-    botao = WebDriverWait(driver, 5).until(
-        EC.element_to_be_clickable((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(2) > div:nth-child(1) > div > a"))
-    )
-    botao.click()
-
-except Exception as e:
-    print(f"Erro: {e}")
-
-time.sleep(5)
-
-element = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#BtYes")))
-
-element.click()
-element.click()
-
-wait = WebDriverWait(driver, 1)  
-
-
-elemento = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(2) > input")
-elemento.send_keys("1733")
-
-
-
-elemento = driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(3) > input")
-elemento.send_keys("Casa")
-
-
-
-time.sleep(3)
-
-
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_enderecos.categoriaHolder > div.groupHolder.clearfix.grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(9) > label > input").click()
-
-time.sleep(2)
-
-# Clique no botão "Salvar"
-driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.btnHolder > a.btModel.btGray.btsave").click()
-
-
-adicionar = WebDriverWait(driver, 10).until(
-    EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_200027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div.btnListHolder > a.btAddGroup"))
-)
-adicionar.click()
-
-time.sleep(5)
-
-# Clique no botão "Cancelar"
-Cancelar = driver.find_element(By.CSS_SELECTOR, "#fmod_200027 > div.wdTelas > div.telaCadastro.clearfix > div.btnHolder > a.btModel.btGray.btcancel")
-Cancelar.click()
-time.sleep(1)
-
-wait = WebDriverWait(driver, 10)
-BtYes = wait.until(
-    EC.element_to_be_clickable((By.CSS_SELECTOR, "#BtYes"))
-    )
-BtYes.click()
-time.sleep(1)
-
-# Fechar modal
-X = driver.find_element(By.CSS_SELECTOR, "#fmod_200027 > div.wdTop.ui-draggable-handle > div.wdClose > a")
-X.click()
-time.sleep(1)
-
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+    try:
+        driver.execute_script("document.body.style.zoom='90%'")
+        log("🔍 Zoom ajustado para 90%.")
+    except Exception as e:
+        log(f"⚠️ Erro ao ajustar zoom: {e}")
 
 def encontrar_mensagem_alerta():
     seletores = [
@@ -574,48 +65,167 @@ def encontrar_mensagem_alerta():
         (".alerts.alerta", "alerta"),
         (".alerts.erro", "erro"),
     ]
-
     for seletor, tipo in seletores:
         try:
             elemento = driver.find_element(By.CSS_SELECTOR, seletor)
-            if elemento.is_displayed():  # garante que está visível
-                print(f"Mensagem de {tipo}:", elemento.text)
+            if elemento.is_displayed():
+                log(f"📢 Mensagem de {tipo}: {elemento.text}")
                 return elemento
         except NoSuchElementException:
             continue
-
-    print("Nenhuma mensagem encontrada.")
+    log("⚠️ Nenhuma mensagem de alerta encontrada.")
     return None
 
-# Espera apenas pelo container de alertas como um todo (melhora desempenho)
+# ==== INICIALIZAÇÃO DO DRIVER ====
+options = Options()
+options.add_argument("--start-maximized")
+driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+wait = WebDriverWait(driver, 10)
+
 try:
-    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".alerts")))
+    safe_action("Acessar sistema", lambda: driver.get(URL))
+
+    safe_action("Login", lambda: (
+        wait.until(EC.presence_of_element_located((By.ID, "j_id15:email"))).send_keys(LOGIN_EMAIL),
+        wait.until(EC.presence_of_element_located((By.ID, "j_id15:senha"))).send_keys(LOGIN_PASSWORD, Keys.ENTER),
+        wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+    ))
+
+    safe_action("Ajustar zoom e esperar tela inicial", lambda: (
+        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "div.menuHolder > a.button.btModules > span"))),
+        ajustar_zoom(driver)
+    ))
+
+    safe_action("Abrir menu com F2", lambda: (
+        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2),
+        time.sleep(1)
+    ))
+
+    safe_action("Buscar 'Carteira de Cobrança'", lambda: (
+        wait.until(EC.visibility_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']"))).send_keys("Carteira de Cobrança", Keys.ENTER),
+        time.sleep(2)
+    ))
+
+    safe_action("Clicar em Cadastrar", lambda: (
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_200027 ul > li:nth-child(1) > a > span"))).click()
+    ))
+
+    safe_action("Abrir LOV", lambda: (
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_200027 .formCol > div > a"))).click()
+    ))
+
+    safe_action("Clicar em Novo Cadastro", lambda: (
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "body > div.modalHolder .formRow.formLastLine > div:nth-child(4) > a"))).click()
+    ))
+
+    # ==== DADOS PESSOAIS ====
+    safe_action("Preencher nome", lambda: driver.find_element(
+        By.CSS_SELECTOR, "#cg_1 .cat_dadosPessoais .formRow:nth-child(2) > div:nth-child(2) > input"
+    ).send_keys("VENDEDOR TESTE SELENIUM"))
+
+    safe_action("Selecionar tipo de pessoa", lambda: Select(driver.find_element(
+        By.CSS_SELECTOR, "#cg_1 .cat_dadosPessoais .formRow:nth-child(2) > div:nth-child(3) > select"
+    )).select_by_visible_text("Física"))
+
+    safe_action("Selecionar tipo de documento", lambda: Select(driver.find_element(
+        By.CSS_SELECTOR, "#cg_1 .cat_dadosPessoais .formRow:nth-child(2) > div:nth-child(4) > select"
+    )).select_by_visible_text("Carteira de Identidade Classista"))
+
+    safe_action("Preencher RG", lambda: (
+        driver.find_element(By.CSS_SELECTOR, "#cg_1 .divPessoaFISICA > div:nth-child(1) > input")
+        .send_keys(fake.random_number(digits=7))
+    ))
+
+    safe_action("Preencher data de expedição", lambda: (
+        driver.find_element(By.CSS_SELECTOR, "input.dataExpedicao")
+        .send_keys(fake.date_between(start_date='-10y', end_date='-1y').strftime('%d/%m/%Y'))
+    ))
+
+    safe_action("Preencher CPF", lambda: (
+        driver.find_element(By.CSS_SELECTOR, "#cg_1 .divPessoaFISICA > div:nth-child(3) > input").send_keys(cpf_generator.generate())
+    ))
+
+    # ==== DADOS COMPLEMENTARES ====
+    safe_action("Abrir aba Dados Complementares", lambda: driver.find_element(By.LINK_TEXT, "Dados Complementares").click())
+
+    safe_action("Selecionar estado civil", lambda: Select(driver.find_element(
+        By.CSS_SELECTOR, "#cg_1 .cat_dadosComplementares .formRow > div:nth-child(1) > select")).select_by_visible_text("Solteiro"))
+
+    safe_action("Selecionar sexo", lambda: Select(driver.find_element(
+        By.CSS_SELECTOR, "#cg_1 .cat_dadosComplementares .formRow > div:nth-child(2) > select")).select_by_visible_text("Feminino"))
+
+    safe_action("Preencher e-mail", lambda: driver.find_element(
+        By.CSS_SELECTOR, "#cg_1 .cat_dadosComplementares .formRow > div:nth-child(9) > input").send_keys(fake.email()))
+
+    safe_action("Preencher data nascimento", lambda: driver.find_element(
+        By.CSS_SELECTOR, "input.dataNascimento").send_keys(
+        (datetime.today() - timedelta(days=random.randint(18*365, 60*365))).strftime("%d/%m/%Y")))
+
+    # ==== ENDEREÇO ====
+    safe_action("Abrir aba Endereços", lambda: driver.find_element(
+        By.CSS_SELECTOR, "#cg_1 .categorias ul > li.li_enderecos > a").click())
+
+    safe_action("Preencher CEP e buscar", lambda: (
+        driver.find_element(By.CSS_SELECTOR,
+            "#cg_1 .cat_enderecos .grupo_enderecoResidencial > div > div:nth-child(2) > div:nth-child(1) > div > input").send_keys("15081115"),
+        driver.find_element(By.CSS_SELECTOR,
+            "#cg_1 .cat_enderecos .grupo_enderecoResidencial > div > div:nth-child(2) > div:nth-child(1) > div > a").click(),
+        time.sleep(2)
+    ))
+
+    safe_action("Preencher número", lambda: driver.find_element(
+        By.CSS_SELECTOR,
+        "#cg_1 .cat_enderecos .grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(2) > input"
+    ).send_keys("123"))
+
+    safe_action("Preencher complemento", lambda: driver.find_element(
+        By.CSS_SELECTOR,
+        "#cg_1 .cat_enderecos .grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(3) > input"
+    ).send_keys("Casa"))
+
+    safe_action("Marcar como endereço principal", lambda: driver.find_element(
+        By.CSS_SELECTOR,
+        "#cg_1 .cat_enderecos .grupo_enderecoResidencial > div > div:nth-child(3) > div:nth-child(9) > label > input").click())
+
+    # ==== SALVAR ====
+    safe_action("Salvar pessoa", lambda: (
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#cg_1 .btnHolder > a.btsave"))).click(),
+        time.sleep(2)
+    ))
+
     encontrar_mensagem_alerta()
-except TimeoutException:
-    print("Nenhum alerta apareceu dentro do tempo limite.")
 
-print('Teste executado com sucesso!')
-import sys
-import subprocess
-from selenium import webdriver
-# Redireciona saída padrão e erros para o arquivo log.txt
-sys.stdout = open("log.txt", "w", encoding="utf-8")
-sys.stderr = sys.stdout  # Erros também vão para o mesmo arquivo
+    safe_action("Adicionar pessoa à carteira", lambda: (
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_200027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div.btnListHolder > a.btAddGroup"))).click()
+    ))
 
-sys.stdout.close()
-subprocess.run(["notepad", "log.txt"])
-# Aguarda o usuário pressionar "." para fechar o navegador
-print('Pressione "." para fechar o navegador...')
-while True:
-    if input() == ".":
-        break  
-
-# Espera 10 segundos antes de fechar (opcional)
-time.sleep(3)
-
-# Fecha o navegador
-driver.quit()
+    safe_action("Cancelando carteira de cobrança", lambda: (
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_200027 .btnHolder > a.btcancel"))).click(),
+        time.sleep(2)
+    ))
 
 
+    safe_action(doc, "Confirmando cancelamento", lambda: (
+        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#BtYes"))).click()
+    ))
 
 
+    encontrar_mensagem_alerta()
+
+    safe_action("Fechar modal", lambda: (
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_200027 > div.wdTop.ui-draggable-handle > div.wdClose > a"))).click()
+    ))
+
+except Exception as e:
+    log(f"❌ ERRO FATAL: {e}")
+    take_screenshot(driver, "erro_fatal")
+
+finally:
+
+    log("✅ Teste concluído com sucesso.")
+
+    nome_arquivo = f"relatorio_carteira_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    doc.save(nome_arquivo)
+    log(f"📄 Relatório salvo: {nome_arquivo}")
+    subprocess.run(["start", "winword", nome_arquivo], shell=True)
+    driver.quit()

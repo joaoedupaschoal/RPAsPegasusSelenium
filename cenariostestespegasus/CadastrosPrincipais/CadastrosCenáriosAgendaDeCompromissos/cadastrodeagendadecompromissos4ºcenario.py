@@ -51,7 +51,7 @@ def gerar_datas_validas():
     # Registro entre 1 e 10 dias após o sepultamento
     data_registro = data_sepultamento + timedelta(days=random.randint(1, 10))
 
-    data_efetivacao = fake.date_between(start_date=hoje - timedelta(days=365*5), end_date=hoje - timedelta(days=365))
+    data_efetivacao = fake.date_between(start_date=hoje - timedelta(days=365), end_date=hoje - timedelta(days=365))
 
     # Verifica se o ano é menor que 1900 e ajusta a data, se necessário
     def formatar_data(data):
@@ -82,7 +82,7 @@ fake = Faker("pt_BR")
 # ==== DOCUMENTO ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Cadastro de Agenda de Compromissos – Cenário 4: Preenchimento dos Campos Não Obrigatórios e salvamento.")
+doc.add_paragraph("Cadastro de Agenda de Compromissos – Cenário 4: Preenchimento dos campos NÃO obrigatórios e salvamento.")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()

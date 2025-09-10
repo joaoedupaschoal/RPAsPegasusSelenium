@@ -51,7 +51,7 @@ def gerar_datas_validas():
     # Registro entre 1 e 10 dias após o sepultamento
     data_registro = data_sepultamento + timedelta(days=random.randint(1, 10))
 
-    data_efetivacao = fake.date_between(start_date=hoje - timedelta(days=365*5), end_date=hoje - timedelta(days=365))
+    data_efetivacao = fake.date_between(start_date=hoje - timedelta(days=365), end_date=hoje - timedelta(days=365))
 
     # Verifica se o ano é menor que 1900 e ajusta a data, se necessário
     def formatar_data(data):
