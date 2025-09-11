@@ -1,14 +1,8 @@
-# TesteAgenteAutomacoes.py — Versão consolidada e completa
-# -----------------------------------------------------------------
-# Gera relatórios DOCX ao final dos testes
-# Suporta execução em modo .exe (PyInstaller), usando Python do sistema ou runpy
-# -----------------------------------------------------------------
-
 # ===================== IMPORTS =====================
-import os, sys, time, threading, subprocess, contextlib, runpy, shutil, traceback, re
+import os, sys, time, runpy, traceback, msvcrt
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Optional, Dict, Any, List, Tuple
 
 # ===================== BOAS-VINDAS =====================
 def mostrar_boas_vindas():
@@ -21,32 +15,10 @@ def mostrar_boas_vindas():
 
 mostrar_boas_vindas()
 
-# ===================== WORKSPACE / SAÍDA =====================
-RUN_ID = datetime.now().strftime("%Y%m%d_%H%M%S_") + os.urandom(3).hex()
-DESKTOP = Path(os.path.expanduser("~/Desktop"))
-OUT_BASE = DESKTOP / "AutomacoesPegasus" / f"RUN_{RUN_ID}"
+# ===================== LIMPAR TELA =====================
+def clear_screen():
+    os.system("cls" if os.name == "nt" else "clear")
 
-DIR_REPORTS = OUT_BASE / "reports"
-DIR_SHOTS   = OUT_BASE / "screenshots"
-DIR_LOGS    = OUT_BASE / "logs"
-DIR_DLS     = OUT_BASE / "downloads"
-for d in (DIR_REPORTS, DIR_SHOTS, DIR_LOGS, DIR_DLS):
-    d.mkdir(parents=True, exist_ok=True)
-print(f"[RUN] Workspace: {OUT_BASE}")
-
-# ===================== QA REPORTER =====================
-try:
-    from qa_reporter import QAReporter
-except Exception as e:
-    print("[ERRO] qa_reporter.py não encontrado ou inválido: ", e)
-    sys.exit(1)
-
-reporter: Optional[QAReporter] = QAReporter(reports_dir=DIR_REPORTS)
-reporter.start()
-_report_meta = {
-    "ambiente": os.getenv("QA_AMBIENTE", "Homologação"),
-    "versao":   os.getenv("QA_VERSAO", "-"),
-}
 
 # ===================== BASE DE CENÁRIOS =====================
 BASE_SCRIPTS = Path(__file__).resolve().parent / "cenariostestespegasus"
@@ -1981,216 +1953,482 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
     },
 }
 
+# ===================== LOGO / CABEÇALHO =====================
+def banner():
+    print("\n===== AUTOMAÇÕES PEGASUS =====")
+
+# ===================== PASSWORD (com asteriscos + 3 tentativas) =====================
+def _read_password_masked(prompt: str = "Digite a senha para entrar: ") -> str:
+    """Lê senha do teclado mostrando * (Windows / console)."""
+    sys.stdout.write(prompt)
+    sys.stdout.flush()
+    buf: List[str] = []
+    while True:
+        ch = msvcrt.getwch()  # lê como wide char
+        if ch in ('\r', '\n'):
+            sys.stdout.write("\n")
+            break
+        if ch == '\x08':  # backspace
+            if buf:
+                buf.pop()
+                sys.stdout.write("\b \b")  # apaga *
+                sys.stdout.flush()
+            continue
+        if ch == '\x1b':  # ESC limpa tudo
+            while buf:
+                buf.pop()
+                sys.stdout.write("\b \b")
+            sys.stdout.flush()
+            continue
+        buf.append(ch)
+        sys.stdout.write("*")
+        sys.stdout.flush()
+    return "".join(buf)
+
+# Contadores globais de sucesso/falha
+SUCCESS_COUNT = 0
+FAIL_COUNT = 0
+
+def check_password() -> bool:
+    """
+    Valida a senha inicial com até 3 tentativas.
+    Defina a senha via variável de ambiente PEGASUS_PASSWORD (padrão: '071999gs').
+    Registra (pass/fail) no relatório.
+    """
+    expected = os.getenv("PEGASUS_PASSWORD", "071999gs")
+    banner()
+    for tentativa in range(1, 4):
+        pwd = _read_password_masked("Digite a senha para entrar: ")
+        if pwd == expected:
+            try:
+                reporter.step_pass("Acesso ao Runner", f"Autenticação bem-sucedida na tentativa {tentativa}.")
+            except Exception:
+                pass
+            clear_screen()  # entra com tela limpa
+            return True
+        else:
+            print(f"[ERRO] Senha incorreta. Tentativa {tentativa}/3")
+            try:
+                reporter.step_fail("Acesso ao Runner", f"Senha incorreta (tentativa {tentativa}/3).")
+            except Exception:
+                pass
+            if tentativa < 3:
+                time.sleep(1)
+    print("Número máximo de tentativas atingido. Encerrando...")
+    try:
+        reporter.step_fail("Acesso ao Runner", "Falha de autenticação após 3 tentativas. Execução abortada.")
+    except Exception:
+        pass
+    return False
+
+# ===================== WORKSPACE / SAÍDA =====================
+RUN_ID = datetime.now().strftime("%Y%m%d_%H%M%S_") + os.urandom(3).hex()
+DESKTOP = Path(os.path.expanduser("~/Desktop"))
+OUT_BASE = DESKTOP / "AutomacoesPegasus" / f"RUN_{RUN_ID}"
+
+DIR_REPORTS = OUT_BASE / "reports"
+DIR_SHOTS   = OUT_BASE / "screenshots"
+DIR_LOGS    = OUT_BASE / "logs"
+DIR_DLS     = OUT_BASE / "downloads"
+for d in (DIR_REPORTS, DIR_SHOTS, DIR_LOGS, DIR_DLS):
+    d.mkdir(parents=True, exist_ok=True)
+
+# ===================== QA REPORTER =====================
+try:
+    current_dir = Path(__file__).resolve().parent
+    sys.path.insert(0, str(current_dir))
+    from qa_reporter import QAReporter
+except Exception as e:
+    print("[ERRO] qa_reporter.py não encontrado ou inválido: ", e)
+    sys.exit(1)
+
+reporter: Optional[QAReporter] = QAReporter(reports_dir=DIR_REPORTS)
+reporter.start()
 
 
-# ===================== AJUSTES P/ 'Todos os cenários' =====================
-def _derive_group_name(label: str) -> str:
-    m = re.search(r"\bde\s+(.+)", label, flags=re.IGNORECASE)
-    return m.group(1).strip() if m else (label or "")
+# --- COMPATIBILIDADE COM qa_reporter ANTIGO/NOVO ---
+# se não existir step_pass/step_fail, criamos "adapters" para não quebrar
+if not hasattr(reporter, "step_pass"):
+    def _step_pass(title: str, details: str | None = None):
+        # tente usar uma API alternativa, senão apenas faça print
+        if hasattr(reporter, "step"):            # ex: reporter.step(title, status, details)
+            try:
+                reporter.step(title, "PASS", details or "")
+                return
+            except Exception:
+                pass
+        print(f"[PASS] {title}" + (f" - {details}" if details else ""))
+    reporter.step_pass = _step_pass  # type: ignore[attr-defined]
 
-def _already_has_all_item(scenarios: dict) -> bool:
-    return any(scenarios[k].get("all") for k in scenarios)
+if not hasattr(reporter, "step_fail"):
+    def _step_fail(title: str, details: str | None = None):
+        if hasattr(reporter, "step"):
+            try:
+                reporter.step(title, "FAIL", details or "")
+                return
+            except Exception:
+                pass
+        print(f"[FAIL] {title}" + (f" - {details}" if details else ""))
+    reporter.step_fail = _step_fail  # type: ignore[attr-defined]
 
-def _append_all_item(grupo: dict):
-    scenarios = grupo.get("scenarios", {})
-    if not scenarios or _already_has_all_item(scenarios):
-        return
-    ordered_keys = sorted(scenarios.keys(), key=lambda x: int(x))
-    files = [scenarios[k]["file"] for k in ordered_keys if isinstance(scenarios[k], dict) and "file" in scenarios[k]]
-    next_key = str(len(ordered_keys) + 1)
-    group_name = _derive_group_name(grupo.get("label", ""))
-    scenarios[next_key] = {
-        "label": f"Todos os cenários de {group_name} (Digite {next_key})",
-        "all": True,
-        "files": files,
-    }
+# opcional: se não houver finish, evita quebrar no finally
+if not hasattr(reporter, "finish"):
+    def _finish(metadata=None):
+        print("[INFO] Reporter.finish ausente — encerrando sem gerar arquivo.")
+    reporter.finish = _finish  # type: ignore[attr-defined]
+# --- FIM DO BLOCO DE COMPATIBILIDADE ---
 
-def augment_with_all_options():
-    cad = SCRIPTS.get("cadastros") or {}
-    for tipo in ("principais", "adicionais"):
-        for _k, grupo in (cad.get(tipo) or {}).items():
-            _append_all_item(grupo)
-    for _k, grupo in (SCRIPTS.get("processos") or {}).items():
-        _append_all_item(grupo)
 
-# ===================== TECLADO (Windows/Unix) =====================
-IS_WIN = (os.name == "nt")
-if IS_WIN:
-    import msvcrt
-    import ctypes
-    user32 = ctypes.windll.user32
-    VK_SHIFT = 0x10
+_report_meta = {
+    "ambiente": os.getenv("QA_AMBIENTE", "Homologação"),
+    "versao":   os.getenv("QA_VERSAO", "-"),
+}
 
-def clear_screen():
-    os.system("cls" if IS_WIN else "clear")
+# ===================== ACESSO À BASE DE CENÁRIOS (SCRIPTS ausente de propósito) =====================
+def _scripts() -> Dict[str, Any]:
+    """
+    Este runner espera que você defina SCRIPTS (e opcionalmente BASE_SCRIPTS) em outro ponto do arquivo
+    ou importe de um módulo seu. Se não estiver definido, exibimos um erro amigável.
+    """
+    g = globals()
+    if "SCRIPTS" not in g:
+        print("[ERRO] SCRIPTS não definido. Insira sua BASE DE CENÁRIOS antes de usar os menus.")
+        return {}
+    return g["SCRIPTS"]
 
-def _is_shift_pressed_windows() -> bool:
-    if not IS_WIN:
-        return False
-    return (user32.GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0
+# ===================== EXECUÇÃO DE CENÁRIOS =====================
+def run_script(path: Path) -> int:
+    """Executa um .py como __main__, marca pass/fail no relatório e atualiza contadores."""
+    global SUCCESS_COUNT, FAIL_COUNT
+    print(f"\n[RUN] {path}")
+    if not path.exists():
+        print(f"[ERRO] Arquivo não encontrado: {path}")
+        try:
+            reporter.step_fail(f"{path.name}", "Arquivo não encontrado.")
+        except Exception:
+            pass
+        FAIL_COUNT += 1
+        return 1
+    try:
+        # Variáveis de saída úteis aos cenários
+        os.environ.setdefault("QA_OUT_REPORTS", str(DIR_REPORTS))
+        os.environ.setdefault("QA_OUT_SHOTS",   str(DIR_SHOTS))
+        os.environ.setdefault("QA_OUT_LOGS",    str(DIR_LOGS))
+        os.environ.setdefault("QA_OUT_DLS",     str(DIR_DLS))
 
-# ===================== SUPORTE PYTHON EM FROZEN =====================
-def _pick_python_for_frozen() -> list[str] | None:
-    forced = os.getenv("QA_PY")
-    if forced and shutil.which(forced):
-        return [forced]
-    for candidate in ("py", "python", "python3"):
-        path = shutil.which(candidate)
-        if path:
-            if os.name == "nt" and os.path.basename(path).lower() == "py.exe":
-                return [path, "-3"]
-            return [path]
+        runpy.run_path(str(path), run_name="__main__")
+        print(f"[OK]  {path.name}")
+        reporter.step_pass(f"{path.name}")
+        SUCCESS_COUNT += 1
+        return 0
+    except SystemExit as se:
+        code = int(getattr(se, "code", 1) or 1)
+        if code == 0:
+            print(f"[OK]  {path.name} (SystemExit 0)")
+            reporter.step_pass(f"{path.name}")
+            SUCCESS_COUNT += 1
+        else:
+            print(f"[FAIL] {path.name} (SystemExit {code})")
+            reporter.step_fail(f"{path.name}", f"SystemExit {code}")
+            FAIL_COUNT += 1
+        return code
+    except Exception:
+        print(f"[FAIL] {path.name}")
+        traceback.print_exc()
+        reporter.step_fail(f"{path.name}", traceback.format_exc())
+        FAIL_COUNT += 1
+        return 1
+
+def run_chain(paths: List[Path]) -> int:
+    """Executa vários .py em sequência; retorna o primeiro código de erro se houver."""
+    code = 0
+    for p in paths:
+        c = run_script(p)
+        if code == 0 and c != 0:
+            code = c
+    return code
+
+# ===================== HELPERS DE NAVEGAÇÃO EM SCRIPTS =====================
+def _collect_all_from(node: Dict[str, Any]) -> List[Path]:
+    """Coleta todos os arquivos de 'scenarios' de um nó (recursivo)."""
+    acc: List[Path] = []
+    if not isinstance(node, dict):
+        return acc
+    scens = node.get("scenarios")
+    if isinstance(scens, dict):
+        for _, scen in sorted(scens.items(), key=lambda kv: kv[0]):
+            p = scen.get("file")
+            if isinstance(p, str): p = Path(p)
+            if isinstance(p, Path): acc.append(p)
+    for k, v in node.items():
+        if k in ("label","scenarios"): 
+            continue
+        if isinstance(v, dict):
+            acc.extend(_collect_all_from(v))
+    return acc
+
+def _pick_from(node: Dict[str, Any], key: str) -> Optional[Dict[str, Any]]:
+    if isinstance(node, dict) and key in node and isinstance(node[key], dict):
+        return node[key]
     return None
 
-# ===================== RAIZ DO PROJETO (CWD) =====================
-from pathlib import Path as _PathAlias
-
-def _resolve_project_root(default_start: _PathAlias) -> _PathAlias:
+def _listar_grupos(grupo_raiz: Dict[str, Any]) -> List[Tuple[str, str, Dict[str, Any]]]:
     """
-    1) Se QA_PROJECT_ROOT estiver definido e contiver 'cenariostestespegasus', usa-o.
-    2) Senão, tenta C:/RPASelenium/RPAsPegasusSelenium (layout padrão do seu repo).
-    3) Senão, devolve 'default_start'.
+    Retorna [(codigo, label, node)] para cada subgrupo, por ex.:
+    ("1", "Cenários dos cadastros de Abastecimento", {...})
     """
-    env = os.getenv("QA_PROJECT_ROOT")
-    if env:
-        p = _PathAlias(env)
-        if (p / "cenariostestespegasus").exists():
-            return p
+    itens: List[Tuple[str, str, Dict[str, Any]]] = []
+    if not isinstance(grupo_raiz, dict):
+        return itens
+    for subkey, subnode in sorted(
+        ((k, v) for k, v in grupo_raiz.items() if k not in ("label", "scenarios")), 
+        key=lambda kv: kv[0]
+    ):
+        if isinstance(subnode, dict):
+            itens.append((subkey, subnode.get("label", f"Grupo {subkey}"), subnode))
+    return itens
 
-    p = _PathAlias("C:/RPASelenium/RPAsPegasusSelenium")
-    if (p / "cenariostestespegasus").exists():
-        return p
+def _listar_cenarios(node_de_grupo: Dict[str, Any]) -> List[Tuple[str, str, Path]]:
+    """
+    Retorna [(codigo, label, path)] com os cenários de um *subgrupo específico*.
+    """
+    itens: List[Tuple[str, str, Path]] = []
+    scens = node_de_grupo.get("scenarios", {})
+    if isinstance(scens, dict):
+        for scen_id, scen in sorted(scens.items(), key=lambda kv: kv[0]):
+            label = scen.get("label", f"Cenário {scen_id}")
+            p = scen.get("file")
+            if isinstance(p, str):
+                p = Path(p)
+            if isinstance(p, Path):
+                itens.append((scen_id, label, p))
+    return itens
 
-    return default_start
+# ===================== MENUS =====================
+def _confirmar(qtd: int, titulo: str = "cenários") -> bool:
+    print(f'\nDeseja iniciar a execução do teste de {qtd} {titulo}? (S/N)')
+    return input('> ').strip().lower().startswith('s')
 
-
-# ===================== LOGS =====================
-def _paths_logs_for(py_file: Path) -> tuple[Path, Path]:
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    safe = f"{py_file.parent.name}__{py_file.stem}".replace(" ", "_")
-    out_log = DIR_LOGS / f"{stamp}__{safe}__out.log"
-    err_log = DIR_LOGS / f"{stamp}__{safe}__err.log"
-    return out_log, err_log
-
-# ===================== EXECUÇÃO DE SCRIPTS =====================
-def run_script_with_interrupt(py_file: Path, ask_confirm: bool = True, force_inprocess_when_frozen: bool = False):
-    if ask_confirm:
-        resp = input(f"Deseja executar '{py_file.name}'? (y/n): ")
-        if resp.strip().lower() != 'y':
-            print("Ação interrompida pelo usuário"); return
-
-    out_txt, err_txt, erro_msg = "", "", None
-    t_ini = time.perf_counter()
-    out_log, err_log = _paths_logs_for(py_file)
-
-    try:
-        project_cwd = _resolve_project_root(py_file.parent)
-        print(f"[runner] cwd: {project_cwd}")
-
-        if getattr(sys, "frozen", False):
-            py_cmd = _pick_python_for_frozen()
-            if py_cmd is None:
-                print("[runner] Nenhum Python do sistema encontrado. Executando in-process (runpy).")
-                try:
-                    old_cwd = Path.cwd()
-                    with contextlib.ExitStack() as stack:
-                        stack.callback(lambda: os.chdir(old_cwd))
-                        os.chdir(py_file.parent)
-                        from io import StringIO
-                        old_argv = sys.argv
-                        sys.argv = [str(py_file)]
-                        old_stdout, old_stderr = sys.stdout, sys.stderr
-                        buf_out, buf_err = StringIO(), StringIO()
-                        try:
-                            sys.stdout, sys.stderr = buf_out, buf_err
-                            runpy.run_path(str(py_file), run_name="__main__")
-                        finally:
-                            sys.stdout, sys.stderr = old_stdout, old_stderr
-                            sys.argv = old_argv
-                        out_txt, err_txt = buf_out.getvalue(), buf_err.getvalue()
-                except Exception as e:
-                    err_txt += f"\n[ERRO] Execução in-process falhou: {e}\n"
-                    erro_msg = str(e)
-            else:
-                cmd = py_cmd + [str(py_file)]
-                project_cwd = _resolve_project_root(py_file.parent)
-                print(f"[runner] cwd: {project_cwd}")
-                print(f"[runner] usando interpretador: {' '.join(cmd)}")
-
-                proc = subprocess.Popen(cmd, cwd=str(project_cwd), stdout=..., stderr=..., text=True)
-                o, e = proc.communicate()
-                out_txt, err_txt = o or "", e or ""
-        else:
-            cmd = [sys.executable, str(py_file)]
-            project_cwd = _resolve_project_root(py_file.parent)
-            print(f"[runner] cwd: {project_cwd}")
-            print(f"[runner] usando interpretador atual: {' '.join(cmd)}")
-
-            proc = subprocess.Popen(cmd, cwd=str(project_cwd), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            o, e = proc.communicate()
-            out_txt, err_txt = o or "", e or ""
-    finally:
-        dur_s = time.perf_counter() - t_ini
-        reporter.record(
-            cadastro=f"{py_file.parent.name}/{py_file.stem}",
-            status="error" if err_txt else "success",
-            duracao_s=dur_s,
-            referencia=None,
-            erro=erro_msg,
-            evidencias={"log": str(err_log)}
-        )
-        out_log.write_text(out_txt, encoding="utf-8", errors="ignore")
-        err_log.write_text(err_txt, encoding="utf-8", errors="ignore")
-        print(f"Automação finalizada. -> Duração: {dur_s:.2f}s")
-
-# ===================== MENUS (RESUMO) =====================
-def tela_tipo_automacao():
+def menu_principal(tree: Dict[str, Any]) -> int:
     clear_screen()
-    print("Qual tipo de automação você deseja rodar?\n")
-    print("- Cadastros (Digite 0)")
-    print("- Processos (Digite 1)")
-    print("- Cadastros e Processos (Digite 2)\n")
-    choice = input("Opção: ").strip()
-    if choice == "0":
-        print("[MENU] Cadastros")
-    elif choice == "1":
-        print("[MENU] Processos")
-    elif choice == "2":
-        print("[MENU] Todos")
-        for categoria_key in SCRIPTS["cadastros"]["principais"]:
-            categoria = SCRIPTS["cadastros"]["principais"][categoria_key]
-            for scenario_key in categoria.get("scenarios", {}):
-                run_script_with_interrupt(categoria["scenarios"][scenario_key]["file"], ask_confirm=False)
+    print('\nQual tipo automação você deseja rodar?\n')
+    print('Cadastros (Digite 1)')
+    print('Processos (Digite 2)')
+    print('Cadastros e Processos (0)')
+    opt = input('\n> ').strip()
 
-def main():
-    tela_tipo_automacao()
-    print("Saindo...")
+    if opt == '0':
+        paths = []
+        if "cadastros" in tree: paths += _collect_all_from(tree["cadastros"])
+        if "processos" in tree: paths += _collect_all_from(tree["processos"])
+        if _confirmar(len(paths)):
+            try:
+                reporter.step_pass("Início da Execução em Cadeia", f"Iniciando execução de {len(paths)} cenário(s) - Cadastros e Processos.")
+            except Exception:
+                pass
+            clear_screen()
+            code = run_chain(paths)
+            try:
+                reporter.step_pass("Resumo Geral", f"Concluído: {SUCCESS_COUNT} sucesso(s), {FAIL_COUNT} falha(s). Código de saída: {code}.")
+            except Exception:
+                pass
+            return code
+        return 0
 
-# ===================== MAIN =====================
-if __name__ == "__main__":
-    exit_code = 0
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("Encerrado pelo usuário."); exit_code = 13
-    except Exception as e:
-        exit_code = 1
-        log_dir = Path(os.getenv("LOCALAPPDATA", ".")) / "AgentePegasus" / "logs"
-        log_dir.mkdir(parents=True, exist_ok=True)
-        (log_dir / "crash.log").write_text(traceback.format_exc(), encoding="utf-8")
-        print("[ERRO] Falha inesperada. Detalhes em:", log_dir / "crash.log")
-        print(traceback.format_exc())
-    finally:
+    if opt == '1':
+        return menu_cadastros(tree.get("cadastros", {}))
+    if opt == '2':
+        return menu_processos(tree.get("processos", {}))
+
+    print('[ERRO] Opção inválida.')
+    return 4
+
+def menu_cadastros(cadastros: Dict[str, Any]) -> int:
+    clear_screen()
+    print('\nQual tipo de cadastro você deseja rodar?\n')
+    print('Cadastros Principais (Digite 1)')
+    print('Cadastros Adicionais (Digite 2)')
+    print('Todos os cadastros contidos no sistema (0)')
+
+    opt = input('\n> ').strip()
+
+    if opt == '0':
+        paths = _collect_all_from(cadastros)
+        if _confirmar(len(paths)):
+            try:
+                reporter.step_pass("Início da Execução em Cadeia", f"Iniciando execução de {len(paths)} cenário(s) - Todos os cadastros.")
+            except Exception:
+                pass
+            clear_screen()
+            code = run_chain(paths)
+            try:
+                reporter.step_pass("Resumo Geral", f"Concluído: {SUCCESS_COUNT} sucesso(s), {FAIL_COUNT} falha(s). Código de saída: {code}.")
+            except Exception:
+                pass
+            return code
+        return 0
+
+    if opt == '1':
+        grupo = _pick_from(cadastros, "principais")
+        return menu_listar_grupos_e_escolher(grupo, "Cadastros Principais")
+    if opt == '2':
+        grupo = _pick_from(cadastros, "adicionais")
+        return menu_listar_grupos_e_escolher(grupo, "Cadastros Adicionais")
+
+    print('[ERRO] Opção inválida.')
+    return 4
+
+def menu_listar_grupos_e_escolher(grupo_raiz: Dict[str, Any], titulo: str) -> int:
+    """
+    1º nível dentro de Cadastros Principais/Adicionais:
+    - Mostra todos os grupos (Abastecimento, Áreas, …)
+    - 0 = roda todos os cenários de TODOS os grupos
+    - número = entra no grupo para listar cenários
+    """
+    clear_screen()
+    itens = _listar_grupos(grupo_raiz)
+    if not itens:
+        print(f"[ERRO] Nenhum grupo encontrado em {titulo}.")
+        return 3
+
+    print(f"\n{titulo}\n")
+    print(f"Todos os {titulo.split()[-1]} (Digite 0)")
+    for i, (code, label, _) in enumerate(itens, start=1):
+        print(f"{label} (Digite {i})")
+
+    opt = input("\n> ").strip()
+    if opt == "0":
+        paths = _collect_all_from(grupo_raiz)
+        if _confirmar(len(paths)):
+            try:
+                reporter.step_pass("Início da Execução em Cadeia", f"Iniciando {len(paths)} cenário(s) - {titulo} (todos).")
+            except Exception:
+                pass
+            clear_screen()
+            code = run_chain(paths)
+            try:
+                reporter.step_pass("Resumo Geral", f"Concluído: {SUCCESS_COUNT} sucesso(s), {FAIL_COUNT} falha(s). Código de saída: {code}.")
+            except Exception:
+                pass
+            return code
+        return 0
+
+    if opt.isdigit():
+        n = int(opt)
+        if n < 1 or n > len(itens):
+            print("[ERRO] Opção fora de faixa.")
+            return 4
+        _, label_grupo, node_grupo = itens[n-1]
+        return menu_listar_cenarios_de_um_grupo(node_grupo, label_grupo)
+
+    print("[ERRO] Opção inválida.")
+    return 4
+
+def menu_listar_cenarios_de_um_grupo(node_grupo: Dict[str, Any], titulo_grupo: str) -> int:
+    """
+    2º nível: lista os CENÁRIOS do grupo escolhido (com 0 = rodar todos do grupo).
+    """
+    clear_screen()
+    itens = _listar_cenarios(node_grupo)
+    if not itens:
+        print(f"[ERRO] Nenhum cenário encontrado em {titulo_grupo}.")
+        return 3
+
+    print(f"\n{titulo_grupo} - Selecione o que rodar:\n")
+    print("0) Rodar TODOS deste grupo em cadeia")
+    for i, (code, label, _) in enumerate(itens, start=1):
+        print(f"{i}) {label}")
+
+    opt = input("\n> ").strip()
+    if opt == "0":
+        paths = [p for _, _, p in itens]
+        if _confirmar(len(paths)):
+            try:
+                reporter.step_pass("Início da Execução em Cadeia", f"Iniciando {len(paths)} cenário(s) - {titulo_grupo}.")
+            except Exception:
+                pass
+            clear_screen()
+            code = run_chain(paths)
+            try:
+                reporter.step_pass("Resumo Geral", f"Concluído: {SUCCESS_COUNT} sucesso(s), {FAIL_COUNT} falha(s). Código de saída: {code}.")
+            except Exception:
+                pass
+            return code
+        return 0
+
+    if opt.isdigit():
+        n = int(opt)
+        if n < 1 or n > len(itens):
+            print("[ERRO] Opção fora de faixa.")
+            return 4
+        _, label, p = itens[n-1]
+        if _confirmar(1, "cenário"):
+            clear_screen()
+            return run_script(p)
+        return 0
+
+    print("[ERRO] Opção inválida.")
+    return 4
+
+def menu_processos(proc: Dict[str, Any]) -> int:
+    """
+    Se sua árvore de 'processos' tiver a mesma estrutura (grupos -> scenarios),
+    use o mesmo padrão de listagem:
+    """
+    return menu_listar_grupos_e_escolher(proc, "Processos")
+
+# ===================== CLI =====================
+def main_cli():
+    args = sys.argv[1:]
+
+    # Atalhos por linha de comando (opcionais)
+    if "--run" in args:
+        idx = args.index("--run")
+        target = args[idx + 1] if idx + 1 < len(args) else None
+        if not target:
+            print("[ERRO] Uso: --run <arquivo.py>")
+            sys.exit(2)
+        clear_screen()
+        sys.exit(run_chain([Path(target)]))
+
+    if "--chain" in args:
+        idx = args.index("--chain")
+        chain = args[idx + 1] if idx + 1 < len(args) else ""
+        paths = [Path(p) for p in chain.split("|") if p.strip()]
+        clear_screen()
+        sys.exit(run_chain(paths))
+
+    # Fluxo com senha + menus
+    if not check_password():
+        # senha inválida já foi logada; encerra com código 5
         try:
-            if reporter:
-                reporter.stop()
-                rel_path = reporter.save_docx(
-                    nome_arquivo=None,
-                    ambiente=_report_meta.get("ambiente"),
-                    versao=_report_meta.get("versao"),
-                    out_base=OUT_BASE
-                )
-                print(f"[REPORT] Relatório gerado: {rel_path}")
-        except Exception as e:
-            print(f"[ALERTA] Não foi possível gerar o relatório DOCX: {e}")
-        sys.exit(exit_code)
+            reporter.step_fail("Encerramento", "Aplicação encerrada por falha de autenticação.")
+        except Exception:
+            pass
+        sys.exit(5)
+
+    tree = _scripts()
+    if not tree:
+        # Sem SCRIPTS definido
+        try:
+            reporter.step_fail("Encerramento", "SCRIPTS não definido. Nada a executar.")
+        except Exception:
+            pass
+        sys.exit(3)
+
+    code = menu_principal(tree)
+    sys.exit(code)
+
+if __name__ == "__main__":
+    try:
+        main_cli()
+    finally:
+        # Resumo final e fechamento do relatório
+        try:
+            reporter.step_pass("Resumo Final",
+                               f"Total executado: {SUCCESS_COUNT + FAIL_COUNT} | "
+                               f"Sucessos: {SUCCESS_COUNT} | Falhas: {FAIL_COUNT}")
+            reporter.finish(metadata=_report_meta)
+            print(f"[RELATÓRIO] Gerado em: {DIR_REPORTS}")
+        except Exception as _e:
+            print("[WARN] Falha ao finalizar relatório:", _e)

@@ -5,7 +5,7 @@
 2025-08-15 17:50:53 - INFO - SUCCESS: Acessando menu Plano Empresa realizada com sucesso
 2025-08-15 17:50:57 - INFO - SUCCESS: Clicando em Fechamento realizada com sucesso
 2025-08-15 17:51:05 - INFO - SUCCESS: Selecionando Plano Empresa realizada com sucesso
-2025-08-15 17:51:36 - ERROR - Falha ao clicar em ('css selector', '#gsPlanoEmpresa > div.wdTelas > div:nth-child(4) > div.formRow.formLastLine > div:nth-child(2) > a'): Message: Elemento não encontrado: ('css selector', '#gsPlanoEmpresa > div.wdTelas > div:nth-child(4) > div.formRow.formLastLine > div:nth-child(2) > a') (condição: present, timeout: 30s)
+2025-08-15 17:51:36 - ERROR - Falha ao clicar em ('css selector', '#gsPlanoEmpresa > div.wdTelas > div:nth-child(4) > div.formRow.formLastLine > div:nth-child(2) > a'): Message: Elemento nï¿½o encontrado: ('css selector', '#gsPlanoEmpresa > div.wdTelas > div:nth-child(4) > div.formRow.formLastLine > div:nth-child(2) > a') (condiï¿½ï¿½o: present, timeout: 30s)
 
 2025-08-15 17:51:36 - INFO - SUCCESS: Buscando Plano Empresa realizada com sucesso
 2025-08-15 17:51:36 - INFO - Encontrados 0 campos datepicker
@@ -17,9 +17,9 @@
 2025-08-15 17:51:43 - INFO - Encontrados 0 campos datepicker
 2025-08-15 17:51:43 - WARNING - Nenhum campo datepicker encontrado, tentativa 4
 2025-08-15 17:51:45 - INFO - Encontrados 0 campos datepicker
-2025-08-15 17:51:45 - ERROR - Preenchendo dados do fechamento falhou: Exception: Falha ao preencher datepicker 0 após 5 tentativas
+2025-08-15 17:51:45 - ERROR - Preenchendo dados do fechamento falhou: Exception: Falha ao preencher datepicker 0 apï¿½s 5 tentativas
 2025-08-15 17:51:45 - ERROR - Falha na etapa: Preenchimento dos dados
-2025-08-15 17:52:15 - ERROR - Falha ao clicar em ('css selector', '#gsPlanoEmpresa > div.wdTelas > div:nth-child(4) > div.contentHolder.clearfix.overflow.overflowY > div:nth-child(2) > div:nth-child(5) > div > a'): Message: Elemento não encontrado: ('css selector', '#gsPlanoEmpresa > div.wdTelas > div:nth-child(4) > div.contentHolder.clearfix.overflow.overflowY > div:nth-child(2) > div:nth-child(5) > div > a') (condição: present, timeout: 30s)
+2025-08-15 17:52:15 - ERROR - Falha ao clicar em ('css selector', '#gsPlanoEmpresa > div.wdTelas > div:nth-child(4) > div.contentHolder.clearfix.overflow.overflowY > div:nth-child(2) > div:nth-child(5) > div > a'): Message: Elemento nï¿½o encontrado: ('css selector', '#gsPlanoEmpresa > div.wdTelas > div:nth-child(4) > div.contentHolder.clearfix.overflow.overflowY > div:nth-child(2) > div:nth-child(5) > div > a') (condiï¿½ï¿½o: present, timeout: 30s)
 
 2025-08-15 17:53:29 - ERROR - Falha ao preencher campo ('css selector', 'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input'): Message: invalid session id: session deleted as the browser has closed the connection
 from disconnected: not connected to DevTools

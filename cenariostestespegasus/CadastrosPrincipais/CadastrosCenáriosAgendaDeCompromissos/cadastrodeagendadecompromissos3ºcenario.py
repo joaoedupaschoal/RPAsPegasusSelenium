@@ -8,6 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.action_chains import ActionChains
 from webdriver_manager.chrome import ChromeDriverManager
 from docx import Document
 from docx.shared import Inches
@@ -151,6 +152,66 @@ def gerar_data_e_hora_compromisso():
     data = datetime.now() + timedelta(days=random.randint(1, 10))
     hora = f"{random.randint(8, 18):02d}:{random.choice(['00', '30'])}"
     return data.strftime("%d/%m/%Y"), hora
+
+
+def preencher_campo_com_retry(driver, wait, seletor, valor, max_tentativas=2):
+    """Tenta preencher o campo com diferentes métodos até conseguir"""
+    
+    for tentativa in range(max_tentativas):
+        try:
+
+            
+            # Aguarda o elemento
+            campo = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, seletor)))
+            
+            # Scroll até o elemento se necessário
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", campo)
+            time.sleep(0.5)
+            
+            # Método 1: Tradicional
+            if tentativa == 0:
+                campo.click()
+                campo.clear()
+                campo.send_keys(valor)
+                campo.send_keys(Keys.TAB)
+            
+            # Método 2: ActionChains
+            elif tentativa == 1:
+                ActionChains(driver).move_to_element(campo).click().perform()
+                time.sleep(0.2)
+                ActionChains(driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
+                ActionChains(driver).send_keys(valor).perform()
+                ActionChains(driver).send_keys(Keys.TAB).perform()
+            
+            # Método 3: JavaScript
+            else:
+                driver.execute_script("""
+                    var element = arguments[0];
+                    var valor = arguments[1];
+                    element.focus();
+                    element.value = '';
+                    element.value = valor;
+                    element.dispatchEvent(new Event('input', { bubbles: true }));
+                    element.dispatchEvent(new Event('change', { bubbles: true }));
+                    element.blur();
+                """, campo, valor)
+            
+            time.sleep(0.5)
+            
+            # Verifica se o valor foi preenchido
+            valor_atual = campo.get_attribute('value')
+            if valor_atual == valor:
+
+                return True
+            else:
+                print()
+                
+        except Exception as e:
+            time.sleep(1)
+    
+
+    return False
+
 
 def preencher_data(selector, valor):
     def acao():
