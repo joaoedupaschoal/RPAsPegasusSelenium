@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('cenariostestespegasus', 'cenariostestespegasus')]
+datas = [('C:\\RPASelenium\\RPAsPegasusSelenium\\cenariostestespegasus', 'cenariostestespegasus'), ('C:\\RPASelenium\\RPAsPegasusSelenium\\utils', 'utils')]
 binaries = []
 hiddenimports = []
 tmp_ret = collect_all('selenium')
@@ -11,8 +11,6 @@ datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('docx')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('lxml')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('validate_docbr')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('pyautogui')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
@@ -24,12 +22,16 @@ tmp_ret = collect_all('trio_websocket')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('websocket')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('wsproto')
+tmp_ret = collect_all('faker')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('faker_vehicle')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('validate_docbr')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
-    ['TesteAgenteAutomacoes\\TesteAgenteAutomacoes.py'],
+    ['C:\\RPASelenium\\RPAsPegasusSelenium\\TesteAgenteAutomacoes\\TesteAgenteAutomacoes.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,

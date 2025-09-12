@@ -1,9 +1,0 @@
-Nesse teste, o robô preencherá todos os dados e clicará em Cancelar
-Traceback (most recent call last):
-  File "C:\RPASelenium\RPAsPegasusSelenium\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosProcedimentos\cadastrodeprocedimentos2ºcenario.py", line 131, in <module>
-    Select(driver.find_element(By.CSS_SELECTOR, "#fmod_10084 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroProcedimento > div.catWrapper > div > div > div > div > div > div:nth-child(4) > select")).select_by_visible_text("Médico")
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
-  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\support\select.py", line 139, in select_by_visible_text
-    raise NoSuchElementException(f"Could not locate element with visible text: {text}")
-selenium.common.exceptions.NoSuchElementException: Message: Could not locate element with visible text: Médico; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
-

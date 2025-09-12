@@ -210,7 +210,7 @@ campo_pesquisa.send_keys("Abastecimento", Keys.ENTER)
 
 time.sleep(3)
 
-cadastrar = driver.find_element(By.CSS_SELECTOR, "#fmod_10099 > div.wdTelas > div > ul > li:nth-child(1) > a > span")
+cadastrar = driver.find_element(By.CSS_SELECTOR, "#fmod_10090 > div.wdTelas > div > ul > li:nth-child(1) > a > span")
 cadastrar.click()
 
 time.sleep(2)
@@ -226,13 +226,13 @@ campo_data_abastecimento = wait.until(EC.element_to_be_clickable((
 # Preenche com a data desejada
 campo_data_abastecimento.send_keys(data_abastecimento_dt, Keys.TAB)
 
-select_combustivel = Select(wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10099 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(3) > select"))))
+select_combustivel = Select(wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10090 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(3) > select"))))
 select_combustivel.select_by_visible_text("Gasolina")
 
 
 # Preenche o campo Veículo (com autocomplete ou seletor de modal)
 open_lov_motorista = wait.until(
-    EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10099 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(4) > div > a"))
+    EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10090 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(4) > div > a"))
 )
 open_lov_motorista.click()
 
@@ -265,7 +265,7 @@ motorista.click()
 
 # Preenche o campo Veículo (com autocomplete ou seletor de modal)
 open_lov_veiculo = wait.until(
-    EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10099 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(5) > div > a"))
+    EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10090 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(5) > div > a"))
 )
 open_lov_veiculo.click()
 
@@ -297,7 +297,7 @@ veiculo.click()
 
 # Preenche o campo Veículo (com autocomplete ou seletor de modal)
 open_lov_posto_combustivel = wait.until(
-    EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10099 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(6) > div > a"))
+    EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10090 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(6) > div > a"))
 )
 open_lov_posto_combustivel.click()
 
@@ -408,24 +408,24 @@ driver.find_element(By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.btnHolder 
 time.sleep(5)
 
 km_atual_input = wait.until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10099 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(7) > input"))
+    EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10090 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(7) > input"))
 )
 km_atual_input.send_keys(str(km), Keys.TAB)
 
 volume_abastecido_input = wait.until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10099 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(8) > input"))
+    EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10090 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(8) > input"))
 )
 volume_abastecido_input.send_keys(str(volume), Keys.TAB)
 
 
 valor_unitario_input = wait.until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10099 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(9) > input"))
+    EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10090 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(9) > input"))
 )
 valor_unitario_input.send_keys(str(valor_unitario), Keys.TAB)
 
 
 # Clique no botão "Salvar"
-Salvar = driver.find_element(By.CSS_SELECTOR, "#fmod_10099 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.btnHolder > a.btModel.btGray.btsave")
+Salvar = driver.find_element(By.CSS_SELECTOR, "#fmod_10090 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.btnHolder > a.btModel.btGray.btsave")
 Salvar.click()
 time.sleep(1)
 
@@ -437,7 +437,7 @@ BtNo.click()
 
 
 # Fechar modal
-X = driver.find_element(By.CSS_SELECTOR, "#fmod_10099 > div.wdTop.ui-draggable-handle > div.wdClose > a")
+X = driver.find_element(By.CSS_SELECTOR, "#fmod_10090 > div.wdTop.ui-draggable-handle > div.wdClose > a")
 X.click()
 time.sleep(1)
 

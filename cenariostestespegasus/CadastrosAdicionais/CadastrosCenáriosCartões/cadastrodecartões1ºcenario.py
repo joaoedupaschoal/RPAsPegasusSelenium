@@ -72,7 +72,7 @@ def main():
         campo = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']")))
         campo.click()
         campo.send_keys("Cartão")
-        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/ul/li[5]/a"))).click()
+        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/ul/li[6]/a"))).click()
         time.sleep(2)
 
     def acessar_formulario():

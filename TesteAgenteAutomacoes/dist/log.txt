@@ -1,0 +1,87 @@
+Nesse teste, o robô preencherá todos os dados e clicará em Cancelar
+[FAIL] cadastrodeabastecimento2ºcenario.py
+Traceback (most recent call last):
+  File "TesteAgenteAutomacoes.py", line 2119, in run_script
+  File "<frozen runpy>", line 287, in run_path
+  File "<frozen runpy>", line 98, in _run_module_code
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI172602\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosAbastecimento\cadastrodeabastecimento2ºcenario.py", line 213, in <module>
+    cadastrar = driver.find_element(By.CSS_SELECTOR, "#fmod_10090 > div.wdTelas > div > ul > li:nth-child(1) > a > span")
+  File "selenium\webdriver\remote\webdriver.py", line 926, in find_element
+    return self.execute(Command.FIND_ELEMENT, {"using": by, "value": value})["value"]
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "selenium\webdriver\remote\webdriver.py", line 458, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.InvalidSessionIdException: Message: invalid session id: session deleted as the browser has closed the connection
+from disconnected: not connected to DevTools
+  (Session info: chrome=139.0.7258.155); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidsessionidexception
+Stacktrace:
+	GetHandleVerifier [0x0xd7a8a3+63283]
+	GetHandleVerifier [0x0xd7a8e4+63348]
+	(No symbol) [0x0xbb3e43]
+	(No symbol) [0x0xba3790]
+	(No symbol) [0x0xbc1602]
+	(No symbol) [0x0xc27cdc]
+	(No symbol) [0x0xc41ff9]
+	(No symbol) [0x0xc21216]
+	(No symbol) [0x0xbf0855]
+	(No symbol) [0x0xbf16f4]
+	GetHandleVerifier [0x0xfebb43+2623955]
+	GetHandleVerifier [0x0xfe6daa+2604090]
+	GetHandleVerifier [0x0xda069a+218410]
+	GetHandleVerifier [0x0xd90ed8+154984]
+	GetHandleVerifier [0x0xd9742d+180925]
+	GetHandleVerifier [0x0xd822b8+94536]
+	GetHandleVerifier [0x0xd82442+94930]
+	GetHandleVerifier [0x0xd6d5ea+9338]
+	BaseThreadInitThunk [0x0x76b1fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x776a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x776a827e+238]
+
+[FAIL] cadastrodeabastecimento2ºcenario.py - Traceback (most recent call last):
+  File "TesteAgenteAutomacoes.py", line 2119, in run_script
+  File "<frozen runpy>", line 287, in run_path
+  File "<frozen runpy>", line 98, in _run_module_code
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI172602\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosAbastecimento\cadastrodeabastecimento2ºcenario.py", line 213, in <module>
+    cadastrar = driver.find_element(By.CSS_SELECTOR, "#fmod_10090 > div.wdTelas > div > ul > li:nth-child(1) > a > span")
+  File "selenium\webdriver\remote\webdriver.py", line 926, in find_element
+    return self.execute(Command.FIND_ELEMENT, {"using": by, "value": value})["value"]
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "selenium\webdriver\remote\webdriver.py", line 458, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.InvalidSessionIdException: Message: invalid session id: session deleted as the browser has closed the connection
+from disconnected: not connected to DevTools
+  (Session info: chrome=139.0.7258.155); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidsessionidexception
+Stacktrace:
+	GetHandleVerifier [0x0xd7a8a3+63283]
+	GetHandleVerifier [0x0xd7a8e4+63348]
+	(No symbol) [0x0xbb3e43]
+	(No symbol) [0x0xba3790]
+	(No symbol) [0x0xbc1602]
+	(No symbol) [0x0xc27cdc]
+	(No symbol) [0x0xc41ff9]
+	(No symbol) [0x0xc21216]
+	(No symbol) [0x0xbf0855]
+	(No symbol) [0x0xbf16f4]
+	GetHandleVerifier [0x0xfebb43+2623955]
+	GetHandleVerifier [0x0xfe6daa+2604090]
+	GetHandleVerifier [0x0xda069a+218410]
+	GetHandleVerifier [0x0xd90ed8+154984]
+	GetHandleVerifier [0x0xd9742d+180925]
+	GetHandleVerifier [0x0xd822b8+94536]
+	GetHandleVerifier [0x0xd82442+94930]
+	GetHandleVerifier [0x0xd6d5ea+9338]
+	BaseThreadInitThunk [0x0x76b1fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x776a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x776a827e+238]
+
+
+
+[RUN] C:\Users\Gold System\AppData\Local\Temp\_MEI172602\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosAbastecimento\cadastrodeabastecimento3ºcenario.py

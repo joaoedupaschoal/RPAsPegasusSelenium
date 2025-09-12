@@ -169,6 +169,7 @@ def ajustar_zoom():
     except Exception as e:
         log(doc, f"⚠️ Erro ao ajustar zoom: {e}")
 
+
 def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, btn_pesquisar_selector, resultado_xpath):
     """Abre modal e seleciona um item"""
     def acao():
@@ -185,8 +186,9 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
         # Clica pesquisar
         pesquisar = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, btn_pesquisar_selector)))
         pesquisar.click()
-        time.sleep(3)
+        time.sleep(5)
         pesquisar.click()
+        time.sleep(3)
 
         # Espera o resultado e clica
         wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))

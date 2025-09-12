@@ -210,7 +210,7 @@ campo_pesquisa.send_keys("Abastecimento", Keys.ENTER)
 
 time.sleep(3)
 
-cadastrar = driver.find_element(By.CSS_SELECTOR, "#fmod_10099 > div.wdTelas > div > ul > li:nth-child(1) > a > span")
+cadastrar = driver.find_element(By.CSS_SELECTOR, "#fmod_10090 > div.wdTelas > div > ul > li:nth-child(1) > a > span")
 cadastrar.click()
 
 time.sleep(1)
@@ -228,14 +228,14 @@ campo_data_abastecimento.send_keys(Keys.TAB)
 
 
 desconto_input = wait.until(
-    EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10099 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(10) > input"))
+    EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10090 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.catWrapper > div > div > div > div > div > div:nth-child(10) > input"))
 )
 desconto_input.send_keys(str(desconto), Keys.TAB)
 
 
 
 # Clique no botão "Salvar"
-Salvar = driver.find_element(By.CSS_SELECTOR, "#fmod_10099 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.btnHolder > a.btModel.btGray.btsave")
+Salvar = driver.find_element(By.CSS_SELECTOR, "#fmod_10090 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroAbastecimento > div.btnHolder > a.btModel.btGray.btsave")
 Salvar.click()
 time.sleep(1)
 
