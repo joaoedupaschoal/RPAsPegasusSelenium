@@ -246,7 +246,7 @@ try:
 
     safe_action(doc, "Fechando modal após salvamento", lambda: (
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10055 > div.wdTop.ui-draggable-handle > div.wdClose > a"))).click(),
-        time.sleep(1)
+        time.sleep(2)
     ))
 
     safe_action(doc, "Verificando mensagem de alerta", lambda: (

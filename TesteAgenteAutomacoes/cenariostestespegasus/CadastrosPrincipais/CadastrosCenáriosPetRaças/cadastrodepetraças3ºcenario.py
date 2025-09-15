@@ -148,7 +148,7 @@ try:
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_200005 > div.wdTelas > div > ul > li:nth-child(1) > a > span"))).click()
     ))
 
-
+    time.sleep(3)
 
     safe_action(doc, "Salvando cadastro", lambda: driver.find_element(
         By.CSS_SELECTOR, "#fmod_200005 > div.wdTelas > div.telaCadastro.clearfix > div.btnHolder > a.btModel.btGray.btsave"
@@ -160,7 +160,7 @@ try:
         ))
     ).click())
 
-    encontrar_mensagem_alerta()
+
 
 except Exception as e:
     log(doc, f"❌ ERRO FATAL: {e}")

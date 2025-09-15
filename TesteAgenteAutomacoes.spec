@@ -1,9 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('C:\\RPASelenium\\RPAsPegasusSelenium\\cenariostestespegasus', 'cenariostestespegasus'), ('C:\\RPASelenium\\RPAsPegasusSelenium\\utils', 'utils')]
+datas = [('cenariostestespegasus', 'cenariostestespegasus')]
 binaries = []
 hiddenimports = []
+tmp_ret = collect_all('utils')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('selenium')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('webdriver_manager')
@@ -31,7 +33,7 @@ datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
-    ['C:\\RPASelenium\\RPAsPegasusSelenium\\TesteAgenteAutomacoes\\TesteAgenteAutomacoes.py'],
+    ['TesteAgenteAutomacoes\\TesteAgenteAutomacoes.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,

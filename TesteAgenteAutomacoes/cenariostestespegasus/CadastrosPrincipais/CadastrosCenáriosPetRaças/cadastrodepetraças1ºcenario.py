@@ -157,7 +157,6 @@ try:
     safe_action(doc, "Salvando cadastro", lambda: driver.find_element(
         By.CSS_SELECTOR, "#fmod_200005 > div.wdTelas > div.telaCadastro.clearfix > div.btnHolder > a.btModel.btGray.btsave"
     ).click())
-    encontrar_mensagem_alerta()
 
     safe_action(doc, "Fechando modal após salvamento", lambda: wait.until(EC.element_to_be_clickable((
         By.CSS_SELECTOR, "#fmod_200005 > div.wdTop.ui-draggable-handle > div > a"

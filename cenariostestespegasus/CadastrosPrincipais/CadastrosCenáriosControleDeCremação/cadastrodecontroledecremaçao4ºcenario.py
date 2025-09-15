@@ -22,6 +22,10 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+# ==== CONFIGURAÇÕES ====
+URL = "http://localhost:8080/gs/index.xhtml"
+LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
+LOGIN_PASSWORD = "071999gs"
 
 # ==== PROVIDERS CUSTOMIZADOS ====
 class BrasilProvider(BaseProvider):
@@ -62,21 +66,7 @@ def gerar_dados_documentos():
     
     return carteira_trabalho, pis, cnh, cpf
 
-# Gera os dados necessários
-data_admissao, data_inicio, data_fim, vencimento_cnh = gerar_datas_validas()
-carteira_trabalho, pis, cnh, cpf_valido = gerar_dados_documentos()
-
-# ==== CONFIGURAÇÕES ====
-URL = "http://localhost:8080/gs/index.xhtml"
-LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
-LOGIN_PASSWORD = "071999gs"
-
-# ==== DOCUMENTO ====
-doc = Document()
-doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Cadastro de Especialidades – Cenário 1: Preenchimento completo e salvamento.")
-doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-
+# Controle de screenshots únicas
 screenshot_registradas = set()
 
 # ==== FUNÇÕES DE UTILITÁRIO ====
@@ -93,71 +83,18 @@ def take_screenshot(driver, doc, nome):
         doc.add_picture(path, width=Inches(5.5))
         screenshot_registradas.add(nome)
 
-def safe_action(doc, descricao, func):
+def safe_action(doc, descricao, func, driver, wait):
     try:
         log(doc, f"🔄 {descricao}...")
         func()
         log(doc, f"✅ {descricao} realizada com sucesso.")
         take_screenshot(driver, doc, descricao.lower().replace(" ", "_"))
+        return True, "sucesso"
     except Exception as e:
         log(doc, f"❌ Erro ao {descricao.lower()}: {e}")
         take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
+        return False, "erro"
 
-def finalizar_relatorio():
-    nome_arquivo = f"relatorio_especialidades_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
-    doc.save(nome_arquivo)
-    log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
-    subprocess.run(["start", "winword", nome_arquivo], shell=True)
-    driver.quit()
-
-def encontrar_mensagem_alerta():
-    seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
-    ]
-
-    for seletor, tipo in seletores:
-        try:
-            elemento = driver.find_element(By.CSS_SELECTOR, seletor)
-            if elemento.is_displayed():
-                log(doc, f"📢 {tipo}: {elemento.text}")
-                return elemento
-        except:
-            continue
-
-    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
-    return None
-
-def ajustar_zoom():
-    try:
-        driver.execute_script("document.body.style.zoom='90%'")
-        log(doc, "🔍 Zoom ajustado para 90%.")
-    except Exception as e:
-        log(doc, f"⚠️ Erro ao ajustar zoom: {e}")
-
-# ==== INICIALIZAÇÃO DO DRIVER ====
-options = Options()
-options.add_argument("--start-maximized")
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-wait = WebDriverWait(driver, 20)
-
-
-URL = "http://localhost:8080/gs/index.xhtml"
-LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
-LOGIN_PASSWORD = "071999gs"
-
-# Configuração do Faker
-class BrasilProvider(BaseProvider):
-    def rg(self):
-        numeros = [str(random.randint(0, 9)) for _ in range(8)]
-        return ''.join(numeros) + '-' + str(random.randint(0, 9))
-
-fake = Faker("pt_BR")
-fake.add_provider(BrasilProvider)
-
-# Controle de screenshots únicas
-screenshot_registradas = set()
 def registrar_screenshot_unico(nome, driver, doc, descricao=None):
     if nome not in screenshot_registradas:
         if descricao:
@@ -165,17 +102,48 @@ def registrar_screenshot_unico(nome, driver, doc, descricao=None):
         take_screenshot(driver, doc, nome)
         screenshot_registradas.add(nome)
 
+def encontrar_mensagem_alerta(driver, doc):
+    seletores = [
+        (".alerts.salvo", "sucesso"),
+        (".alerts.alerta", "alerta"),
+        (".alerts.erro", "erro"),
+    ]
+
+    for seletor, tipo in seletores:
+        try:
+            elemento = driver.find_element(By.CSS_SELECTOR, seletor)
+            if elemento.is_displayed():
+                log(doc, f"📢 {tipo.upper()}: {elemento.text}")
+                return elemento, tipo
+        except:
+            continue
+
+    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
+    return None, None
+
+
 def main():
+    global screenshot_registradas
+    screenshot_registradas = set()
+    
     doc = Document()
     doc.add_heading("RELATÓRIO DO TESTE", 0)
     doc.add_paragraph("Cadastro de Controle de Cremação Teste.")
     doc.add_paragraph(f"🗕️ Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-    doc.add_paragraph("Neste teste, o robô preencherá os campos obrigatórios e salvará o cadastro de um novo Controle de Cremação.")
+    doc.add_paragraph("Neste teste, o robô preencherá APENAS os campos NÃO obrigatórios e salvará o cadastro de um novo Controle de Cremação.")
 
     chrome_options = Options()
     chrome_options.add_argument("--start-maximized")
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     wait = WebDriverWait(driver, 10)
+
+    def ajustar_zoom(driver):
+        try:
+            driver.execute_script("document.body.style.zoom='90%'")
+            log(doc, "🔍 Zoom ajustado para 90%.")
+        except Exception as e:
+            log(doc, f"⚠️ Erro ao ajustar zoom: {e}")
+
 
     def finalizar_relatorio():
         doc_name = f"relatorio_controle_cremacao_cenario_4_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
@@ -191,7 +159,7 @@ def main():
         wait.until(EC.presence_of_element_located((By.ID, "j_id15:email"))).send_keys(LOGIN_EMAIL)
         wait.until(EC.presence_of_element_located((By.ID, "j_id15:senha"))).send_keys(LOGIN_PASSWORD, Keys.ENTER)
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-        time.sleep(2)
+        time.sleep(4)
 
     def abrir_menu():
         driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2)
@@ -216,12 +184,18 @@ def main():
     def pesquisar_e_selecionar_falecido():
         log(doc, "🔄 Pesquisando e selecionando falecido.")
         campo_pesquisa = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#txtPesquisa")))
-        campo_pesquisa.send_keys('ALEX LOUREIRO SERRAVALLE', Keys.ENTER)
+        campo_pesquisa.send_keys('GUSTAVO VIEIRA', Keys.ENTER)
         time.sleep(2)
-        falecido = wait.until(EC.element_to_be_clickable((By.XPATH, "//td[contains(text(), 'ALEX LOUREIRO SERRAVALLE')]")))
+        falecido = wait.until(EC.element_to_be_clickable((By.XPATH, "//td[contains(text(), 'GUSTAVO VIEIRA')]")))
         falecido.click()
         log(doc, "✅ Falecido selecionado.")
 
+    def preencher_numero_os():
+        log(doc, "🔄 Preenchendo campo 'Número OS'.")
+        numero_OS = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 
+            "#fmod_200010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(3) > input")))
+        numero_OS.send_keys('201680')
+        log(doc, "✅ Campo 'Número OS' preenchido.")
 
     def selecionar_status_aguardando():
         log(doc, "🔄 Selecionando status 'Aguardando'.")
@@ -282,6 +256,7 @@ def main():
     if not safe_action(doc, "Pesquisando e selecionando falecido", pesquisar_e_selecionar_falecido, driver, wait)[0]:
         finalizar_relatorio()
         return
+
 
 
     if not safe_action(doc, "Selecionando status Aguardando", selecionar_status_aguardando, driver, wait)[0]:

@@ -367,6 +367,7 @@ try:
     safe_action(doc, "Salvando cadastro", lambda: (
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_1 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroPessoa > div.btnHolder > a.btModel.btGray.btsave"))).click(),
     ))
+    time.sleep(0.5)
 
     safe_action(doc, "Fechando modal após salvamento", lambda: (
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_1 > div.wdTop.ui-draggable-handle > div.wdClose > a"))).click(),

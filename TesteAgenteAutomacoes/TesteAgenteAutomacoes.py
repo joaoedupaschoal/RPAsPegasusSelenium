@@ -3,6 +3,51 @@ import os, sys, time, runpy, traceback, msvcrt
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
+import subprocess
+import time
+import select
+import keyboard
+
+# Força bundling do pacote utils para PyInstaller, mesmo que os imports
+# ocorram apenas dentro dos cenários
+try:
+    import utils  # noqa: F401
+    from utils import actions as _force_utils_actions  # noqa: F401
+except Exception:
+    pass
+
+
+FROZEN = getattr(sys, "frozen", False)
+
+_SCENARIO_PATH = os.environ.get("PEGASUS_RUN_SCENARIO")
+if _SCENARIO_PATH:
+    # Base do bundle quando frozen (onefile)
+    BASE_BUNDLE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    # Garante que o diretório base do bundle esteja no sys.path
+    sys.path.insert(0, str(BASE_BUNDLE))
+
+    # (opcional, mas ajuda): muda o cwd para a pasta do cenário,
+    # caso ele use caminhos relativos
+    try:
+        os.chdir(Path(_SCENARIO_PATH).parent)
+    except Exception:
+        pass
+
+    try:
+        runpy.run_path(_SCENARIO_PATH, run_name="__main__")
+        sys.exit(0)
+    except SystemExit as e:
+        sys.exit(e.code)
+    except Exception:
+        traceback.print_exc()
+        sys.exit(1)
+
+
+
+# ===================== LIMPAR TELA =====================
+def clear_screen():
+    os.system("cls" if os.name == "nt" else "clear")
+
 
 # ===================== BOAS-VINDAS =====================
 def mostrar_boas_vindas():
@@ -12,12 +57,10 @@ def mostrar_boas_vindas():
     except Exception:
         pass
     time.sleep(0.8)
+    clear_screen()
 
-mostrar_boas_vindas()
-
-# ===================== LIMPAR TELA =====================
-def clear_screen():
-    os.system("cls" if os.name == "nt" else "clear")
+if __name__ == "__main__" and not os.environ.get("PEGASUS_RUN_SCENARIO"):
+    mostrar_boas_vindas()
 
 
 # ===================== BASE DE CENÁRIOS =====================
@@ -2084,6 +2127,8 @@ _report_meta = {
     "versao":   os.getenv("QA_VERSAO", "-"),
 }
 
+
+
 # ===================== ACESSO À BASE DE CENÁRIOS (SCRIPTS ausente de propósito) =====================
 def _scripts() -> Dict[str, Any]:
     """
@@ -2096,10 +2141,75 @@ def _scripts() -> Dict[str, Any]:
         return {}
     return g["SCRIPTS"]
 
+# ===== Helpers de leitura de tecla (não bloqueante) =====
+# Requer imports no topo: import os, sys, select, msvcrt (Windows), time
+
+def _read_key_nonblocking() -> str | None:
+    """
+    Lê teclas sem bloquear.
+    - Windows: usa msvcrt.kbhit()/getwch() e normaliza seta-esquerda para '\x1b[D'
+    - POSIX: usa select + os.read para pegar sequências ANSI (ex.: ESC [ 1 ; 5 D)
+    Retorna a sequência lida ou None se nada disponível.
+    """
+    # --- Windows ---
+    try:
+        import msvcrt  # type: ignore
+        if msvcrt.kbhit():
+            ch = msvcrt.getwch()
+            if ch in ('\x00', '\xe0'):
+                ch2 = msvcrt.getwch()
+                # Left = 'K' (não há modificador confiável no console do Windows)
+                if ch2.upper() == 'K':
+                    return '\x1b[D'  # normaliza como ANSI Left
+                return ch + ch2
+            return ch
+        return None
+    except Exception:
+        pass
+
+    # --- POSIX (Linux/macOS) ---
+    try:
+        if select.select([sys.stdin], [], [], 0)[0]:
+            data = os.read(sys.stdin.fileno(), 16)
+            try:
+                return data.decode(errors="ignore")
+            except Exception:
+                return None
+        return None
+    except Exception:
+        return None
+
+
+# Sequências reconhecidas como "atalho de voltar/interromper"
+# Left, Shift+Left e Ctrl+Left (muitos terminais enviam ESC [ 1 ; 5 D para Ctrl+Left)
+_LEFT_SEQS = {
+    '\x1b[D',     # Left
+    '\x1b[1;2D',  # Shift+Left
+    '\x1b[1;5D',  # Ctrl+Left
+    '\x1b[2D',    # variação
+}
+
+def _pressed_shift_left(raw: str | None) -> bool:
+    """
+    Verdadeiro se a leitura sugerir Left/Shift+Left/Ctrl+Left.
+    Em consoles que não passam o modificador, aceitar Left puro garante o atalho.
+    """
+    if not raw:
+        return False
+    return any(seq in raw for seq in _LEFT_SEQS)
+
+
+
 # ===================== EXECUÇÃO DE CENÁRIOS =====================
 def run_script(path: Path) -> int:
-    """Executa um .py como __main__, marca pass/fail no relatório e atualiza contadores."""
+    """
+    Executa um .py em subprocesso; permite interromper via Ctrl+Left (S/N).
+    - Em modo .py: chama [python, path].
+    - Em modo .exe (PyInstaller, frozen): relança o próprio exe com
+      PEGASUS_RUN_SCENARIO=path para executar somente o cenário (sem reiniciar menus).
+    """
     global SUCCESS_COUNT, FAIL_COUNT
+
     print(f"\n[RUN] {path}")
     if not path.exists():
         print(f"[ERRO] Arquivo não encontrado: {path}")
@@ -2109,35 +2219,97 @@ def run_script(path: Path) -> int:
             pass
         FAIL_COUNT += 1
         return 1
-    try:
-        # Variáveis de saída úteis aos cenários
-        os.environ.setdefault("QA_OUT_REPORTS", str(DIR_REPORTS))
-        os.environ.setdefault("QA_OUT_SHOTS",   str(DIR_SHOTS))
-        os.environ.setdefault("QA_OUT_LOGS",    str(DIR_LOGS))
-        os.environ.setdefault("QA_OUT_DLS",     str(DIR_DLS))
 
-        runpy.run_path(str(path), run_name="__main__")
-        print(f"[OK]  {path.name}")
-        reporter.step_pass(f"{path.name}")
-        SUCCESS_COUNT += 1
-        return 0
-    except SystemExit as se:
-        code = int(getattr(se, "code", 1) or 1)
-        if code == 0:
-            print(f"[OK]  {path.name} (SystemExit 0)")
-            reporter.step_pass(f"{path.name}")
-            SUCCESS_COUNT += 1
-        else:
-            print(f"[FAIL] {path.name} (SystemExit {code})")
-            reporter.step_fail(f"{path.name}", f"SystemExit {code}")
-            FAIL_COUNT += 1
-        return code
+    # Variáveis de saída úteis aos cenários (mantidas)
+    os.environ.setdefault("QA_OUT_REPORTS", str(DIR_REPORTS))
+    os.environ.setdefault("QA_OUT_SHOTS",   str(DIR_SHOTS))
+    os.environ.setdefault("QA_OUT_LOGS",    str(DIR_LOGS))
+    os.environ.setdefault("QA_OUT_DLS",     str(DIR_DLS))
+
+    # --- cria subprocesso conforme ambiente (py vs exe) ---
+    env = os.environ.copy()
+    try:
+        FROZEN = getattr(sys, "frozen", False)
     except Exception:
-        print(f"[FAIL] {path.name}")
-        traceback.print_exc()
-        reporter.step_fail(f"{path.name}", traceback.format_exc())
+        FROZEN = False
+
+    if FROZEN:
+        # Empacotado (.exe): roda o mesmo exe em "modo cenário"
+        env["PEGASUS_RUN_SCENARIO"] = str(path)
+        proc = subprocess.Popen([sys.executable], env=env, close_fds=False)
+    else:
+        # Modo normal (.py): executa o script diretamente no Python
+        proc = subprocess.Popen([sys.executable, str(path)], env=env, close_fds=False)
+
+    try:
+        # Loop de monitoramento: enquanto o cenário estiver rodando
+        while True:
+            ret = proc.poll()
+            if ret is not None:
+                # terminou
+                if ret == 0:
+                    print(f"[OK]  {path.name}")
+                    try:
+                        reporter.step_pass(f"{path.name}")
+                    except Exception:
+                        pass
+                    SUCCESS_COUNT += 1
+                    return 0
+                else:
+                    print(f"[FAIL] {path.name} (exit {ret})")
+                    try:
+                        reporter.step_fail(f"{path.name}", f"Exit code {ret}")
+                    except Exception:
+                        pass
+                    FAIL_COUNT += 1
+                    return ret
+
+            # Atalho de interrupção (Ctrl+Left) com fallback para Left
+            if keyboard.is_pressed("ctrl+left") or keyboard.is_pressed("left"):
+                print('\nDeseja interromper essa automação? (S/N)')
+                ans = input('> ').strip().lower()
+                if ans.startswith('s'):
+                    # Encerramento gracioso
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=2)
+                    except Exception:
+                        pass
+                    # Força kill se ainda vivo
+                    if proc.poll() is None:
+                        proc.kill()
+                    print('[INFO] Automação interrompida pelo usuário.')
+                    try:
+                        reporter.step_fail(f"{path.name}", "Interrompido pelo usuário.")
+                    except Exception:
+                        pass
+                    FAIL_COUNT += 1
+                    return 2  # código dedicado para “interrompido pelo usuário”
+                else:
+                    print('[INFO] Continuação da automação...')
+
+            # Evita busy-wait
+            time.sleep(0.05)
+
+    except KeyboardInterrupt:
+        # Se o runner receber Ctrl+C, trata de forma similar
+        try:
+            proc.terminate()
+            proc.wait(timeout=1)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        print('[INFO] Execução interrompida via KeyboardInterrupt.')
+        try:
+            reporter.step_fail(f"{path.name}", "Interrompido (KeyboardInterrupt).")
+        except Exception:
+            pass
         FAIL_COUNT += 1
-        return 1
+        return 130
+
+
 
 def run_chain(paths: List[Path]) -> int:
     """Executa vários .py em sequência; retorna o primeiro código de erro se houver."""
@@ -2215,6 +2387,9 @@ def menu_principal(tree: Dict[str, Any]) -> int:
     print('Cadastros (Digite 1)')
     print('Processos (Digite 2)')
     print('Cadastros e Processos (0)')
+    print("Voltar para a aba anterior (Ctrl + Left Arrow)")
+
+
     opt = input('\n> ').strip()
 
     if opt == '0':
@@ -2249,6 +2424,8 @@ def menu_cadastros(cadastros: Dict[str, Any]) -> int:
     print('Cadastros Principais (Digite 1)')
     print('Cadastros Adicionais (Digite 2)')
     print('Todos os cadastros contidos no sistema (0)')
+    print("Voltar para a aba anterior (Ctrl + Left Arrow)")
+
 
     opt = input('\n> ').strip()
 
@@ -2278,97 +2455,144 @@ def menu_cadastros(cadastros: Dict[str, Any]) -> int:
     print('[ERRO] Opção inválida.')
     return 4
 
-def menu_listar_grupos_e_escolher(grupo_raiz: Dict[str, Any], titulo: str) -> int:
-    """
-    1º nível dentro de Cadastros Principais/Adicionais:
-    - Mostra todos os grupos (Abastecimento, Áreas, …)
-    - 0 = roda todos os cenários de TODOS os grupos
-    - número = entra no grupo para listar cenários
-    """
-    clear_screen()
-    itens = _listar_grupos(grupo_raiz)
-    if not itens:
-        print(f"[ERRO] Nenhum grupo encontrado em {titulo}.")
-        return 3
+def menu_listar_grupos_e_escolher(grupo_raiz, titulo="Menu Principal"):
+    while True:
+        clear_screen()
+        print(f"\n{titulo}\n" + "=" * len(titulo))
 
-    print(f"\n{titulo}\n")
-    print(f"Todos os {titulo.split()[-1]} (Digite 0)")
-    for i, (code, label, _) in enumerate(itens, start=1):
-        print(f"{label} (Digite {i})")
+        itens = []
+        for k, v in grupo_raiz.items():
+            if isinstance(v, dict) and "label" in v:
+                itens.append((k, v["label"], v))
+        itens.sort(key=lambda x: int(x[0]))
 
-    opt = input("\n> ").strip()
-    if opt == "0":
-        paths = _collect_all_from(grupo_raiz)
-        if _confirmar(len(paths)):
-            try:
-                reporter.step_pass("Início da Execução em Cadeia", f"Iniciando {len(paths)} cenário(s) - {titulo} (todos).")
-            except Exception:
-                pass
-            clear_screen()
-            code = run_chain(paths)
-            try:
-                reporter.step_pass("Resumo Geral", f"Concluído: {SUCCESS_COUNT} sucesso(s), {FAIL_COUNT} falha(s). Código de saída: {code}.")
-            except Exception:
-                pass
-            return code
-        return 0
+        for k, label, _ in itens:
+            print(f"{k}. {label}")
+        print("0. Rodar TODOS deste grupo em cadeia")
+        print("X. Voltar")
 
-    if opt.isdigit():
-        n = int(opt)
-        if n < 1 or n > len(itens):
-            print("[ERRO] Opção fora de faixa.")
-            return 4
-        _, label_grupo, node_grupo = itens[n-1]
-        return menu_listar_cenarios_de_um_grupo(node_grupo, label_grupo)
+        opt = input("\nDigite a opção desejada: ").strip()
 
-    print("[ERRO] Opção inválida.")
-    return 4
+        if opt == "0":
+            paths = []
+            for _, _, node in itens:
+                for _, _, p in _listar_cenarios_recursivo(node):
+                    paths.append(p)
+            if _confirmar(len(paths)):
+                try:
+                    reporter.step_pass("Início da Execução em Cadeia", f"Iniciando {len(paths)} cenário(s) - {titulo}.")
+                except Exception:
+                    pass
+                clear_screen()
+                code = run_chain(paths)
+                try:
+                    reporter.step_pass("Resumo Geral", f"Concluído: {SUCCESS_COUNT} sucesso(s), {FAIL_COUNT} falha(s). Código de saída: {code}.")
+                except Exception:
+                    pass
+                try:
+                    input("\n[Cadeia concluída] Pressione Enter para voltar à lista de grupos…")
+                except Exception:
+                    pass
+                return menu_listar_grupos_e_escolher(grupo_raiz, titulo)
+            return 0
 
-def menu_listar_cenarios_de_um_grupo(node_grupo: Dict[str, Any], titulo_grupo: str) -> int:
-    """
-    2º nível: lista os CENÁRIOS do grupo escolhido (com 0 = rodar todos do grupo).
-    """
-    clear_screen()
-    itens = _listar_cenarios(node_grupo)
-    if not itens:
-        print(f"[ERRO] Nenhum cenário encontrado em {titulo_grupo}.")
-        return 3
+        for k, label, node in itens:
+            if opt == k:
+                return menu_listar_cenarios_de_um_grupo(node, label)
 
-    print(f"\n{titulo_grupo} - Selecione o que rodar:\n")
-    print("0) Rodar TODOS deste grupo em cadeia")
-    for i, (code, label, _) in enumerate(itens, start=1):
-        print(f"{i}) {label}")
+def menu_listar_cenarios_de_um_grupo(node_grupo, titulo_grupo):
+    while True:
+        clear_screen()
+        print(f"\n{titulo_grupo}\n" + "=" * len(titulo_grupo))
 
-    opt = input("\n> ").strip()
-    if opt == "0":
-        paths = [p for _, _, p in itens]
-        if _confirmar(len(paths)):
-            try:
-                reporter.step_pass("Início da Execução em Cadeia", f"Iniciando {len(paths)} cenário(s) - {titulo_grupo}.")
-            except Exception:
-                pass
-            clear_screen()
-            code = run_chain(paths)
-            try:
-                reporter.step_pass("Resumo Geral", f"Concluído: {SUCCESS_COUNT} sucesso(s), {FAIL_COUNT} falha(s). Código de saída: {code}.")
-            except Exception:
-                pass
-            return code
-        return 0
+        # Monta a lista de cenários do grupo atual
+        itens = []
+        scenarios = (node_grupo or {}).get("scenarios", {})
+        for k, v in scenarios.items():
+            label = v.get("label", f"Cenário {k}")
+            file_path = v.get("file")
+            if file_path:
+                itens.append((k, label, file_path))
+        itens.sort(key=lambda x: int(x[0]) if str(x[0]).isdigit() else 99999)
 
-    if opt.isdigit():
-        n = int(opt)
-        if n < 1 or n > len(itens):
-            print("[ERRO] Opção fora de faixa.")
-            return 4
-        _, label, p = itens[n-1]
-        if _confirmar(1, "cenário"):
-            clear_screen()
-            return run_script(p)
-        return 0
+        # Renderiza o menu
+        for k, label, _ in itens:
+            print(f"{k}. {label}")
+        print("0. Rodar TODOS deste grupo em cadeia")
+        print("X. Voltar")
 
-    print("[ERRO] Opção inválida.")
-    return 4
+        opt = input("\nDigite a opção desejada: ").strip()
+
+        # Voltar
+        if opt.lower() == "x":
+            return 0
+
+        # Executar TODOS deste grupo em cadeia
+        if opt == "0":
+            paths = [p for _, _, p in itens]
+            if _confirmar(len(paths)):
+                try:
+                    reporter.step_pass(
+                        "Início da Execução em Cadeia",
+                        f"Iniciando {len(paths)} cenário(s) - {titulo_grupo}."
+                    )
+                except Exception:
+                    pass
+                clear_screen()
+                code = run_chain(paths)
+                try:
+                    reporter.step_pass(
+                        "Resumo Geral",
+                        f"Concluído: {SUCCESS_COUNT} sucesso(s), {FAIL_COUNT} falha(s). Código de saída: {code}."
+                    )
+                except Exception:
+                    pass
+                # Pausa e retorna para a mesma lista de cenários deste grupo
+                try:
+                    input("\n[Cadeia concluída] Pressione Enter para voltar à lista de cenários…")
+                except Exception:
+                    pass
+                return menu_listar_cenarios_de_um_grupo(node_grupo, titulo_grupo)
+            # Se não confirmar, apenas volta ao menu deste grupo
+            continue
+
+        # Executar um cenário específico
+        escolhido = next((t for t in itens if t[0] == opt), None)
+        if escolhido:
+            _, label, caminho = escolhido
+            if _confirmar(1):
+                try:
+                    reporter.step_pass(
+                        "Início do Cenário",
+                        f"Iniciando 1 cenário - {titulo_grupo} → {label}."
+                    )
+                except Exception:
+                    pass
+                clear_screen()
+                # Executa como cadeia de 1 para reaproveitar a mesma instrumentação
+                code = run_chain([caminho])
+                try:
+                    reporter.step_pass(
+                        "Resumo do Cenário",
+                        f"Concluído: código de saída {code}."
+                    )
+                except Exception:
+                    pass
+                # Pausa e retorna à mesma tela do grupo
+                try:
+                    input("\n[Cenário concluído] Pressione Enter para voltar à lista de cenários…")
+                except Exception:
+                    pass
+                return menu_listar_cenarios_de_um_grupo(node_grupo, titulo_grupo)
+            # Se não confirmar, volta ao menu
+            continue
+
+        # Opção inválida
+        print("\nOpção inválida. Tente novamente.")
+        try:
+            input("Pressione Enter para continuar…")
+        except Exception:
+            pass
 
 def menu_processos(proc: Dict[str, Any]) -> int:
     """
@@ -2432,3 +2656,57 @@ if __name__ == "__main__":
             print(f"[RELATÓRIO] Gerado em: {DIR_REPORTS}")
         except Exception as _e:
             print("[WARN] Falha ao finalizar relatório:", _e)
+
+
+def _read_key_nonblocking() -> str | None:
+    """
+    Lê uma tecla sem bloquear. Retorna a sequência (ex.: '\x1b[D' = Left).
+    Em alguns consoles, Shift+Left vira '\x1b[1;2D'. Em Windows, seta pode vir
+    como pares via msvcrt (0xe0,'K'). Se nada for lido, retorna None.
+    """
+    # Windows
+    try:
+        import msvcrt  # type: ignore
+        if msvcrt.kbhit():
+            ch = msvcrt.getwch()
+            # Teclas de seta em Windows vêm precedidas de \x00 ou \xe0
+            if ch in ('\x00', '\xe0'):
+                ch2 = msvcrt.getwch()
+                # Left = 'K'. Não há distinção confiável de Shift no console
+                if ch2.upper() == 'K':
+                    return '\x1b[D'  # normalizamos como Escape-[D (Left)
+                return ch + ch2
+            return ch
+        return None
+    except Exception:
+        pass
+
+    # POSIX (Linux/macOS)
+    try:
+        if select.select([sys.stdin], [], [], 0)[0]:
+            data = os.read(sys.stdin.fileno(), 8)  # lê um pequeno buffer
+            try:
+                return data.decode(errors="ignore")
+            except Exception:
+                return None
+        return None
+    except Exception:
+        return None
+
+
+_LEFT_SEQS = {
+    '\x1b[D',     # Left
+    '\x1b[1;2D',  # Shift+Left
+    '\x1b[1;5D',  # Ctrl+Left  ← ADICIONE ESTA
+    '\x1b[2D',
+}
+
+def _pressed_shift_left(raw: str | None) -> bool:
+    """
+    Verdadeiro se a leitura sugere Left/Shift+Left.
+    Alguns terminais não distinguem Shift, então aceitamos Left puro
+    para garantir que o atalho funcione no maior número de ambientes.
+    """
+    if not raw:
+        return False
+    return any(seq in raw for seq in _LEFT_SEQS)

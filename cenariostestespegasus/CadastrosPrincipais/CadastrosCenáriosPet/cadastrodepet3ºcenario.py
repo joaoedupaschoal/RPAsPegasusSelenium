@@ -173,7 +173,7 @@ try:
         time.sleep(1),
         wait.until(EC.visibility_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']"))).send_keys("Pet"),
         time.sleep(1),
-        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[34]/a"))).click()
+        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[35]/a"))).click()
     ))
 
     safe_action(doc, "Clicando em Cadastrar", lambda: (
