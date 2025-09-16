@@ -8,6 +8,45 @@ import time
 import select
 import keyboard
 
+import threading
+import keyboard  # pip install keyboard
+
+# ===================== CONFIGURAÇÕES =====================
+
+_TIP_SHOWN_CADASTROS = set()
+
+def _is_cadastros_tab(node) -> bool:
+    try:
+        if isinstance(node, dict):
+            label = node.get("label") or node.get("name") or ""
+        else:
+            label = getattr(node, "label", "") or getattr(node, "name", "")
+        return isinstance(label, str) and "cadastro" in label.lower()
+    except Exception:
+        return False
+
+
+
+def _menu_key(node):
+    # chave estável por aba: prioriza label; se não houver, usa id do objeto
+    if isinstance(node, dict):
+        k = node.get("label") or node.get("name")
+        if k: 
+            return f"dict:{k}"
+    else:
+        k = getattr(node, "label", None) or getattr(node, "name", None)
+        if k:
+            return f"obj:{k}"
+    return f"id:{id(node)}"
+
+
+_BACK_EVENT = threading.Event()
+
+def _bind_hotkeys():
+    # Ctrl + Left Arrow -> "Voltar"
+    keyboard.add_hotkey('ctrl+left', lambda: _BACK_EVENT.set())
+
+
 # Força bundling do pacote utils para PyInstaller, mesmo que os imports
 # ocorram apenas dentro dos cenários
 try:
@@ -16,6 +55,33 @@ try:
 except Exception:
     pass
 
+import sys, subprocess, traceback
+
+def _pausa(msg="\nPressione ENTER para voltar ao menu..."):
+    try:
+        input(msg)
+    except EOFError:
+        pass
+
+def _executar_por_path(path_do_cenario):
+    # Ajuste se você dispara diferente (ex.: .exe do Selenium etc.)
+    subprocess.run([sys.executable, str(path_do_cenario)], check=True)
+
+def executar_cenario_seguro(label, alvo, runner=_executar_por_path):
+    print(f"\n=== Executando: {label} ===")
+    try:
+        runner(alvo)
+        print("\n>>> Concluído.")
+    except KeyboardInterrupt:
+        print("\n[INTERROMPIDO] Execução cancelada pelo usuário.")
+    except SystemExit:
+        print("\n[AVISO] O cenário chamou sys.exit(); ignorado para manter o menu vivo.")
+    except Exception as e:
+        print("\n[ERRO] O cenário falhou:")
+        print(e)
+        print("\nDetalhes:")
+        traceback.print_exc()
+    _pausa()
 
 FROZEN = getattr(sys, "frozen", False)
 
@@ -49,6 +115,7 @@ def clear_screen():
     os.system("cls" if os.name == "nt" else "clear")
 
 
+
 # ===================== BOAS-VINDAS =====================
 def mostrar_boas_vindas():
     print("Carregando... Estamos preparando tudo pra você.")
@@ -59,8 +126,7 @@ def mostrar_boas_vindas():
     time.sleep(0.8)
     clear_screen()
 
-if __name__ == "__main__" and not os.environ.get("PEGASUS_RUN_SCENARIO"):
-    mostrar_boas_vindas()
+
 
 
 # ===================== BASE DE CENÁRIOS =====================
@@ -2383,14 +2449,18 @@ def _confirmar(qtd: int, titulo: str = "cenários") -> bool:
 
 def menu_principal(tree: Dict[str, Any]) -> int:
     clear_screen()
+    print("\n0. Executar TODOS os cenários deste nível")
+    print("X. Voltar   (atalho: Ctrl + ←)")
     print('\nQual tipo automação você deseja rodar?\n')
     print('Cadastros (Digite 1)')
     print('Processos (Digite 2)')
-    print('Cadastros e Processos (0)')
-    print("Voltar para a aba anterior (Ctrl + Left Arrow)")
+
+
 
 
     opt = input('\n> ').strip()
+
+
 
     if opt == '0':
         paths = []
@@ -2420,11 +2490,12 @@ def menu_principal(tree: Dict[str, Any]) -> int:
 
 def menu_cadastros(cadastros: Dict[str, Any]) -> int:
     clear_screen()
+    print("\n0. Executar TODOS os Cadastros do sistema")
+    print("X. Voltar   (atalho: Ctrl + ←)")
     print('\nQual tipo de cadastro você deseja rodar?\n')
     print('Cadastros Principais (Digite 1)')
     print('Cadastros Adicionais (Digite 2)')
-    print('Todos os cadastros contidos no sistema (0)')
-    print("Voltar para a aba anterior (Ctrl + Left Arrow)")
+
 
 
     opt = input('\n> ').strip()
@@ -2454,6 +2525,25 @@ def menu_cadastros(cadastros: Dict[str, Any]) -> int:
 
     print('[ERRO] Opção inválida.')
     return 4
+
+
+
+def _listar_cenarios_recursivo(node: Dict[str, Any]) -> List[Tuple[str, str, Path]]:
+    """
+    Varre recursivamente um nó de grupo e retorna todos os cenários
+    no formato [(codigo, label, path)].
+    """
+    encontrados: List[Tuple[str, str, Path]] = []
+
+    # Cenários diretamente dentro deste grupo
+    encontrados.extend(_listar_cenarios(node))
+
+    # Subgrupos (descida recursiva)
+    for _, _, subnode in _listar_grupos(node):
+        encontrados.extend(_listar_cenarios_recursivo(subnode))
+
+    return encontrados
+
 
 def menu_listar_grupos_e_escolher(grupo_raiz, titulo="Menu Principal"):
     while True:
@@ -2601,6 +2691,96 @@ def menu_processos(proc: Dict[str, Any]) -> int:
     """
     return menu_listar_grupos_e_escolher(proc, "Processos")
 
+def executar_menu(menu):
+    while True:
+        print("\nSelecione uma opção:")
+
+        itens = {}
+
+        # lista os grupos
+        for codigo, label, node in _listar_grupos(menu):
+            print(f"{codigo}. {label}")
+            itens[codigo] = (codigo, label, node)
+
+        # lista os cenários
+        for codigo, label, path in _listar_cenarios(menu):
+            print(f"{codigo}. {label}")
+            itens[codigo] = (codigo, label, path)
+
+            # dica exibida apenas 1x por aba de "Cadastros"
+            if _is_cadastros_tab(menu):
+                key = _menu_key(menu)
+                if key not in _TIP_SHOWN_CADASTROS:
+                    print("(Dica: para voltar use X + Enter ou Ctrl + ←)")
+                    _TIP_SHOWN_CADASTROS.add(key)
+
+
+        # opções extras
+        print("\n0. Executar TODOS os cenários deste nível")
+        print("X. Voltar")
+
+        opt = input("\nDigite a opção desejada: ").strip().upper()
+
+
+        # se usuário apertou Ctrl+←, tratar como "Voltar"
+        if _BACK_EVENT.is_set():
+            _BACK_EVENT.clear()
+            print("↩ Voltando (atalho: Ctrl + ←)")
+            break
+
+        if opt == "X":
+            break
+
+        elif opt == "0":
+            # Executa em cadeia todos os cenários: deste nível + subgrupos
+            paths = []
+
+            # 1) cenários do nível atual
+            for _, _, p in _listar_cenarios(menu):
+                paths.append(p)
+
+            # 2) cenários dos subgrupos
+            for _, _, subnode in _listar_grupos(menu):
+                for _, _, p in _listar_cenarios_recursivo(subnode):
+                    paths.append(p)
+
+            if _confirmar(len(paths)):
+                for p in paths:
+                    try:
+                        reporter.step_pass("Início da Execução em Cadeia",
+                                           f"Executando: {p.name}")
+                        runpy.run_path(str(p), run_name="__main__")
+                    except Exception as e:
+                        reporter.step_fail("Falha ao executar cenário",
+                                           f"{p.name} -> {e}")
+                _pausar()
+            else:
+                print("Operação cancelada.")
+                _pausar()
+            continue
+
+        elif opt in itens:
+            codigo, label, node = itens[opt]
+
+            if isinstance(node, dict) and ("scenarios" in node or "groups" in node):
+                executar_menu(node)  # chamada recursiva para submenu
+                _pausar()
+            else:
+                try:
+                    reporter.step_pass("Início da Execução",
+                                       f"Executando: {getattr(node, 'name', node)}")
+                    runpy.run_path(str(node), run_name="__main__")
+                except Exception as e:
+                    reporter.step_fail("Falha ao executar cenário", str(e))
+                _pausar()
+            continue
+
+        else:
+            print("Opção inválida. Tente novamente.")
+            _pausar()
+            continue
+
+
 # ===================== CLI =====================
 def main_cli():
     args = sys.argv[1:]
@@ -2658,6 +2838,7 @@ if __name__ == "__main__":
             print("[WARN] Falha ao finalizar relatório:", _e)
 
 
+
 def _read_key_nonblocking() -> str | None:
     """
     Lê uma tecla sem bloquear. Retorna a sequência (ex.: '\x1b[D' = Left).
@@ -2710,3 +2891,42 @@ def _pressed_shift_left(raw: str | None) -> bool:
     if not raw:
         return False
     return any(seq in raw for seq in _LEFT_SEQS)
+def _pausar():
+    """Mantém a janela aberta e volta ao menu após cada execução."""
+    try:
+        input("\nConcluído. Pressione Enter para voltar ao menu...")
+    except EOFError:
+        pass
+
+
+if __name__ == "__main__" and not os.environ.get("PEGASUS_RUN_SCENARIO"):
+    _bind_hotkeys()  # ativa Ctrl + ←
+    mostrar_boas_vindas()
+    grupo_raiz = _scripts()
+    while True:
+        executar_menu(grupo_raiz)
+
+
+
+
+
+
+        # ao sair de um submenu, gera relatório atualizado
+        from datetime import datetime
+        from pathlib import Path
+        import csv
+
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        out_dir = Path("reports")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        csv_path = out_dir / f"executions-{stamp}.csv"
+
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f, delimiter=";")
+            w.writerow(["Execução", "Status"])
+            w.writerow(["Exemplo", "OK"])  # aqui depois você troca pelos dados reais
+
+        print(f"[OK] Relatório atualizado: {csv_path}")
+
+
+

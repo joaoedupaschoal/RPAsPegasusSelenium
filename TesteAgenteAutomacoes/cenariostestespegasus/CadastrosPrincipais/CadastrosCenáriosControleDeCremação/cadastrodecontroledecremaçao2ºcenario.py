@@ -1,4 +1,4 @@
-# Refatorado e organizado: cadastrodeescalamotorista2ºcenario.py
+# Código corrigido: cadastro_controle_cremacao_cenario_1.py
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -18,10 +18,15 @@ import subprocess
 import os
 import time
 import random
-import sys 
+import sys
+import re
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+# ==== CONFIGURAÇÕES ====
+URL = "http://localhost:8080/gs/index.xhtml"
+LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
+LOGIN_PASSWORD = "071999gs"
 
 # ==== PROVIDERS CUSTOMIZADOS ====
 class BrasilProvider(BaseProvider):
@@ -31,6 +36,86 @@ class BrasilProvider(BaseProvider):
 
 fake = Faker("pt_BR")
 fake.add_provider(BrasilProvider)
+
+# Controle de screenshots únicas
+screenshot_registradas = set()
+
+# ==== FUNÇÕES DE UTILITÁRIO ====
+def log(doc, msg):
+    """Registra mensagem no console e no documento"""
+    print(msg)
+    doc.add_paragraph(msg)
+
+def sanitize_filename(nome):
+    """Sanitiza nome do arquivo para evitar caracteres inválidos"""
+    nome = nome.lower()
+    nome = re.sub(r'[^a-z0-9_]', '_', nome)
+    return nome
+
+def take_screenshot(driver, doc, nome):
+    """Captura screenshot e adiciona ao documento"""
+    nome_limpo = sanitize_filename(nome)
+    if nome_limpo not in screenshot_registradas:
+        os.makedirs("screenshots", exist_ok=True)
+        path = f"screenshots/{nome_limpo}.png"
+        driver.save_screenshot(path)
+        doc.add_paragraph(f"Screenshot: {nome}")
+        doc.add_picture(path, width=Inches(5.5))
+        screenshot_registradas.add(nome_limpo)
+
+def safe_action(doc, descricao, func, driver, wait):
+    """Executa ação com tratamento de erro e screenshot"""
+    try:
+        log(doc, f"🔄 {descricao}...")
+        func()
+        log(doc, f"✅ {descricao} realizada com sucesso.")
+        take_screenshot(driver, doc, descricao.lower().replace(" ", "_"))
+        return True, "sucesso"
+    except Exception as e:
+        log(doc, f"❌ Erro ao {descricao.lower()}: {e}")
+        take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
+        return False, "erro"
+
+def registrar_screenshot_unico(nome, driver, doc, descricao=None):
+    """Registra screenshot único"""
+    if nome not in screenshot_registradas:
+        if descricao:
+            log(doc, f"📸 {descricao}")
+        take_screenshot(driver, doc, nome)
+        screenshot_registradas.add(nome)
+
+def encontrar_mensagem_alerta(driver, doc):
+    """Procura por mensagens de alerta no sistema"""
+    seletores = [
+        (".alerts.salvo", "sucesso"),
+        (".alerts.alerta", "alerta"),
+        (".alerts.erro", "erro"),
+    ]
+
+    for seletor, tipo in seletores:
+        try:
+            elemento = driver.find_element(By.CSS_SELECTOR, seletor)
+            if elemento.is_displayed():
+                if tipo == "sucesso":
+                    log(doc, f"📢 ✅ SUCESSO: {elemento.text}")
+                elif tipo == "alerta":
+                    log(doc, f"📢 ⚠️ ALERTA: {elemento.text}")
+                else:
+                    log(doc, f"📢 ❌ ERRO: {elemento.text}")
+                return elemento, tipo
+        except:
+            continue
+
+    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
+    return None, None
+
+def ajustar_zoom(driver):
+    """Ajusta o zoom da página para melhor visualização"""
+    try:
+        driver.execute_script("document.body.style.zoom='90%'")
+        time.sleep(1)
+    except Exception as e:
+        raise Exception(f"Erro ao ajustar zoom: {e}")
 
 def gerar_datas_validas():
     """Gera datas coerentes para admissão, início e fim da escala, e vencimento da CNH."""
@@ -62,122 +147,26 @@ def gerar_dados_documentos():
     
     return carteira_trabalho, pis, cnh, cpf
 
-# Gera os dados necessários
-data_admissao, data_inicio, data_fim, vencimento_cnh = gerar_datas_validas()
-carteira_trabalho, pis, cnh, cpf_valido = gerar_dados_documentos()
-
-# ==== CONFIGURAÇÕES ====
-URL = "http://localhost:8080/gs/index.xhtml"
-LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
-LOGIN_PASSWORD = "071999gs"
-
-# ==== DOCUMENTO ====
-doc = Document()
-doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Cadastro de Especialidades – Cenário 1: Preenchimento completo e salvamento.")
-doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-
-screenshot_registradas = set()
-
-# ==== FUNÇÕES DE UTILITÁRIO ====
-def log(doc, msg):
-    print(msg)
-    doc.add_paragraph(msg)
-
-def take_screenshot(driver, doc, nome):
-    if nome not in screenshot_registradas:
-        path = f"screenshots/{nome}.png"
-        os.makedirs("screenshots", exist_ok=True)
-        driver.save_screenshot(path)
-        doc.add_paragraph(f"Screenshot: {nome}")
-        doc.add_picture(path, width=Inches(5.5))
-        screenshot_registradas.add(nome)
-
-def safe_action(doc, descricao, func):
-    try:
-        log(doc, f"🔄 {descricao}...")
-        func()
-        log(doc, f"✅ {descricao} realizada com sucesso.")
-        take_screenshot(driver, doc, descricao.lower().replace(" ", "_"))
-    except Exception as e:
-        log(doc, f"❌ Erro ao {descricao.lower()}: {e}")
-        take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
-
-def finalizar_relatorio():
-    nome_arquivo = f"relatorio_especialidades_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
-    doc.save(nome_arquivo)
-    log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
-    subprocess.run(["start", "winword", nome_arquivo], shell=True)
-    driver.quit()
-
-def encontrar_mensagem_alerta():
-    seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
-    ]
-
-    for seletor, tipo in seletores:
-        try:
-            elemento = driver.find_element(By.CSS_SELECTOR, seletor)
-            if elemento.is_displayed():
-                log(doc, f"📢 {tipo}: {elemento.text}")
-                return elemento
-        except:
-            continue
-
-    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
-    return None
-
-def ajustar_zoom():
-    try:
-        driver.execute_script("document.body.style.zoom='90%'")
-        log(doc, "🔍 Zoom ajustado para 90%.")
-    except Exception as e:
-        log(doc, f"⚠️ Erro ao ajustar zoom: {e}")
-
-# ==== INICIALIZAÇÃO DO DRIVER ====
-options = Options()
-options.add_argument("--start-maximized")
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-wait = WebDriverWait(driver, 20)
-
-
-URL = "http://localhost:8080/gs/index.xhtml"
-LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
-LOGIN_PASSWORD = "071999gs"
-
-# Configuração do Faker
-class BrasilProvider(BaseProvider):
-    def rg(self):
-        numeros = [str(random.randint(0, 9)) for _ in range(8)]
-        return ''.join(numeros) + '-' + str(random.randint(0, 9))
-
-fake = Faker("pt_BR")
-fake.add_provider(BrasilProvider)
-
-# Controle de screenshots únicas
-screenshot_registradas = set()
-def registrar_screenshot_unico(nome, driver, doc, descricao=None):
-    if nome not in screenshot_registradas:
-        if descricao:
-            log(doc, f"📸 {descricao}")
-        take_screenshot(driver, doc, nome)
-        screenshot_registradas.add(nome)
-
 def main():
+    """Função principal do teste"""
+    global screenshot_registradas
+    screenshot_registradas = set()
+    
+    # Inicialização do documento
     doc = Document()
     doc.add_heading("RELATÓRIO DO TESTE", 0)
-    doc.add_paragraph("Cadastro de Controle de Cremação Teste.")
-    doc.add_paragraph(f"🗕️ Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-    doc.add_paragraph("Neste teste, o robô preencherá os campos obrigatórios e cancelará o cadastro de um novo Controle de Cremação.")
+    doc.add_paragraph("Cadastro de Controle de Cremação - 2º Cenário.")
+    doc.add_paragraph(f"🗓️ Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+    doc.add_paragraph("Neste teste, o robô preencherá todos os campos e cancelará o cadastro de um novo Controle de Cremação.")
 
+    # Configuração do Chrome
     chrome_options = Options()
     chrome_options.add_argument("--start-maximized")
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     wait = WebDriverWait(driver, 10)
 
     def finalizar_relatorio():
+        """Finaliza e salva o relatório"""
         doc_name = f"relatorio_controle_cremacao_cenario_2_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
         doc.save(doc_name)
         log(doc, f"📄 Relatório salvo como: {doc_name}")
@@ -188,12 +177,14 @@ def main():
         driver.quit()
 
     def login():
+        """Realiza login no sistema"""
         wait.until(EC.presence_of_element_located((By.ID, "j_id15:email"))).send_keys(LOGIN_EMAIL)
         wait.until(EC.presence_of_element_located((By.ID, "j_id15:senha"))).send_keys(LOGIN_PASSWORD, Keys.ENTER)
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-        time.sleep(2)
+        time.sleep(4)
 
     def abrir_menu():
+        """Abre o menu de Controle Cremação"""
         driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2)
         campo = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']")))
         campo.click()
@@ -201,47 +192,53 @@ def main():
         time.sleep(3)
 
     def acessar_formulario():
+        """Acessa o formulário de cadastro"""
         cadastrar = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 
             "#fmod_200010 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span")))
         cadastrar.click()
         time.sleep(2)
 
     def abrir_lov_falecido():
-        log(doc, "🔄 Abrindo LOV de Falecido.")
+        """Abre LOV de Falecido"""
         open_lov_falecido = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 
             "#fmod_200010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(2) > div > a")))
         open_lov_falecido.click()
-        log(doc, "✅ LOV de Falecido aberto.")
+        time.sleep(2)
 
     def pesquisar_e_selecionar_falecido():
-        log(doc, "🔄 Pesquisando e selecionando falecido.")
+        """Pesquisa e seleciona falecido"""
         campo_pesquisa = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#txtPesquisa")))
-        campo_pesquisa.send_keys('ALEX LOUREIRO SERRAVALLE', Keys.ENTER)
-        time.sleep(2)
-        falecido = wait.until(EC.element_to_be_clickable((By.XPATH, "//td[contains(text(), 'ALEX LOUREIRO SERRAVALLE')]")))
+        campo_pesquisa.clear()
+        campo_pesquisa.send_keys('GUSTAVO VIEIRA', Keys.ENTER)
+        time.sleep(3)
+        
+        # Aguarda o resultado da pesquisa e clica
+        falecido = wait.until(EC.element_to_be_clickable((By.XPATH, "//td[contains(text(), 'GUSTAVO VIEIRA')]")))
         falecido.click()
-        log(doc, "✅ Falecido selecionado.")
+        time.sleep(2)
 
     def preencher_numero_os():
-        log(doc, "🔄 Preenchendo campo 'Número OS'.")
+        """Preenche campo Número OS"""
         numero_OS = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 
             "#fmod_200010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(3) > input")))
+        numero_OS.clear()
         numero_OS.send_keys('201680')
-        log(doc, "✅ Campo 'Número OS' preenchido.")
+        time.sleep(1)
 
     def selecionar_status_aguardando():
-        log(doc, "🔄 Selecionando status 'Aguardando'.")
+        """Seleciona status 'Aguardando'"""
         select_aguardando = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR,
             "#fmod_200010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(4) > select")))
         Select(select_aguardando).select_by_visible_text("Aguardando")
-        log(doc, "✅ Status 'Aguardando' selecionado.")
+        time.sleep(1)
 
     def selecionar_forno():
-        log(doc, "🔄 Selecionando 'Forno 1'.")
+        """Seleciona 'Forno 1'"""
         select_forno = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR,
             "#fmod_200010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(5) > select")))
         Select(select_forno).select_by_visible_text("Forno 1")
-        log(doc, "✅ 'Forno 1' selecionado.")
+        time.sleep(1)
+
 
     def cancelar():
         cancelar_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
@@ -258,90 +255,107 @@ def main():
         time.sleep(2)         
 
     def fechar_modal():
+        """Fecha o modal"""
         x_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
             "#fmod_200010 > div.wdTop.ui-draggable-handle > div.wdClose > a")))
         x_btn.click()
         time.sleep(1)
 
-    # EXECUÇÃO COM safe_action INDIVIDUAL PARA CADA AÇÃO
-    if not safe_action(doc, "Acessando o sistema", lambda: driver.get(URL), driver, wait)[0]:
-        finalizar_relatorio()
-        return
-    registrar_screenshot_unico("url_acessada", driver, doc, "Sistema acessado.")
+    # ==== EXECUÇÃO DO TESTE ====
+    try:
+        # 1. Acessar o sistema
+        if not safe_action(doc, "Acessando o sistema", lambda: driver.get(URL), driver, wait)[0]:
+            finalizar_relatorio()
+            return
+        registrar_screenshot_unico("url_acessada", driver, doc, "Sistema acessado.")
 
-    if not safe_action(doc, "Realizando login", login, driver, wait)[0]:
-        finalizar_relatorio()
-        return
-    registrar_screenshot_unico("login_concluido", driver, doc, "Login realizado.")
+        # 2. Realizar login
+        if not safe_action(doc, "Realizando login", login, driver, wait)[0]:
+            finalizar_relatorio()
+            return
+        registrar_screenshot_unico("login_concluido", driver, doc, "Login realizado.")
 
-    if not safe_action(doc, "Ajustando zoom", lambda: ajustar_zoom(driver), driver, wait)[0]:
-        finalizar_relatorio()
-        return
+        # 3. Ajustar zoom
+        if not safe_action(doc, "Ajustando zoom", lambda: ajustar_zoom(driver), driver, wait)[0]:
+            finalizar_relatorio()
+            return
 
-    if not safe_action(doc, "Abrindo menu Controle Cremação", abrir_menu, driver, wait)[0]:
-        finalizar_relatorio()
-        return
-    registrar_screenshot_unico("menu_aberto", driver, doc, "Menu 'Controle Cremação' aberto.")
+        # 4. Abrir menu
+        if not safe_action(doc, "Abrindo menu Controle Cremação", abrir_menu, driver, wait)[0]:
+            finalizar_relatorio()
+            return
+        registrar_screenshot_unico("menu_aberto", driver, doc, "Menu 'Controle Cremação' aberto.")
 
-    if not safe_action(doc, "Acessando formulário de cadastro", acessar_formulario, driver, wait)[0]:
-        finalizar_relatorio()
-        return
-    registrar_screenshot_unico("formulario_aberto", driver, doc, "Formulário de cadastro aberto.")
+        # 5. Acessar formulário
+        if not safe_action(doc, "Acessando formulário de cadastro", acessar_formulario, driver, wait)[0]:
+            finalizar_relatorio()
+            return
+        registrar_screenshot_unico("formulario_aberto", driver, doc, "Formulário de cadastro aberto.")
 
-    # PREENCHIMENTO DOS CAMPOS - safe_action individual para cada campo
-    if not safe_action(doc, "Abrindo LOV de Falecido", abrir_lov_falecido, driver, wait)[0]:
-        finalizar_relatorio()
-        return
+        # 6. Preenchimento dos campos
+        log(doc, "🔧 Iniciando preenchimento dos campos...")
 
-    if not safe_action(doc, "Pesquisando e selecionando falecido", pesquisar_e_selecionar_falecido, driver, wait)[0]:
-        finalizar_relatorio()
-        return
+        if not safe_action(doc, "Abrindo LOV de Falecido", abrir_lov_falecido, driver, wait)[0]:
+            finalizar_relatorio()
+            return
 
-    if not safe_action(doc, "Preenchendo Número OS", preencher_numero_os, driver, wait)[0]:
-        finalizar_relatorio()
-        return
+        if not safe_action(doc, "Pesquisando e selecionando falecido", pesquisar_e_selecionar_falecido, driver, wait)[0]:
+            finalizar_relatorio()
+            return
 
-    if not safe_action(doc, "Selecionando status Aguardando", selecionar_status_aguardando, driver, wait)[0]:
-        finalizar_relatorio()
-        return
+        if not safe_action(doc, "Preenchendo Número OS", preencher_numero_os, driver, wait)[0]:
+            finalizar_relatorio()
+            return
 
-    if not safe_action(doc, "Selecionando Forno", selecionar_forno, driver, wait)[0]:
-        finalizar_relatorio()
-        return
+        if not safe_action(doc, "Selecionando status Aguardando", selecionar_status_aguardando, driver, wait)[0]:
+            finalizar_relatorio()
+            return
 
-    registrar_screenshot_unico("campos_preenchidos", driver, doc, "Todos os campos preenchidos.")
+        if not safe_action(doc, "Selecionando Forno", selecionar_forno, driver, wait)[0]:
+            finalizar_relatorio()
+            return
 
-    # SALVANDO O CADASTRO
-    if not safe_action(doc, "Clicando no botão Cancelar", cancelar, driver, wait)[0]:
-        finalizar_relatorio()
-        return
-    registrar_screenshot_unico("apos_cancelar", driver, doc, "Clique no botão Cancelar realizado.")
+        registrar_screenshot_unico("campos_preenchidos", driver, doc, "Todos os campos preenchidos.")
 
-    if not safe_action(doc, "Clicando no botão Sim", confirmar_cancelamento, driver, wait)[0]:
-        finalizar_relatorio()
-        return
-    registrar_screenshot_unico("apos_cancelar", driver, doc, "Clique no botão Sim realizado.")
+        # SALVANDO O CADASTRO
+        if not safe_action(doc, "Clicando no botão Cancelar", cancelar, driver, wait)[0]:
+            finalizar_relatorio()
+            return
+        registrar_screenshot_unico("apos_cancelar", driver, doc, "Clique no botão Cancelar realizado.")
+
+        if not safe_action(doc, "Clicando no botão Sim", confirmar_cancelamento, driver, wait)[0]:
+            finalizar_relatorio()
+            return
+        registrar_screenshot_unico("apos_cancelar", driver, doc, "Clique no botão Sim realizado.")
+
+
+        # 8. Verificar mensagem de retorno
+        time.sleep(2)
+        _, tipo_alerta = encontrar_mensagem_alerta(driver, doc)
+        if tipo_alerta == "sucesso":
+            log(doc, "✅ Mensagem de sucesso exibida.")
+        elif tipo_alerta == "alerta":
+            log(doc, "⚠️ Mensagem de alerta exibida.")
+        elif tipo_alerta == "erro":
+            log(doc, "❌ Mensagem de erro exibida.")
+        else:
+            log(doc, "⚠️ Nenhuma mensagem encontrada após salvar.")
+        registrar_screenshot_unico("mensagem_final", driver, doc, "Mensagem exibida após salvar.")
+
+        # 9. Fechar formulário
+        if not safe_action(doc, "Fechando formulário", fechar_modal, driver, wait)[0]:
+            finalizar_relatorio()
+            return
+        registrar_screenshot_unico("formulario_fechado", driver, doc, "Formulário fechado.")
+
+        log(doc, "✅ Teste de cadastro de Controle de Cremação concluído com sucesso.")
+
+    except Exception as e:
+        log(doc, f"❌ Erro geral durante a execução do teste: {e}")
+        take_screenshot(driver, doc, "erro_geral")
     
-    # VERIFICANDO MENSAGEM DE RETORNO
-    _, tipo_alerta = encontrar_mensagem_alerta(driver, doc)
-    if tipo_alerta == "sucesso":
-        log(doc, "✅ Mensagem de sucesso exibida.")
-    elif tipo_alerta == "alerta":
-        log(doc, "⚠️ Mensagem de alerta exibida.")
-    elif tipo_alerta == "erro":
-        log(doc, "❌ Mensagem de erro exibida.")
-    else:
-        log(doc, "⚠️ Nenhuma mensagem encontrada após cancelar.")
-    registrar_screenshot_unico("mensagem_final", driver, doc, "Mensagem exibida após cancelar.")
-
-    # FECHANDO O FORMULÁRIO
-    if not safe_action(doc, "Fechando formulário", fechar_modal, driver, wait)[0]:
+    finally:
         finalizar_relatorio()
-        return
-    registrar_screenshot_unico("formulario_fechado", driver, doc, "Formulário fechado.")
-
-    log(doc, "✅ Teste de cadastro de Controle de Cremação concluído com sucesso.")
-    finalizar_relatorio()
 
 if __name__ == "__main__":
     main()

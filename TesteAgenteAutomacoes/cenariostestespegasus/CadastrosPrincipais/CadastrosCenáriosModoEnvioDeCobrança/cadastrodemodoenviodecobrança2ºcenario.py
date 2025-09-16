@@ -84,7 +84,7 @@ def take_screenshot(driver, doc, nome):
     if nome not in screenshot_registradas:
         path = f"screenshots/{nome}.png"
         os.makedirs("screenshots", exist_ok=True)
-        driver.Cancel_screenshot(path)
+        driver.save_screenshot(path)
         doc.add_paragraph(f"Screenshot: {nome}")
         doc.add_picture(path, width=Inches(5.5))
         screenshot_registradas.add(nome)
@@ -101,7 +101,7 @@ def safe_action(doc, descricao, func):
 
 def finalizar_relatorio():
     nome_arquivo = f"relatorio_modo_envio_cobranca_cenario_2_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
-    doc.Cancel(nome_arquivo)
+    doc.save(nome_arquivo)
     log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
     subprocess.run(["start", "winword", nome_arquivo], shell=True)
     driver.quit()
@@ -186,7 +186,7 @@ try:
     ))
 
     safe_action(doc, "Cancelando cadastro", lambda: driver.find_element(
-        By.CSS_SELECTOR, "#fmod_10075 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroModoEnvioCobranca > div.btnHolder > a.btModel.btGray.btCancel"
+        By.CSS_SELECTOR, "#fmod_10075 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroModoEnvioCobranca > div.btnHolder > a.btModel.btGray.btcancel"
     ).click())
 
 
