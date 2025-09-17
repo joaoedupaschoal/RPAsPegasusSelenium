@@ -1,9 +1,0 @@
-2025-09-11 14:52:28,522 - INFO - mostrar_boas_vindas:73 - Sistema inicializado com sucesso
-2025-09-11 14:52:28,731 - INFO - _create_output_structure:126 - Diretório reports criado: C:\Users\Gold System\Desktop\AutomacoesPegasus\RUN_20250911_145228_86039b\reports
-2025-09-11 14:52:28,732 - INFO - _create_output_structure:126 - Diretório screenshots criado: C:\Users\Gold System\Desktop\AutomacoesPegasus\RUN_20250911_145228_86039b\screenshots
-2025-09-11 14:52:29,009 - INFO - _create_output_structure:126 - Diretório logs criado: C:\Users\Gold System\Desktop\AutomacoesPegasus\RUN_20250911_145228_86039b\logs
-2025-09-11 14:52:29,014 - INFO - _create_output_structure:126 - Diretório downloads criado: C:\Users\Gold System\Desktop\AutomacoesPegasus\RUN_20250911_145228_86039b\downloads
-2025-09-11 14:52:29,015 - INFO - _create_output_structure:132 - Workspace criado: C:\Users\Gold System\Desktop\AutomacoesPegasus\RUN_20250911_145228_86039b
-2025-09-11 14:52:29,219 - INFO - _initialize_reporter:160 - QAReporter inicializado com sucesso
-2025-09-11 14:52:29,233 - WARNING - _find_project_root:766 - Projeto não encontrado, usando diretório atual: C:\Users\Gold System\AppData\Local\Temp\_MEI94762
-2025-09-11 14:52:29,234 - ERROR - _discover_scripts:264 - Diretório de cenários não encontrado: C:\Users\Gold System\AppData\Local\Temp\_MEI94762\cenariostestespegasus
