@@ -219,7 +219,7 @@ try:
 
     safe_action(doc, "Selecionando a Filial", selecionar_opcao(
         "#fmod_10070 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroFormasPagamentoMXM > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_dadosGerais > div > div > div > select",
-        "TESTE FILIAL SELENIUM"
+        "TESTE FILIAL SELENIUM 3"
     ))
 
 

@@ -36,6 +36,7 @@ import ctypes
 import msvcrt
 import traceback
 import subprocess
+from qa_reporter import QAReporter
 import runpy
 from pathlib import Path
 from datetime import datetime
@@ -76,6 +77,52 @@ def _build_scripts_index_from(node):
     for k, v in node.items():
         if isinstance(v, dict) and (k not in ("scenarios", "label")):
             _build_scripts_index_from(v)
+
+def menu_principal():
+    while True:
+        print("\nQual tipo de automação você deseja rodar?\n")
+        print("Cadastros (Digite 1)")
+        print("Processos (Digite 2)")
+        print("Cadastros e Processos (Digite 0)")
+        print("X. Sair")
+
+        opt = input("\nDigite a opção desejada: ").strip().upper()
+
+        if opt == "1":
+            menu_cadastros()
+        elif opt == "2":
+            executar_menu(SCRIPTS["processos"])
+        elif opt == "0":
+            # Executa todos os cadastros e processos
+            menu_cadastros()
+            executar_menu(SCRIPTS["processos"])
+        elif opt == "X":
+            break
+        else:
+            print("Opção inválida. Tente novamente.")
+
+def menu_cadastros():
+    while True:
+        print("\nQual tipo de cadastro você deseja rodar?\n")
+        print("Cadastros Principais (Digite 1)")
+        print("Cadastros Adicionais (Digite 2)")
+        print("Cadastros Principais e Adicionais (Digite 0)")
+        print("X. Voltar")
+
+        opt = input("\nDigite a opção desejada: ").strip().upper()
+
+        if opt == "1":
+            executar_menu(SCRIPTS["CadastrosPrincipais"])
+        elif opt == "2":
+            executar_menu(SCRIPTS["CadastrosAdicionais"])
+        elif opt == "0":
+            executar_menu(SCRIPTS["CadastrosPrincipais"])
+            executar_menu(SCRIPTS["CadastrosAdicionais"])
+        elif opt == "X":
+            break
+        else:
+            print("Opção inválida. Tente novamente.")
+
 
 def _ensure_scripts_index():
     global _SCRIPTS_INDEX_BUILT
@@ -270,6 +317,19 @@ def _pop_nav() -> Optional[Path]:
 def _is_root() -> bool:
     return len(_NAV_STACK) == 0
 
+# Pastas/grupos que não devem aparecer no menu (match por nome da pasta)
+HIDE_GROUP_DIRNAMES = {
+    "CadastrosCenáriosFormulárioDigitalPergunta",
+    "CadastrosCenáriosJazigos",
+    "CadastrosCenáriosPostoDeCombustível",
+}
+
+# Opcional: também por label resolvido (caso exista LABEL.txt ou meta)
+HIDE_GROUP_LABELS = {
+    "CadastrosCenáriosFormulárioDigitalPergunta",
+    "CadastrosCenáriosJazigos",
+    "CadastrosCenáriosPostoDeCombustível",
+}
 
 # ===================== DESCOBERTA DE ITENS =====================
 # Grupos: subpastas; Cenários: arquivos .py
@@ -280,12 +340,20 @@ def _listar_grupos(node: Path) -> List[Tuple[str, str, Path]]:
         subdirs = [d for d in node.iterdir() if d.is_dir()]
     except FileNotFoundError:
         subdirs = []
+
+    # FILTRO: remove pelas pastas e/ou labels
+    subdirs = [
+        d for d in subdirs
+        if d.name not in HIDE_GROUP_DIRNAMES and _read_folder_label(d) not in HIDE_GROUP_LABELS
+    ]
+
     subdirs.sort(key=lambda p: _read_folder_label(p).lower())
     for idx, d in enumerate(subdirs, start=1):
         codigo = str(idx)
         label = _read_folder_label(d)
         itens.append((codigo, label, d))
     return itens
+
 
 def _listar_cenarios(node: Path) -> List[Tuple[str, str, Path]]:
     itens: List[Tuple[str, str, Path]] = []
@@ -493,10 +561,12 @@ def main():
     while True:
         executar_menu(raiz)
         # estamos na raiz – não há nível anterior. Apenas redesenha.
-        clear_screen()
-        print("Você está no menu raiz. Navegue pelas opções acima.")
+        clear_screen()                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
+        print("Você está no menu raiz. Navegue pelas opções acima.")         
         time.sleep(0.8)
 
+rep = QAReporter(out_dir="reports", environment="Homologação", executor="Runner CLI")
+rep.start_run("Execução em massa — Cadastros Principais")
 
 
 # ===================== BASE DE CENÁRIOS =====================
@@ -521,7 +591,7 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                         "file": BASE_SCRIPTS / "CadastrosAdicionais" / "CadastrosCenáriosAbastecimento" / "cadastrodeabastecimento3ºcenario.py",
                     },
                     "4": {
-                        "label": 'Cenário : Nesse teste, o robô preencherá os campos NÃO obrigatórios e salvará o cadastro de um novo Abastecimento, com a finalidade de validar o disparo de mensagens no sistema.',
+                        "label": 'Cenário 4: Nesse teste, o robô preencherá os campos NÃO obrigatórios e salvará o cadastro de um novo Abastecimento, com a finalidade de validar o disparo de mensagens no sistema.',
                         "file": BASE_SCRIPTS / "CadastrosAdicionais" / "CadastrosCenáriosAbastecimento" / "cadastrodeabastecimento4ºcenario.py",
                     },
                 }
@@ -1557,7 +1627,7 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                         "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosAgendaDeCompromissos" / "cadastrodeagendadecompromissos3ºcenario.py",
                     },
                     "4": {
-                        "label": 'Cenário : Nesse teste, serão preenchidos APENAS os campos NÃO obrigatórios, e clicará em "Salvar", para disparo de alertas.',
+                        "label": 'Cenário 4: Nesse teste, serão preenchidos APENAS os campos NÃO obrigatórios, e clicará em "Salvar", para disparo de alertas.',
                         "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosAgendaDeCompromissos" / "cadastrodeagendadecompromissos4ºcenario.py",
                     },
                 },
@@ -1578,7 +1648,7 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                         "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemiterios3ºcenario.py",
                     },
                     "4": {
-                        "label": "Cenário : TESTE CENARIO 4",
+                        "label": "Cenário 4: TESTE CENARIO 4",
                         "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemiterios4ºcenario.py",
                     },
                 },

@@ -159,7 +159,7 @@ def safe_action(doc, descricao, func):
         take_screenshot(driver, doc, f"erro_{descricao}")
 
 def finalizar_relatorio():
-    nome_arquivo = f"relatorio_vinculo_convenio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_conveniado_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     doc.save(nome_arquivo)
     log(doc, f"📄 Relatório cancelo como: {nome_arquivo}")
     subprocess.run(["start", "winword", nome_arquivo], shell=True)

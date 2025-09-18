@@ -140,7 +140,7 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
         # Abre o modal
         open_lov = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, btn_selector)))
         open_lov.click()
-        time.sleep(3)
+        time.sleep(5)
 
         # Aguarda campo pesquisa
         campo_pesquisa = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, pesquisa_selector)))
@@ -219,7 +219,7 @@ try:
 
     safe_action(doc, "Selecionando a Filial", selecionar_opcao(
         "#fmod_10070 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroFormasPagamentoMXM > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_dadosGerais > div > div > div > select",
-        "TESTE FILIAL SELENIUM"
+        "TESTE FILIAL SELENIUM 3"
     ))
 
 

@@ -71,7 +71,7 @@ def main():
         campo = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']")))
         campo.send_keys("Cartão")
         time.sleep(1)
-        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/ul/li[5]/a"))).click()
+        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/ul/li[6]/a"))).click()
         time.sleep(2)
 
     def acessar_formulario():
@@ -83,7 +83,7 @@ def main():
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
             "#fmod_10011 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(4) > div > a"))).click()
         tr = wait.until(EC.presence_of_element_located((By.XPATH,
-            "//tr[td[contains(text(), 'GETNET - CARTAO DE DEBITO - MASTERCARD')]]")))
+            "//tr[td[contains(text(), 'MASTERCARD')]]")))
         driver.execute_script("arguments[0].scrollIntoView(true);", tr)
         time.sleep(0.5)
         tr.click()

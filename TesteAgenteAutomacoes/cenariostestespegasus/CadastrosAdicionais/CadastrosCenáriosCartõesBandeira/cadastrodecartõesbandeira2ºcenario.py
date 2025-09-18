@@ -86,6 +86,8 @@ def main():
         wait.until(EC.element_to_be_clickable((By.XPATH, f"//tr[contains(., '{texto_tr}')]"))).click()
 
     def preencher_campos_completos():
+        time.sleep(2)
+
         campos = [
             ("Preenchendo nome", "#fmod_10010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10010.categoriaHolder > div:nth-child(1) > div > div:nth-child(2) > input", "BANDEIRA TESTE"),
             ("Preenchendo tarifa", "#fmod_10010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10010.categoriaHolder > div:nth-child(1) > div > div:nth-child(3) > input", "3,25"),
@@ -102,10 +104,10 @@ def main():
             safe_action(doc, descricao, lambda s=seletor, v=valor: driver.find_element(By.CSS_SELECTOR, s).send_keys(v), driver, wait)
 
         safe_action(doc, "Selecionando conta crédito 1", lambda: selecionar_lov(
-            "#fmod_10010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10010.categoriaHolder > div:nth-child(1) > div > div:nth-child(8) > div > div > a", "745", "PLANO DE CONTAS DÉBITO SELENIUM"), driver, wait)
+            "#fmod_10010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10010.categoriaHolder > div:nth-child(1) > div > div:nth-child(8) > div > div > a", "745", "ITAU"), driver, wait)
 
         safe_action(doc, "Selecionando conta crédito 2", lambda: selecionar_lov(
-            "#fmod_10010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10010.categoriaHolder > div:nth-child(2) > div > div:nth-child(2) > div > div > a", "745", "PLANO DE CONTAS DÉBITO SELENIUM"), driver, wait)
+            "#fmod_10010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10010.categoriaHolder > div:nth-child(2) > div > div:nth-child(2) > div > div > a", "745", "ITAU"), driver, wait)
 
         safe_action(doc, "Selecionando centro de custo", lambda: selecionar_lov(
             "#fmod_10010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10010.categoriaHolder > div:nth-child(2) > div > div:nth-child(3) > div > div > a", "80.79.4703", "TESTE CENTRO DE CUSTO SELENIUM AUTOMATIZADO"), driver, wait)

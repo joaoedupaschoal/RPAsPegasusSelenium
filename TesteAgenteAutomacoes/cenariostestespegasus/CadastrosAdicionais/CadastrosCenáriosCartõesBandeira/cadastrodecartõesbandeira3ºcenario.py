@@ -79,6 +79,7 @@ def main():
         time.sleep(3)
 
     def preencher_campos_obrigatorios():
+        time.sleep(2)
         # Campos principais
         driver.find_element(By.CSS_SELECTOR, "#fmod_10010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10010.categoriaHolder > div:nth-child(1) > div > div:nth-child(2) > input").send_keys("BANDEIRA TESTE")
         driver.find_element(By.CSS_SELECTOR, "#fmod_10010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10010.categoriaHolder > div:nth-child(1) > div > div:nth-child(3) > input").send_keys("3,25")
@@ -104,7 +105,7 @@ def main():
         # LOVs
         safe_action(doc, "Selecionando conta crédito 1", lambda: selecionar_lov(
             "#fmod_10010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10010.categoriaHolder > div:nth-child(1) > div > div:nth-child(8) > div > div > a",
-            "745", "PLANO DE CONTAS DÉBITO SELENIUM"
+            "745", "ITAU"
         ), driver, wait)
 
 
