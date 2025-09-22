@@ -29,7 +29,7 @@ class BrasilProvider(BaseProvider):
 
 # Inclui letras, dígitos e símbolos
 todos_caracteres = string.ascii_letters + string.digits + string.punctuation
-identificador = '▫︎'
+identificador = '↑'
 
 fake = Faker("pt_BR")
 fake.add_provider(BrasilProvider)
@@ -46,6 +46,7 @@ doc.add_paragraph("Cadastro de Tipo de Mensalidade – Cenário 3: Preenchimento
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
+
 
 def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, btn_pesquisar_selector, resultado_xpath):
     """Abre modal e seleciona um item"""
@@ -65,6 +66,7 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
         pesquisar.click()
         time.sleep(3)
         pesquisar.click()
+        time.sleep(3)
 
         # Espera o resultado e clica
         wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))

@@ -191,7 +191,7 @@ try:
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10016 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(3) > input"))
         ).click()
     ))
-
+    time.sleep(2)
     safe_action(doc, "Salvando cadastro", lambda: driver.find_element(
         By.CSS_SELECTOR, "#fmod_10016 > div.wdTelas > div.telaCadastro.clearfix > div.btnHolder > a.btModel.btGray.btsave"
     ).click())

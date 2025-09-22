@@ -240,6 +240,8 @@ try:
 
     ))
 
+    time.sleep(2)
+
     encontrar_mensagem_alerta()
 
 except Exception as e:

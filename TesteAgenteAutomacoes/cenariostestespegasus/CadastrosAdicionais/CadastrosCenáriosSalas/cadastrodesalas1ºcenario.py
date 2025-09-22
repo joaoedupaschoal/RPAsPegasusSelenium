@@ -123,6 +123,7 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
         pesquisar.click()
         time.sleep(3)
         pesquisar.click()
+        time.sleep(3)
 
         # Espera o resultado e clica
         wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))

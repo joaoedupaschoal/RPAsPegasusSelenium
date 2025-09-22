@@ -151,19 +151,19 @@ try:
     ))
 
     safe_action(doc, "Preenchendo Instrução 2", lambda: (
-        time.sleep(1),
+        time.sleep(2),
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10054 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(4) > input"))
         ).send_keys('TESTE INSTRUÇÃO 2 SELENIUM AUTOMATIZADO')
     ))
 
     safe_action(doc, "Preenchendo Instrução 3", lambda: (
-        time.sleep(1),
+
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10054 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(5) > input"))
         ).send_keys('TESTE INSTRUÇÃO 3 SELENIUM AUTOMATIZADO')
     ))
 
     safe_action(doc, "Preenchendo Instrução 4", lambda: (
-        time.sleep(1),
+
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10054 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(6) > input"))
         ).send_keys('TESTE INSTRUÇÃO 4 SELENIUM AUTOMATIZADO')
     ))

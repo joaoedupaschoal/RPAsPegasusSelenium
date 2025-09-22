@@ -157,7 +157,7 @@ try:
     ))
 
     safe_action(doc, "Preenchendo Instrução 1", lambda: (
-        time.sleep(1),
+
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10054 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(3) > input"))
         ).send_keys('TESTE INSTRUÇÃO 1 SELENIUM AUTOMATIZADO')
     ))

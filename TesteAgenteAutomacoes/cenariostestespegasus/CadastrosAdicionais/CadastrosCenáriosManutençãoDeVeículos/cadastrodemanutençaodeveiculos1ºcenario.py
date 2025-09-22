@@ -364,9 +364,9 @@ try:
     safe_action(doc, "Selecionando o Veículo", abrir_modal_e_selecionar(
         "#fmod_10062 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroManutencaoVeiculo > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_grupoDadosGerais > div > div > div:nth-child(2) > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div.formCol.divPesquisa > div:nth-child(1) > input",
-        "HB20X",
+        "HB20S",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
-        "//td[contains(text(), 'HB20X')]"
+        "//td[contains(text(), 'HB20S')]"
     ))    
 
     # Preenchendo dados da manutenção

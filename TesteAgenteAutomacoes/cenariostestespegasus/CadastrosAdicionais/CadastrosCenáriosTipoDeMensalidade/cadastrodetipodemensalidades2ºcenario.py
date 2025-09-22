@@ -47,6 +47,7 @@ doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 
 screenshot_registradas = set()
 
+
 def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, btn_pesquisar_selector, resultado_xpath):
     """Abre modal e seleciona um item"""
     def acao():
@@ -65,6 +66,7 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
         pesquisar.click()
         time.sleep(3)
         pesquisar.click()
+        time.sleep(3)
 
         # Espera o resultado e clica
         wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))
@@ -245,7 +247,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(1) > div > div:nth-child(2) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "748",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "//tr[td[contains(text(), 'RECEITAS COM CEMITÉRIO')]]//a[contains(@class, 'linkAlterar')]"
     ))
 
@@ -253,7 +255,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(1) > div > div:nth-child(3) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "565",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "//tr[td[contains(text(), 'TRANSITÓRIA DE CARTÃO DE DÉBITO')]]//a[contains(@class, 'linkAlterar')]"
     ))
 
@@ -261,7 +263,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(1) > div > div:nth-child(4) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "200129",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "RECEBIMENTOS VIA CHEQUE E DINHEIRO"
     ))
 
@@ -269,7 +271,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(1) > div > div:nth-child(5) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "49.84.3119",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "49.84.3119"
     ))
 
@@ -278,7 +280,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(2) > div > div:nth-child(2) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "748",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "//tr[td[contains(text(), 'RECEITAS COM CEMITÉRIO')]]//a[contains(@class, 'linkAlterar')]"
     ))
 
@@ -286,7 +288,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(2) > div > div:nth-child(3) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "565",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "//tr[td[contains(text(), 'TRANSITÓRIA DE CARTÃO DE DÉBITO')]]//a[contains(@class, 'linkAlterar')]"
     ))
 
@@ -294,7 +296,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(2) > div > div:nth-child(4) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "200129",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "RECEBIMENTOS VIA CHEQUE E DINHEIRO"
     ))
 
@@ -302,7 +304,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(2) > div > div:nth-child(5) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "49.84.3119",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "49.84.3119"
     ))
 
@@ -311,7 +313,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(3) > div > div:nth-child(2) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "748",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "//tr[td[contains(text(), 'RECEITAS COM CEMITÉRIO')]]//a[contains(@class, 'linkAlterar')]"
     ))
 
@@ -319,7 +321,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(3) > div > div:nth-child(3) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "565",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "//tr[td[contains(text(), 'TRANSITÓRIA DE CARTÃO DE DÉBITO')]]//a[contains(@class, 'linkAlterar')]"
     ))
 
@@ -327,7 +329,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(3) > div > div:nth-child(4) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "200129",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "RECEBIMENTOS VIA CHEQUE E DINHEIRO"
     ))
 
@@ -335,7 +337,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(3) > div > div:nth-child(5) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "49.84.3119",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "49.84.3119"
     ))
 
@@ -348,7 +350,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(4) > div > div:nth-child(2) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "748",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "//tr[td[contains(text(), 'RECEITAS COM CEMITÉRIO')]]//a[contains(@class, 'linkAlterar')]"
     ))
 
@@ -356,7 +358,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(4) > div > div:nth-child(3) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "565",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "//tr[td[contains(text(), 'TRANSITÓRIA DE CARTÃO DE DÉBITO')]]//a[contains(@class, 'linkAlterar')]"
     ))
 
@@ -364,7 +366,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(4) > div > div:nth-child(4) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "200129",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "RECEBIMENTOS VIA CHEQUE E DINHEIRO"
     ))
 
@@ -372,7 +374,7 @@ try:
         "#fmod_10027 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10030.categoriaHolder > div:nth-child(4) > div > div:nth-child(5) > div > div > a",
         "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
         "49.84.3119",
-        "",
+        "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a",
         "49.84.3119"
     ))
 

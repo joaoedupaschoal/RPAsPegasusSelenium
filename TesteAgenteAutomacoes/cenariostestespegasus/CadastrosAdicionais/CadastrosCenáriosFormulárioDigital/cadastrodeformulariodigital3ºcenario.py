@@ -101,7 +101,7 @@ def gerar_dados_formulario():
                 f'SIM, POSSUI FILHOS. (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})',
                 f'NÃO, NÃO POSSUI FILHOS. (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})'
             ],
-            'ordem': '00001'
+            'ordem': '2001'
         },
         {
             'descricao': f'CASADO? (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})',
@@ -111,7 +111,7 @@ def gerar_dados_formulario():
                 f'SIM, É CASADO. (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})',
                 f'NÃO, NÃO É CASADO. (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})'
             ],
-            'ordem': '00002'
+            'ordem': '2002'
         },
         {
             'descricao': f'TEM PET? (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})',
@@ -121,14 +121,14 @@ def gerar_dados_formulario():
                 f'SIM, TEM PET. (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})',
                 f'NÃO, NÃO TEM PET. (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})'
             ],
-            'ordem': '00003'
+            'ordem': '2003'
         },
         {
             'descricao': f'QUAL É O SEU NOME? (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})',
             'tipo': 'Dissertativa',
             'formato': 'Alfa númerica',
             'alternativas': [],
-            'ordem': '00004'
+            'ordem': '2004'
         }
     ]
     
@@ -175,7 +175,7 @@ def criar_pergunta(pergunta_data):
         # Novo registro pergunta
         novo_registro_pergunta = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(4) > a")))
         novo_registro_pergunta.click()
-        
+        time.sleep(2)
         # Preencher descrição da pergunta
         descricao_pergunta = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#cg_10043 > div.wdTelas > div > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(2) > input")))
         descricao_pergunta.send_keys(pergunta_data['descricao'])
@@ -196,7 +196,7 @@ def criar_pergunta(pergunta_data):
                 # Novo registro alternativa
                 novo_registro_alternativa = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(4) > a")))
                 novo_registro_alternativa.click()
-                
+                time.sleep(2)
                 # Preencher descrição alternativa
                 descricao_alternativa = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#cg_10044 > div.wdTelas > div > div.catWrapper > div > div > div > div > div > input")))
                 descricao_alternativa.send_keys(alternativa_texto)

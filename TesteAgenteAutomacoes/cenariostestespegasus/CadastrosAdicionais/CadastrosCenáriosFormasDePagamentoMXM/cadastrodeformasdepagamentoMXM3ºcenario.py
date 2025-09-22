@@ -152,6 +152,7 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
         pesquisar.click()
         time.sleep(3)
         pesquisar.click()
+        time.sleep(3)
 
         # Espera o resultado e clica
         wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))
@@ -219,7 +220,7 @@ try:
 
     safe_action(doc, "Selecionando a Filial", selecionar_opcao(
         "#fmod_10070 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroFormasPagamentoMXM > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_dadosGerais > div > div > div > select",
-        "TESTE FILIAL SELENIUM 3"
+        "TESTE FILIAL SELENIUM 6"
     ))
 
 
@@ -457,7 +458,7 @@ try:
         ))
     ).click())
 
-
+    time.sleep(4)
 
     encontrar_mensagem_alerta()
 
