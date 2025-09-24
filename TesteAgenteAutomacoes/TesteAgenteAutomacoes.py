@@ -7,8 +7,20 @@ Menus específicos + breadcrumb de caminho atual (inclusive em cada cadastro)
 from __future__ import annotations
 import os, sys, time, traceback, subprocess
 from pathlib import Path
+import shutil
+import re
 from datetime import datetime
 from typing import Dict, Any, Tuple
+from qa_reporter import QAReporter  # <-- usar o seu qa_reporter.py
+from subprocess import Popen, PIPE
+
+import sys
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 
 IS_WINDOWS = (os.name == "nt")
 if IS_WINDOWS:
@@ -24,6 +36,11 @@ OUT_BASE = DESKTOP / "AutomacoesPegasus" / f"RUN_{RUN_ID}"
 DIR_REPORTS = OUT_BASE / "reports"
 for d in (DIR_REPORTS,):
     d.mkdir(parents=True, exist_ok=True)
+
+
+ERROR_RX = re.compile(r'(?i)\berro\b')  # casa "Erro" como palavra (case-insensitive)
+FORCE_OK_RX = re.compile(r'\[TESTE_OK\]', re.IGNORECASE)  # opcional
+
 
 try:
     from qa_reporter import QAReporter
@@ -41,6 +58,13 @@ def show_loading():
         print(".", end="", flush=True)
     time.sleep(0.2)
     clear_screen()
+
+def log(doc, msg):
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        print(msg.encode("ascii", "ignore").decode("ascii"))
+    doc.add_paragraph(msg)
 
 
 # Por este (não mostra * à toa nos menus):
@@ -115,7 +139,6 @@ def main():
 
 
 # ===================== BASE DE CENÁRIOS =====================
-BASE_SCRIPTS = Path(__file__).resolve().parent / "cenariostestespegasus"
 
 SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
     "cadastros": {
@@ -2048,6 +2071,245 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
 }
 
 
+# ---------- helpers de execução ----------
+
+
+
+FROZEN = getattr(sys, "frozen", False)
+
+def _python_cmd():
+    if getattr(sys, "frozen", False) is False and sys.executable:
+        return [sys.executable]
+    for name in ("py", "python", "python3"):
+        p = shutil.which(name)
+        if p:
+            return [p]
+    return ["python"]
+
+
+
+ERROR_RX = re.compile(r'(?i)\berro\b')  # ERRO somente se houver "Erro" no log
+
+# Flag do Windows para não abrir console no processo-filho
+CREATE_NO_WINDOW = 0x08000000 if os.name == "nt" else 0
+
+def _run_cenario_and_classify(path: Path, idx: int | None = None, total: int | None = None):
+    """
+    Executa o cenário SEM console do filho (evita 'cls' limpar sua tela),
+    captura stdout/stderr, e imprime o log ao final em bloco.
+    Retorna: (returncode, status, error_snippet, full_log)
+    """
+    path = Path(path).resolve()
+    header = f"\nExecutando {path}"
+    if idx is not None and total is not None:
+        header += f" [{idx}/{total}]"
+    print(header)
+
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+
+    # opcional: deixa seu console em UTF-8
+    if os.name == "nt":
+        try:
+            os.system("chcp 65001 >nul")
+        except Exception:
+            pass
+
+    proc = Popen(
+        _python_cmd() + ["-u", str(path)],
+        cwd=str(path.parent),
+        stdout=PIPE,
+        stderr=PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
+        creationflags=CREATE_NO_WINDOW,  # <- impede o 'cls' do filho de limpar sua tela
+    )
+
+    out, err = proc.communicate()
+    full_log = (out or "") + (err or "")
+    rc = proc.returncode
+
+    # imprime o log do cenário em bloco (sem risco de ser "limpo")
+    print("\n─── LOG DO CENÁRIO ─────────────────────────────────────────")
+    print(full_log.rstrip())
+    print("\n─── FIM DO LOG ─────────────────────────────────────────────")
+
+    # ERRO somente se houver a palavra "Erro" no log
+    has_error_text = bool(ERROR_RX.search(full_log))
+    is_error = has_error_text
+
+    if is_error:
+        m = ERROR_RX.search(full_log)
+        snippet = ""
+        if m:
+            start = max(0, m.start() - 120)
+            end   = min(len(full_log), m.end() + 200)
+            snippet = full_log[start:end].strip()
+        print("[FAIL] Erro detectado por log (palavra 'Erro')")
+        return rc, "ERROR", (snippet or "Erro detectado no log."), full_log
+    else:
+        print("[OK]")
+        return rc, "SUCCESS", None, full_log
+
+
+
+
+def _executar_cenario(path, idx=None, total=None, pause=False):
+    path = Path(path)
+    msg = f"\nExecutando {path}"
+    if idx is not None and total is not None:
+        msg += f" [{idx}/{total}]"
+    print(msg)
+
+    try:
+        # roda no MESMO console e no diretório do script
+        rc = subprocess.run(
+            _python_cmd() + ["-u", str(path)],
+            cwd=str(path.parent),
+            check=False
+        ).returncode
+
+        if rc != 0:
+            print(f"[FAIL] Retorno do processo: {rc}")
+        else:
+            print("[OK]")
+    except Exception as e:
+        print(f"[ERRO] Falha ao executar '{path}': {e}")
+
+    if pause:
+        input("\nPressione Enter para voltar...")
+
+def _iter_scenarios(node: dict):
+    """Percorre o nó atual e todos os subnós coletando caminhos de cenários (campo 'file')."""
+    # cenários diretamente no nó
+    if "scenarios" in node:
+        for _, scen in node["scenarios"].items():
+            f = scen.get("file")
+            if f:
+                yield f
+
+    # subgrupos explícitos
+    if "groups" in node:
+        for _, sub in node["groups"].items():
+            if isinstance(sub, dict):
+                yield from _iter_scenarios(sub)
+
+    # itens numéricos (ex.: '45' -> dict com 'label' e possivelmente 'scenarios')
+    for k, v in node.items():
+        if isinstance(k, str) and k.isdigit() and isinstance(v, dict):
+            yield from _iter_scenarios(v)
+
+
+# ---------- QA Reporter: só para encadeado ----------
+
+def _abrir_arquivo(p: Path):
+    try:
+        p = Path(p).resolve()
+        if not p.exists():
+            for _ in range(10):
+                time.sleep(0.2)
+                if p.exists():
+                    break
+        if os.name == "nt":
+            os.startfile(str(p))  # type: ignore[attr-defined]
+        elif sys.platform == "darwin":
+            subprocess.run(["open", str(p)], check=False)
+        else:
+            subprocess.run(["xdg-open", str(p)], check=False)
+        print(f"Abrindo relatório: {p}")
+    except Exception as e:
+        print(f"Não foi possível abrir automaticamente: {e}\nCaminho: {p}")
+
+_QA_DOCX_RX = re.compile(r'(?i)^relatorio[-_ ]?qa.*\.docx$')  # ex.: Relatorio_QA_20250924-154210.docx
+
+def _is_qa_docx(p: Path) -> bool:
+    """Somente arquivos gerados pelo qa_reporter (pelo padrão de nome)."""
+    return _QA_DOCX_RX.match(p.name) is not None
+
+def _anunciar_docx_encadeado(before: set[Path], after: set[Path]):
+    """
+    Ao final do encadeado, identifica os .docx NOVOS gerados pelo qa_reporter
+    e abre apenas o mais recente. Ignora relatórios de cenários individuais.
+    """
+    # considera apenas *.docx cujo nome parece do qa_reporter
+    novos = sorted([p for p in (after - before) if _is_qa_docx(p)],
+                   key=lambda p: p.stat().st_mtime, reverse=True)
+
+    alvo: Path | None = None
+    if novos:
+        alvo = novos[0]
+        print(f"\nRelatório QA (encadeado) gerado: {alvo}")
+    else:
+        # não houve diff visível; tenta achar o qa_reporter mais recente entre 'after'
+        candidatos = [p for p in after if _is_qa_docx(p)]
+        if candidatos:
+            alvo = max(candidatos, key=lambda p: p.stat().st_mtime)
+            print(f"\n(Relatório QA mais recente encontrado) {alvo}")
+        else:
+            print("\nNenhum relatório do qa_reporter encontrado nas pastas monitoradas.")
+            alvo = None
+
+    if alvo:
+        _abrir_arquivo(alvo)
+
+def _provaveis_raizes_relatorios(paths_cenarios: list[Path]) -> list[Path]:
+    """Locais prováveis onde o qa_reporter salva .docx durante o encadeado."""
+    roots = set()
+    for p in paths_cenarios:
+        p = Path(p).resolve()
+        roots.add(p.parent)
+        roots.add(p.parent / "reports")
+    roots.add(Path.cwd())
+    roots.add(Path.cwd() / "reports")
+    try:
+        if 'DIR_REPORTS' in globals() and DIR_REPORTS:
+            roots.add(Path(DIR_REPORTS))
+        if 'OUT_BASE' in globals() and OUT_BASE:
+            roots.add(Path(OUT_BASE))
+    except Exception:
+        pass
+    return [r for r in roots if r]
+
+def _snap_docx(roots: list[Path]) -> set[Path]:
+    """Snapshot recursivo de .docx nas raízes monitoradas."""
+    files: set[Path] = set()
+    for r in roots:
+        try:
+            r = Path(r)
+            if r.exists():
+                for p in r.rglob("*.docx"):
+                    files.add(p.resolve())
+        except Exception:
+            pass
+    return files
+
+def _collect_scenarios(node: dict):
+    out = []
+    # cenários diretos (ordenar por código numérico)
+    if "scenarios" in node and isinstance(node["scenarios"], dict):
+        for code in sorted(node["scenarios"].keys(),
+                           key=lambda k: int(k) if str(k).isdigit() else str(k)):
+            scen = node["scenarios"][code]
+            f = scen.get("file")
+            if f:
+                out.append((scen.get("label", Path(f).stem), Path(f)))
+    # subgrupos
+    if "groups" in node and isinstance(node["groups"], dict):
+        for _, sub in sorted(node["groups"].items(), key=lambda kv: kv[1].get("label","")):
+            if isinstance(sub, dict):
+                out.extend(_collect_scenarios(sub))
+    # itens numéricos (ex.: "24": {...})
+    num_keys = [k for k in node.keys() if isinstance(k, str) and k.isdigit()]
+    for key in sorted(num_keys, key=int):
+        v = node[key]
+        if isinstance(v, dict):
+            out.extend(_collect_scenarios(v))
+    return out
+
+
+# ===================== menus =====================
 
 def executar_menu_scripts(node: Any, breadcrumb: str = ""):
     while True:
@@ -2059,34 +2321,110 @@ def executar_menu_scripts(node: Any, breadcrumb: str = ""):
             print("===== CAMINHO ATUAL =====")
             print(breadcrumb)
             print("")
+
         itens = {}
+
         if "groups" in node:
             for code, sub in node["groups"].items():
                 sub_label = sub.get("label", str(code))
                 print(f"{sub_label} (Digite {code})")
                 itens[str(code)] = (sub_label, sub)
+
+        for key in sorted([k for k in node.keys() if isinstance(k, str) and k.isdigit()], key=int):
+            item = node[key]
+            if isinstance(item, dict) and "label" in item:
+                print(f"{item['label']} (Digite {key})")
+                itens[key] = (item['label'], item)
+
         if "scenarios" in node:
             for code, scen in node["scenarios"].items():
                 print(f"{scen['label']} (Digite {code})")
+                itens[code] = (scen['label'], scen)
+
         print("\nTodos os Cenários encadeados (Digite 0)")
         print("<--- Voltar (X + Enter)")
 
         opt = read_input_with_hotkeys("\nDigite a opção desejada: ").upper()
+
         if opt in ("X", "__BACK__"):
             return
+
         if opt == "0":
-            print("[EXECUTAR EM CADEIA] ...")
-            input("\nPressione Enter para voltar...")
+            scen_list = _collect_scenarios(node)
+            total = len(scen_list)
+            if total == 0:
+                print("\n[AVISO] Não há cenários neste nível.")
+                input("\nPressione Enter para voltar...")
+                continue
+
+            print(f"\n[EXECUTAR EM CADEIA] {total} cenário(s) encontrado(s).\n")
+            print("Plano de execução:")
+            for i, (lbl, pth) in enumerate(scen_list, 1):
+                print(f"  [{i}/{total}] {lbl} -> {pth}")
+            print("")
+
+            reports_dir = Path.cwd() / "reports"
+            try:
+                username = os.getlogin()
+            except Exception:
+                username = "Runner"
+
+            rep = QAReporter(
+                out_dir=reports_dir,
+                environment="Homologação",
+                executor="Runner CLI",
+                system_version="v2025.09",
+                username=username
+            )
+            rep.start_run(summary=f"Execução em cadeia — {node.get('label','')}")
+
+            for idx, (label_exec, path_exec) in enumerate(scen_list, 1):
+                h = rep.start_scenario(label_exec, test_type="CADASTRO")
+                try:
+                    rc, status, err_msg, full_log = _run_cenario_and_classify(Path(path_exec), idx, total)
+                except Exception as e:
+                    rc, status, err_msg, full_log = (1, "ERROR", f"Falha no runner: {e}", "")
+
+                try:
+                    (reports_dir / "logs").mkdir(parents=True, exist_ok=True)
+                    (reports_dir / "logs" / f"{Path(path_exec).stem}_{idx:02d}.log").write_text(
+                        full_log, encoding="utf-8", errors="ignore"
+                    )
+                except Exception:
+                    pass
+
+                rep.finish_scenario(h, status=status, error_message=err_msg, extra={
+                    "path": str(path_exec), "returncode": rc
+                })
+                print(f"\nResumo: [{idx}/{total}] {label_exec} -> {status}")
+
+            rep.end_run()
+            docx_path = rep.save_docx("Relatorio_QA")
+            print(f"\nRelatório QA gerado: {docx_path}")
+            _abrir_arquivo(docx_path)
+
+            input("\nEncadeamento concluído. Pressione Enter para voltar...")
             continue
+
+
+
         if opt in itens:
-            sub_label, sub_node = itens[opt]
-            executar_menu_scripts(sub_node, f"{breadcrumb} > {sub_label}")
+            item_label, item_data = itens[opt]
+
+            if isinstance(item_data, dict) and ("scenarios" in item_data or "groups" in item_data
+                                                or any(isinstance(k, str) and k.isdigit() for k in item_data.keys())):
+                executar_menu_scripts(item_data, f"{breadcrumb} > {item_label}")
+                continue
+
+            if isinstance(item_data, dict) and "file" in item_data:
+                # unitário: executa sem anúncio de relatório
+                _executar_cenario(item_data["file"], pause=True)
+                continue
+
+            print("\n[AVISO] Opção sem ação definida.")
+            time.sleep(0.8)
             continue
-        if "scenarios" in node and opt in node["scenarios"]:
-            scen = node["scenarios"][opt]
-            print(f"\n[RUN] {scen['file']}")
-            input("\nPressione Enter para voltar...")
-            continue
+
         print("\nOpção inválida.")
         time.sleep(0.8)
 
@@ -2124,24 +2462,22 @@ def menu_tipo_cadastro(root: dict):
             node_tmp = {"label": "Todos os Cadastros", "groups": {}}
             cad_root = root.get("cadastros", {})
             if cad_root.get("principais"):
-                node_tmp["groups"]["Cadastros Principais"] = {**cad_root["principais"], "label": "Cadastros Principais"}
+                node_tmp["groups"]["1"] = {**cad_root["principais"], "label": "Cadastros Principais"}
             if cad_root.get("adicionais"):
-                node_tmp["groups"]["Cadastros Adicionais"] = {**cad_root["adicionais"], "label": "Cadastros Adicionais"}
+                node_tmp["groups"]["2"] = {**cad_root["adicionais"], "label": "Cadastros Adicionais"}
             executar_menu_scripts(node_tmp, "> Cadastros > Todos")
             continue
         if opt == "1":
-            menu_cadastros_principais(root)
-            continue
+            menu_cadastros_principais(root); continue
         if opt == "2":
-            menu_cadastros_adicionais(root)
-            continue
+            menu_cadastros_adicionais(root); continue
+
         print("\nOpção inválida.")
         time.sleep(0.8)
 
 def menu_pos_login(root: dict):
     while True:
         clear_screen()
-        print("Depois da autenticação\n")
         print("Qual tipo de automação você deseja rodar?\n")
         print("Cadastros (Digite 1)")
         print("Processos (Digite 2)")
@@ -2159,14 +2495,14 @@ def menu_pos_login(root: dict):
             executar_menu_scripts({"label": "Cadastros", **cad_root}, "> Cadastros")
             continue
         if opt == "1":
-            menu_tipo_cadastro(root)
-            continue
+            menu_tipo_cadastro(root); continue
         if opt == "2":
             clear_screen()
             print("----- PROCESSOS -----\n")
             print("(Ainda vou configurar)")
             input("\nPressione Enter para voltar...")
             continue
+
         print("\nOpção inválida.")
         time.sleep(0.8)
 

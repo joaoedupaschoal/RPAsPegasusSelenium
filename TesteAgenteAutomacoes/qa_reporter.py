@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 import os, traceback, platform
 import io
-
+import re
 # Dependências opcionais (não travar execução caso ausentes)
 _HAS_MPL = False
 _HAS_DOCX = False
@@ -116,6 +116,19 @@ class QAReporter:
 
     def end_run(self):
         self._run_ended_at = datetime.now()
+
+    ERROR_PATTERNS = [
+        r'^\s*\[\!\]\s*erro\b',             # ex.: [!] Erro: ...
+        r'\berro:\s',                       # "Erro: ..."
+        r'\bexception\b',                   # exception genérica
+        r'\bexce(ç|c)ão\b',                 # "exceção"
+        r'Traceback \(most recent call last\):',
+    ]
+    ERROR_RX = re.compile("|".join(ERROR_PATTERNS), re.IGNORECASE | re.MULTILINE)
+
+    # opcional: marcador para forçar sucesso mesmo com "erro" no texto
+    FORCE_OK_RX = re.compile(r'\[TESTE_OK\]', re.IGNORECASE)
+
 
     # ===== registrar cenários =====
     def start_scenario(self, name: str, test_type: str = "SCENARIO", test_id: str | None = None) -> Dict[str, Any]:
@@ -201,22 +214,51 @@ class QAReporter:
         }
 
     # ===== gráficos de pizza =====
-    def _make_pie(self, ok: int, err: int, alt: int, title: str) -> Optional[Path]:
+    def _make_pie(self, ok: int, err: int, alt: int, title: str,
+                size_in: float = 2.8, dpi: int = 180) -> Optional[Path]:
         if not _HAS_MPL:
             return None
-        # Não definir cores explicitamente (política do notebook do usuário)
+
         labels = ["Sucesso", "Erro", "Alerta"]
-        sizes = [ok, err, alt]
-        # se tudo zero, retorna None
+        sizes  = [ok, err, alt]
+
         if sum(sizes) == 0:
             return None
-        fig = plt.figure(figsize=(4, 4), dpi=150)
-        plt.pie(sizes, labels=labels, autopct="%1.0f%%", startangle=140)
-        plt.title(title)
+
+        # rótulos: não mostra para fatias com valor 0
+        show_labels = [lbl if val > 0 else "" for lbl, val in zip(labels, sizes)]
+        show_labels = [lbl if val > 0 else None for lbl, val in zip(labels, sizes)]
+
+        # CORES FIXAS (mesma ordem dos labels acima)
+        colors = [
+            "#2ecc71",  # Sucesso  -> verde
+            "#e74c3c",  # Erro     -> vermelho
+            "#f1c40f",  # Alerta   -> amarelo
+        ]
+
+        def _autopct(pct: float) -> str:
+            return f"{pct:.0f}%" if pct >= 1.0 else ""
+
+        fig, ax = plt.subplots(figsize=(size_in, size_in), dpi=dpi)
+        wedges, texts, autotexts = ax.pie(
+            sizes,
+            labels=show_labels,
+            colors=colors,           # <--- fixa as cores
+            autopct=_autopct,
+            startangle=90,
+            labeldistance=1.08,
+            pctdistance=0.72,
+            wedgeprops={"linewidth": 0.8, "edgecolor": "white"},
+            textprops={"fontsize": 8}
+        )
+        ax.axis("equal")
+        ax.set_title(title, fontsize=10)
+
         out = self.out_dir / f"chart_{title.replace(' ', '_').lower()}_{self._stamp}.png"
         fig.savefig(out, bbox_inches="tight")
         plt.close(fig)
         return out
+
 
     # ===== DOCX =====
     def save_docx(self, base_name: str = "Relatorio_QA") -> Path:
@@ -275,15 +317,17 @@ class QAReporter:
         obs.add_run('Registros com "alerta" não são contabilizados como sucesso ou erro; apenas informativos.')
         doc.add_paragraph("")
 
+        CHART_WIDTH_IN = 2.8
+       
         # gráficos (se existirem)
         if chart_all or chart_cad:
             doc.add_heading("Gráficos", level=1)
-            if chart_all and Path(chart_all).exists():
-                doc.add_paragraph("Distribuição Geral")
-                doc.add_picture(str(chart_all), width=Inches(3.5))
-            if chart_cad and Path(chart_cad).exists():
-                doc.add_paragraph("Distribuição — Cadastros")
-                doc.add_picture(str(chart_cad), width=Inches(3.5))
+        if chart_all and Path(chart_all).exists():
+            doc.add_paragraph("Distribuição Geral")
+            doc.add_picture(str(chart_all), width=Inches(CHART_WIDTH_IN))
+        if chart_cad and Path(chart_cad).exists():
+            doc.add_paragraph("Distribuição — Cadastros")
+            doc.add_picture(str(chart_cad), width=Inches(CHART_WIDTH_IN))
             doc.add_paragraph("")
 
         # falhas
