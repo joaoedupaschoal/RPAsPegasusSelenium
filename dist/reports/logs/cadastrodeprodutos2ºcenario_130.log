@@ -1,0 +1,215 @@
+🔄 Acessando sistema...
+✅ Acessando sistema realizada com sucesso.
+🔄 Realizando login...
+✅ Realizando login realizada com sucesso.
+🔄 Esperando sistema carregar e ajustando zoom...
+🔍 Zoom ajustado para 90%.
+✅ Esperando sistema carregar e ajustando zoom realizada com sucesso.
+🔄 Abrindo menu Produtos...
+❌ Erro ao abrindo menu produtos: Message: invalid session id: session deleted as the browser has closed the connection
+from disconnected: not connected to DevTools
+  (Session info: chrome=140.0.7339.129); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidsessionidexception
+Stacktrace:
+	GetHandleVerifier [0x0xc7c333+65459]
+	GetHandleVerifier [0x0xc7c374+65524]
+	(No symbol) [0x0xa9d973]
+	(No symbol) [0x0xa8cdf0]
+	(No symbol) [0x0xaab4af]
+	(No symbol) [0x0xb10775]
+	(No symbol) [0x0xb2aef9]
+	(No symbol) [0x0xb09bf6]
+	(No symbol) [0x0xadb38e]
+	(No symbol) [0x0xadc274]
+	GetHandleVerifier [0x0xefeda3+2697763]
+	GetHandleVerifier [0x0xef9ec7+2677575]
+	GetHandleVerifier [0x0xca4194+228884]
+	GetHandleVerifier [0x0xc949f8+165496]
+	GetHandleVerifier [0x0xc9b18d+192013]
+	GetHandleVerifier [0x0xc847d8+99416]
+	GetHandleVerifier [0x0xc84972+99826]
+	GetHandleVerifier [0x0xc6ebea+10346]
+	BaseThreadInitThunk [0x0x7728fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x77e782ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x77e7827e+238]
+
+❌ ERRO FATAL: Message: invalid session id; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidsessionidexception
+Stacktrace:
+	GetHandleVerifier [0x0xc7c333+65459]
+	GetHandleVerifier [0x0xc7c374+65524]
+	(No symbol) [0x0xa9d7c0]
+	(No symbol) [0x0xada663]
+	(No symbol) [0x0xb09cb6]
+	(No symbol) [0x0xb0555e]
+	(No symbol) [0x0xb04ad3]
+	(No symbol) [0x0xa6e73d]
+	(No symbol) [0x0xa6ecbe]
+	(No symbol) [0x0xa6f15d]
+	GetHandleVerifier [0x0xefeda3+2697763]
+	GetHandleVerifier [0x0xef9ec7+2677575]
+	GetHandleVerifier [0x0xca4194+228884]
+	GetHandleVerifier [0x0xc949f8+165496]
+	GetHandleVerifier [0x0xc9b18d+192013]
+	(No symbol) [0x0xa6e3f2]
+	(No symbol) [0x0xa6db72]
+	GetHandleVerifier [0x0x105340c+4092044]
+	BaseThreadInitThunk [0x0x7728fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x77e782ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x77e7827e+238]
+
+✅ Teste concluído com sucesso.
+📄 Relatório salvo como: relatorio_produtos_cenario_2_20250925_171322.docx
+Traceback (most recent call last):
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI115962\cenariostestespegasus\CadastrosPrincipais\CadastrosCenáriosProdutos\cadastrodeprodutos2ºcenario.py", line 114, in safe_action
+    func()
+    ~~~~^^
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI115962\cenariostestespegasus\CadastrosPrincipais\CadastrosCenáriosProdutos\cadastrodeprodutos2ºcenario.py", line 241, in <lambda>
+    wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[41]/a"))).click(),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\support\wait.py", line 129, in until
+    value = method(self._driver)
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\support\expected_conditions.py", line 624, in _predicate
+    target = driver.find_element(*target)  # grab element at locator
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 926, in find_element
+    return self.execute(Command.FIND_ELEMENT, {"using": by, "value": value})["value"]
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 458, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.InvalidSessionIdException: Message: invalid session id: session deleted as the browser has closed the connection
+from disconnected: not connected to DevTools
+  (Session info: chrome=140.0.7339.129); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidsessionidexception
+Stacktrace:
+	GetHandleVerifier [0x0xc7c333+65459]
+	GetHandleVerifier [0x0xc7c374+65524]
+	(No symbol) [0x0xa9d973]
+	(No symbol) [0x0xa8cdf0]
+	(No symbol) [0x0xaab4af]
+	(No symbol) [0x0xb10775]
+	(No symbol) [0x0xb2aef9]
+	(No symbol) [0x0xb09bf6]
+	(No symbol) [0x0xadb38e]
+	(No symbol) [0x0xadc274]
+	GetHandleVerifier [0x0xefeda3+2697763]
+	GetHandleVerifier [0x0xef9ec7+2677575]
+	GetHandleVerifier [0x0xca4194+228884]
+	GetHandleVerifier [0x0xc949f8+165496]
+	GetHandleVerifier [0x0xc9b18d+192013]
+	GetHandleVerifier [0x0xc847d8+99416]
+	GetHandleVerifier [0x0xc84972+99826]
+	GetHandleVerifier [0x0xc6ebea+10346]
+	BaseThreadInitThunk [0x0x7728fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x77e782ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x77e7827e+238]
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI115962\cenariostestespegasus\CadastrosPrincipais\CadastrosCenáriosProdutos\cadastrodeprodutos2ºcenario.py", line 236, in <module>
+    safe_action(doc, "Abrindo menu Produtos", lambda: (
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        time.sleep(3)
+        ^^^^^^^^^^^^^
+    ))
+    ^^
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI115962\cenariostestespegasus\CadastrosPrincipais\CadastrosCenáriosProdutos\cadastrodeprodutos2ºcenario.py", line 119, in safe_action
+    take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI115962\cenariostestespegasus\CadastrosPrincipais\CadastrosCenáriosProdutos\cadastrodeprodutos2ºcenario.py", line 106, in take_screenshot
+    driver.save_screenshot(path)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 1025, in save_screenshot
+    return self.get_screenshot_as_file(filename)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 1000, in get_screenshot_as_file
+    png = self.get_screenshot_as_png()
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 1034, in get_screenshot_as_png
+    return b64decode(self.get_screenshot_as_base64().encode("ascii"))
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 1044, in get_screenshot_as_base64
+    return self.execute(Command.SCREENSHOT)["value"]
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 458, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.InvalidSessionIdException: Message: invalid session id; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidsessionidexception
+Stacktrace:
+	GetHandleVerifier [0x0xc7c333+65459]
+	GetHandleVerifier [0x0xc7c374+65524]
+	(No symbol) [0x0xa9d7c0]
+	(No symbol) [0x0xada663]
+	(No symbol) [0x0xb09cb6]
+	(No symbol) [0x0xb0555e]
+	(No symbol) [0x0xb04ad3]
+	(No symbol) [0x0xa6e73d]
+	(No symbol) [0x0xa6ecbe]
+	(No symbol) [0x0xa6f15d]
+	GetHandleVerifier [0x0xefeda3+2697763]
+	GetHandleVerifier [0x0xef9ec7+2677575]
+	GetHandleVerifier [0x0xca4194+228884]
+	GetHandleVerifier [0x0xc949f8+165496]
+	GetHandleVerifier [0x0xc9b18d+192013]
+	(No symbol) [0x0xa6e3f2]
+	(No symbol) [0x0xa6db72]
+	GetHandleVerifier [0x0x105340c+4092044]
+	BaseThreadInitThunk [0x0x7728fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x77e782ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x77e7827e+238]
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI115962\cenariostestespegasus\CadastrosPrincipais\CadastrosCenáriosProdutos\cadastrodeprodutos2ºcenario.py", line 437, in <module>
+    take_screenshot(driver, doc, "erro_fatal")
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI115962\cenariostestespegasus\CadastrosPrincipais\CadastrosCenáriosProdutos\cadastrodeprodutos2ºcenario.py", line 106, in take_screenshot
+    driver.save_screenshot(path)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 1025, in save_screenshot
+    return self.get_screenshot_as_file(filename)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 1000, in get_screenshot_as_file
+    png = self.get_screenshot_as_png()
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 1034, in get_screenshot_as_png
+    return b64decode(self.get_screenshot_as_base64().encode("ascii"))
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 1044, in get_screenshot_as_base64
+    return self.execute(Command.SCREENSHOT)["value"]
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 458, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.InvalidSessionIdException: Message: invalid session id; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalidsessionidexception
+Stacktrace:
+	GetHandleVerifier [0x0xc7c333+65459]
+	GetHandleVerifier [0x0xc7c374+65524]
+	(No symbol) [0x0xa9d7c0]
+	(No symbol) [0x0xada663]
+	(No symbol) [0x0xb09cb6]
+	(No symbol) [0x0xb0555e]
+	(No symbol) [0x0xb04ad3]
+	(No symbol) [0x0xa6e73d]
+	(No symbol) [0x0xa6ecbe]
+	(No symbol) [0x0xa6f15d]
+	GetHandleVerifier [0x0xefeda3+2697763]
+	GetHandleVerifier [0x0xef9ec7+2677575]
+	GetHandleVerifier [0x0xca4194+228884]
+	GetHandleVerifier [0x0xc949f8+165496]
+	GetHandleVerifier [0x0xc9b18d+192013]
+	(No symbol) [0x0xa6e3f2]
+	(No symbol) [0x0xa6db72]
+	GetHandleVerifier [0x0x105340c+4092044]
+	BaseThreadInitThunk [0x0x7728fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x77e782ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x77e7827e+238]
+

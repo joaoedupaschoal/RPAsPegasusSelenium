@@ -1,0 +1,26 @@
+🔄 Acessando o sistema...
+✅ Acessando o sistema realizada com sucesso.
+📸 Sistema acessado.
+🔄 Realizando login...
+✅ Realizando login realizada com sucesso.
+📸 Login realizado.
+🔄 Ajustando zoom...
+✅ Ajustando zoom realizada com sucesso.
+🔄 Abrindo menu Cesta Básica...
+✅ Abrindo menu Cesta Básica realizada com sucesso.
+📸 Menu 'Cesta Básica' aberto.
+🔄 Acessando formulário...
+✅ Acessando formulário realizada com sucesso.
+📸 Formulário de cadastro aberto.
+ℹ️ Tentando salvar formulário sem preencher campos obrigatórios...
+🔄 Clicando em Salvar...
+✅ Clicando em Salvar realizada com sucesso.
+📸 Clique no botão Salvar realizado.
+📢 ❌ Erro: Ocorreu um erro ao salvar o registro.
+❌ Mensagem de erro exibida.
+📸 Status após tentativa de salvamento.
+🔄 Fechando formulário...
+✅ Fechando formulário realizada com sucesso.
+📸 Formulário fechado.
+✅ Teste concluído com sucesso.
+📄 Relatório salvo como: relatorio_cesta_basica_cenario_3_20250925_151758.docx

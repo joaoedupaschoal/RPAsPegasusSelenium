@@ -1,0 +1,1 @@
+Cenário 3: Nesse teste, o robô preencherá os campos NÃO obrigatórios e salvará o cadastro de uma nova Ocorrência, com a finalidade de validar o disparo de mensagens no sistema. | Arquivo=cadastrodeocorrencias3ºcenario.py | Tipo=CADASTRO | ID=CADASTRO_0003 | Sev=MEDIUM | Início=25/09/2025 17:51:48 | Erro=realizada com sucesso.

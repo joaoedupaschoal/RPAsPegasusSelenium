@@ -2393,10 +2393,16 @@ def executar_menu_scripts(node: Any, breadcrumb: str = ""):
                 except Exception:
                     pass
 
-                rep.finish_scenario(h, status=status, error_message=err_msg, extra={
-                    "path": str(path_exec), "returncode": rc
-                })
-                print(f"\nResumo: [{idx}/{total}] {label_exec} -> {status}")
+                rep.finish_scenario(
+                    h,
+                    status=status,
+                    error_message=err_msg,
+                    extra={
+                        "path": str(path_exec),
+                        "returncode": rc,
+                        "file_name": Path(path_exec).name  # <-- novo campo
+                    }
+                )
 
             rep.end_run()
             docx_path = rep.save_docx("Relatorio_QA")

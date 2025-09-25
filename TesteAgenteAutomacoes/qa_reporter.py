@@ -58,17 +58,17 @@ except Exception:
 @dataclass
 class ScenarioResult:
     name: str
-    status: str                  # SUCCESS | ERROR | ALERT
-    started_at: datetime
-    ended_at: datetime
+    status: str
+    started_at: Any
+    ended_at: Any
     duration_ms: int
-    test_type: str = "SCENARIO"  # SCENARIO | CADASTRO
+    test_type: str = "SCENARIO"
     error_message: Optional[str] = None
     screenshots: Optional[List[str]] = None
     extra: Optional[Dict[str, Any]] = None
     test_id: Optional[str] = None
-    severity: str = "MEDIUM"     # LOW | MEDIUM | HIGH | CRITICAL
-
+    severity: str = "MEDIUM"
+    file_name: Optional[str] = None  # <-- NOVO
 
 def _fmt_dt(dt: Optional[datetime]) -> str:
     if not dt:
@@ -139,13 +139,10 @@ class QAReporter:
             "started_at": datetime.now()
         }
 
-    def finish_scenario(self, handle: Dict[str, Any], status: str,
-                        error_message: Optional[str] = None,
-                        screenshots: Optional[List[str]] = None,
-                        extra: Optional[Dict[str, Any]] = None,
-                        severity: str = "MEDIUM"):
+    def finish_scenario(self, handle, status=None, error_message=None, screenshots=None, severity=None, extra=None):
         now = datetime.now()
         dur_ms = int((now - handle["started_at"]).total_seconds() * 1000)
+
         self._results.append(
             ScenarioResult(
                 name=handle["name"],
@@ -158,7 +155,8 @@ class QAReporter:
                 screenshots=screenshots or [],
                 extra=extra or {},
                 test_id=handle.get("test_id"),
-                severity=str(severity or "MEDIUM").upper()
+                severity=str(severity or "MEDIUM").upper(),
+                file_name=(extra.get("file_name") if extra else None),  # <-- NOVO
             )
         )
 
@@ -317,6 +315,40 @@ class QAReporter:
         obs.add_run('Registros com "alerta" não são contabilizados como sucesso ou erro; apenas informativos.')
         doc.add_paragraph("")
 
+        # === novas seções: automações com ERRO (todas, não só cadastros) ===
+        doc.add_heading("Automações com Erro (para reteste manual)", level=1)
+        all_fails = m.get("failures", []) or []
+        if not all_fails:
+            doc.add_paragraph("Nenhuma automação falhou nesta execução.")
+        else:
+            doc.add_paragraph(f"Foram encontradas {len(all_fails)} automações com erro:")
+            doc.add_paragraph("")
+            for idx, f in enumerate(all_fails, 1):
+                p = doc.add_paragraph()
+                p.add_run(f"{idx}. ").bold = True
+                p.add_run(f.name)
+
+                meta = []
+                if f.test_type:
+                    meta.append(f"Tipo: {f.test_type}")
+                if f.test_id:
+                    meta.append(f"ID: {f.test_id}")
+                if f.severity:
+                    meta.append(f"Severidade: {f.severity}")
+                meta.append(f"Início: {_fmt_dt(f.started_at)}")
+                doc.add_paragraph("   • " + " | ".join(meta))
+
+                if f.file_name:
+                    doc.add_paragraph(f"   • Arquivo: {f.file_name}")  # <-- NOVO
+
+                if f.error_message:
+                    first_line = f.error_message.strip().splitlines()[0][:250]
+                    doc.add_paragraph("   • Erro: " + first_line)
+
+
+            doc.add_paragraph("")  # espaçamento
+
+
         CHART_WIDTH_IN = 2.8
        
         # gráficos (se existirem)
@@ -363,6 +395,27 @@ class QAReporter:
         doc.add_paragraph(f"• Hostname: {m['system_info']['hostname']}")
         doc.add_paragraph(f"• Python: {m['system_info']['python']}")
         doc.add_paragraph("")
+
+        # === TXT auxiliar com a lista de automações com erro ===
+        fail_txt = self.out_dir / f"automacoes_com_erro_{self._stamp}.txt"
+        if all_fails:
+            lines = []
+            for f in all_fails:
+                first_line = (f.error_message or "").strip().splitlines()[0][:200]
+                lines.append(
+                    " | ".join([
+                        f.name,
+                        f"Arquivo={f.file_name or '-'}",            # <-- NOVO
+                        f"Tipo={f.test_type}",
+                        f"ID={f.test_id or '-'}",
+                        f"Sev={f.severity}",
+                        f"Início={_fmt_dt(f.started_at)}",
+                        f"Erro={first_line or '-'}",
+                    ])
+                )
+            fail_txt.write_text("\n".join(lines), encoding="utf-8")
+
+
 
         out = self.out_dir / f"{base_name}_{self._stamp}.docx"
         doc.save(str(out))

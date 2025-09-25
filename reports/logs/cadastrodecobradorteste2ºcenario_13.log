@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "C:\RPASelenium\RPAsPegasusSelenium\TesteAgenteAutomacoes\cenariostestespegasus\CadastrosPrincipais\CadastrosCenáriosCobradorTeste\cadastrodecobradorteste2ºcenario.py", line 334, in <module>
+    main()
+    ~~~~^^
+  File "C:\RPASelenium\RPAsPegasusSelenium\TesteAgenteAutomacoes\cenariostestespegasus\CadastrosPrincipais\CadastrosCenáriosCobradorTeste\cadastrodecobradorteste2ºcenario.py", line 281, in main
+    if not safe_action(doc, "Acessando o sistema", lambda: driver.get(URL), driver, wait)[0]:
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: safe_action() takes 3 positional arguments but 5 were given

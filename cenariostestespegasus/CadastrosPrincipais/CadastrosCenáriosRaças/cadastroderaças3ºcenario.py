@@ -194,13 +194,13 @@ try:
     ))
 
     safe_action(doc, "Selecionando opção Raça no menu", lambda: (
-        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[45]/a"))).click(),
+        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[46]/a"))).click(),
         time.sleep(3)
     ))
 
     safe_action(doc, "Clicando em Cadastrar", lambda: (
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10081 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span"))).click(),
-        time.sleep(2)
+        time.sleep(3)
     ))
 
 

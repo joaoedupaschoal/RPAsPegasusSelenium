@@ -194,7 +194,7 @@ try:
     ))
 
     safe_action(doc, "Selecionando opção Raça no menu", lambda: (
-        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[45]/a"))).click(),
+        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[46]/a"))).click(),
         time.sleep(3)
     ))
 

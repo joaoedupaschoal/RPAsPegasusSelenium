@@ -1,0 +1,46 @@
+🔄 Acessando o sistema...
+✅ Acessando o sistema realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_o_sistema_151853.png
+📸 Sistema acessado.
+🖼️ Screenshot: screenshots\url_acessada_151854.png
+🔄 Realizando login...
+✅ Realizando login realizado com sucesso.
+🖼️ Screenshot: screenshots\realizando_login_151856.png
+📸 Login realizado.
+🖼️ Screenshot: screenshots\login_concluido_151901.png
+🔄 Ajustando zoom...
+✅ Ajustando zoom realizado com sucesso.
+🖼️ Screenshot: screenshots\ajustando_zoom_151901.png
+🔄 Abrindo menu Comissão...
+✅ Abrindo menu Comissão realizado com sucesso.
+🖼️ Screenshot: screenshots\abrindo_menu_comissão_151905.png
+📸 Menu 'Comissão' aberto.
+🖼️ Screenshot: screenshots\menu_aberto_151906.png
+🔄 Acessando formulário de cadastro...
+❌ Erro ao tentar acessando formulário de cadastro: Message: 
+Stacktrace:
+	GetHandleVerifier [0x0x83c333+65459]
+	GetHandleVerifier [0x0x83c374+65524]
+	(No symbol) [0x0x65d973]
+	(No symbol) [0x0x6a76e7]
+	(No symbol) [0x0x6a7a8b]
+	(No symbol) [0x0x6edea2]
+	(No symbol) [0x0x6c9e44]
+	(No symbol) [0x0x6eb606]
+	(No symbol) [0x0x6c9bf6]
+	(No symbol) [0x0x69b38e]
+	(No symbol) [0x0x69c274]
+	GetHandleVerifier [0x0xabeda3+2697763]
+	GetHandleVerifier [0x0xab9ec7+2677575]
+	GetHandleVerifier [0x0x864194+228884]
+	GetHandleVerifier [0x0x8549f8+165496]
+	GetHandleVerifier [0x0x85b18d+192013]
+	GetHandleVerifier [0x0x8447d8+99416]
+	GetHandleVerifier [0x0x844972+99826]
+	GetHandleVerifier [0x0x82ebea+10346]
+	BaseThreadInitThunk [0x0x7728fcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x77e782ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x77e7827e+238]
+
+🖼️ Screenshot: screenshots\erro_acessando_formulário_de_cadastro_151916.png
+📄 Relatório salvo como: relatorio_comissao_cenario_1_20250925_151916.docx
