@@ -179,9 +179,9 @@ def gerar_dados_veiculo():
 
 def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
+        (".alerts.salvo", "✅ Menasagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Menasagem de Alerta"),
+        (".alerts.erro", "❌ Menasagem de Erro"),
     ]
 
     for seletor, tipo in seletores:
@@ -228,38 +228,34 @@ def click_element_safely(driver, wait, selector, by=By.CSS_SELECTOR, timeout=10)
         return False
 
 def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, btn_pesquisar_selector, resultado_xpath):
+    """Abre modal e seleciona um item"""
     def acao():
-        wait = WebDriverWait(driver, 20)
-        
         # Abre o modal
-        if not click_element_safely(driver, wait, btn_selector):
-            raise Exception("Não foi possível abrir o modal")
-        
-        time.sleep(1)
-        
+        open_lov = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, btn_selector)))
+        open_lov.click()
+        time.sleep(3)
+
         # Aguarda campo pesquisa
         campo_pesquisa = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, pesquisa_selector)))
         campo_pesquisa.clear()
         campo_pesquisa.send_keys(termo_pesquisa)
-        
+
         # Clica pesquisar
-        if not click_element_safely(driver, wait, btn_pesquisar_selector):
-            raise Exception("Não foi possível clicar no botão pesquisar")
-        
-        time.sleep(2)
-        
-        # Espera o resultado carregar e clica
-        wait.until(EC.presence_of_element_located((By.XPATH, resultado_xpath)))
+        pesquisar = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, btn_pesquisar_selector)))
+        pesquisar.click()
+        time.sleep(3)
+        pesquisar.click()
+        time.sleep(3)
+
+        # Espera o resultado e clica
         wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))
-        
         resultado = driver.find_element(By.XPATH, resultado_xpath)
         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", resultado)
-        time.sleep(0.5)
-        
-        if not click_element_safely(driver, wait, resultado_xpath, By.XPATH):
-            raise Exception("Não foi possível selecionar o resultado")
-    
+        time.sleep(0.2)
+        resultado.click()
+
     return acao
+
 
 def preencher_campo_com_retry(driver, wait, seletor, valor, max_tentativas=3):
     """Tenta preencher o campo com diferentes métodos até conseguir"""

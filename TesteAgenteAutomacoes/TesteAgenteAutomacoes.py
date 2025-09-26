@@ -2088,7 +2088,7 @@ def _python_cmd():
 
 
 
-ERROR_RX = re.compile(r'(?i)\berro\b')  # ERRO somente se houver "Erro" no log
+ERROR_RX = re.compile(r'^\s*Mensagem de Erro:', re.IGNORECASE | re.MULTILINE)
 
 # Flag do Windows para não abrir console no processo-filho
 CREATE_NO_WINDOW = 0x08000000 if os.name == "nt" else 0

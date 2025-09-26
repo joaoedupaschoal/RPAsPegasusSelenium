@@ -142,11 +142,10 @@ def preencher_campo_com_retry(driver, wait, seletor, valor, max_tentativas=3):
     return False
 
 def encontrar_mensagem_alerta():
-    """Procura por mensagens de alerta no sistema"""
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
+        (".alerts.salvo", "✅ Menasagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Menasagem de Alerta"),
+        (".alerts.erro", "❌ Menasagem de Erro"),
     ]
 
     for seletor, tipo in seletores:

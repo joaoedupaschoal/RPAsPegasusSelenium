@@ -1,0 +1,44 @@
+🔄 Acessando sistema...
+✅ Acessando sistema realizada com sucesso.
+🔄 Realizando login...
+✅ Realizando login realizada com sucesso.
+🔄 Esperando sistema carregar e ajustando zoom...
+🔍 Zoom ajustado para 90%.
+✅ Esperando sistema carregar e ajustando zoom realizada com sucesso.
+🔄 Abrindo menu Condição de Pagamento Faturamento MXM...
+✅ Abrindo menu Condição de Pagamento Faturamento MXM realizada com sucesso.
+🔄 Clicando em Cadastrar...
+✅ Clicando em Cadastrar realizada com sucesso.
+🔄 Salvando cadastro...
+❌ Erro ao salvando cadastro: Message: element not interactable
+  (Session info: chrome=140.0.7339.129); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementnotinteractableexception
+Stacktrace:
+	GetHandleVerifier [0x0x9bc333+65459]
+	GetHandleVerifier [0x0x9bc374+65524]
+	(No symbol) [0x0x7dd7c0]
+	(No symbol) [0x0x8288fe]
+	(No symbol) [0x0x81d195]
+	(No symbol) [0x0x849dfc]
+	(No symbol) [0x0x81cbf4]
+	(No symbol) [0x0x849fb4]
+	(No symbol) [0x0x86b606]
+	(No symbol) [0x0x849bf6]
+	(No symbol) [0x0x81b38e]
+	(No symbol) [0x0x81c274]
+	GetHandleVerifier [0x0xc3eda3+2697763]
+	GetHandleVerifier [0x0xc39ec7+2677575]
+	GetHandleVerifier [0x0x9e4194+228884]
+	GetHandleVerifier [0x0x9d49f8+165496]
+	GetHandleVerifier [0x0x9db18d+192013]
+	GetHandleVerifier [0x0x9c47d8+99416]
+	GetHandleVerifier [0x0x9c4972+99826]
+	GetHandleVerifier [0x0x9aebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Fechando modal após salvamento...
+✅ Fechando modal após salvamento realizada com sucesso.
+ℹ️ Nenhuma mensagem de alerta encontrada.
+✅ Teste concluído com sucesso.
+📄 Relatório salvo como: relatorio_condicao_pagamento_faturamento_mxm_cenario_3_20250926_122127.docx

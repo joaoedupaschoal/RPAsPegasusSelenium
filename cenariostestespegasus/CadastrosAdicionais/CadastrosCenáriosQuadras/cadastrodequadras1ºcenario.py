@@ -347,10 +347,10 @@ try:
     try:
         # Verifica se há mensagens de sucesso/erro
         seletores = [
-            (".alerts.salvo", "sucesso"),
-            (".alerts.alerta", "alerta"),
-            (".alerts.erro", "erro"),
-            (".alerts", "geral")
+            (".alerts.salvo", "Sucesso"),
+            (".alerts.alerta", "Alerta"),
+            (".alerts.erro", "Erro"),
+            (".alerts", "Geral")
         ]
 
         for seletor, tipo in seletores:

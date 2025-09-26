@@ -156,11 +156,10 @@ def gerar_dados_supervisor():
 
 def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
+        (".alerts.salvo", "✅ Menasagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Menasagem de Alerta"),
+        (".alerts.erro", "❌ Menasagem de Erro"),
     ]
-
     for seletor, tipo in seletores:
         try:
             elemento = driver.find_element(By.CSS_SELECTOR, seletor)

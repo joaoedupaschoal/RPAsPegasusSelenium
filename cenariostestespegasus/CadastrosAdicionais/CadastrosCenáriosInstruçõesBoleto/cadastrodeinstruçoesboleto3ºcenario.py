@@ -91,12 +91,12 @@ def finalizar_relatorio():
     log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
     subprocess.run(["start", "winword", nome_arquivo], shell=True)
     driver.quit()
-
+    
 def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
+        (".alerts.salvo", "✅ Menasagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Menasagem de Alerta"),
+        (".alerts.erro", "❌ Menasagem de Erro"),
     ]
 
     for seletor, tipo in seletores:

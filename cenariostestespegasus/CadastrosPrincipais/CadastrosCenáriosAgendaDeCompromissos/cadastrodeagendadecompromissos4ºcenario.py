@@ -123,9 +123,9 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
+        (".alerts.salvo", "✅ Menasagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Menasagem de Alerta"),
+        (".alerts.erro", "❌ Menasagem de Erro"),
     ]
 
     for seletor, tipo in seletores:
@@ -159,6 +159,8 @@ def preencher_data(selector, valor):
         campo.clear()  # Limpa o campo antes de preencher
         campo.send_keys(valor)  # Simula o foco no próximo campo
         time.sleep(0.2)
+        campo.send_keys(valor)  # Simula o foco no próximo campo
+        time.sleep(0.5)
         campo.send_keys(valor)  # Simula o foco no próximo campo
         time.sleep(0.2)
 

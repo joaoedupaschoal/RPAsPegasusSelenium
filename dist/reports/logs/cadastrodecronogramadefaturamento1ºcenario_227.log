@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI143162\cenariostestespegasus\CadastrosPrincipais\CadastrosCenáriosCronogramaDeFaturamento\cadastrodecronogramadefaturamento1ºcenario.py", line 438, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI143162\cenariostestespegasus\CadastrosPrincipais\CadastrosCenáriosCronogramaDeFaturamento\cadastrodecronogramadefaturamento1ºcenario.py", line 335, in main
+    if not safe_action(doc, "Acessando o sistema", lambda: driver.get(URL), driver, wait)[0]:
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: safe_action() takes 3 positional arguments but 5 were given

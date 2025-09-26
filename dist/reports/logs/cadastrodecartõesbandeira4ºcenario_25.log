@@ -1,0 +1,90 @@
+🔄 Acessando o sistema...
+✅ Acessando o sistema realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_o_sistema_121226.png
+🔄 Realizando login...
+✅ Realizando login realizado com sucesso.
+🖼️ Screenshot: screenshots\realizando_login_121229.png
+🔄 Ajustando zoom...
+✅ Ajustando zoom realizado com sucesso.
+🖼️ Screenshot: screenshots\ajustando_zoom_121235.png
+🔄 Abrindo menu Cartão Bandeira...
+✅ Abrindo menu Cartão Bandeira realizado com sucesso.
+🖼️ Screenshot: screenshots\abrindo_menu_cartão_bandeira_121236.png
+🔄 Acessando formulário...
+✅ Acessando formulário realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_formulário_121237.png
+🔄 Preenchendo campos completos...
+🔄 Selecionando conta crédito 2...
+✅ Selecionando conta crédito 2 realizado com sucesso.
+🖼️ Screenshot: screenshots\selecionando_conta_crédito_2_121244.png
+🔄 Selecionando centro de custo...
+✅ Selecionando centro de custo realizado com sucesso.
+🖼️ Screenshot: screenshots\selecionando_centro_de_custo_121250.png
+🔄 Selecionando histórico padrão...
+✅ Selecionando histórico padrão realizado com sucesso.
+🖼️ Screenshot: screenshots\selecionando_histórico_padrão_121255.png
+🔄 Acessando aba Parametrização...
+✅ Acessando aba Parametrização realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_aba_parametrização_121255.png
+🔄 Preenchendo campo De...
+Traceback (most recent call last):
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI143162\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosCartõesBandeira\cadastrodecartõesbandeira4ºcenario.py", line 150, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI143162\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosCartõesBandeira\cadastrodecartõesbandeira4ºcenario.py", line 130, in main
+    if not safe_action(doc, "Preenchendo campos completos", preencher_campos_obrigatórios, driver, wait)[0]: finalizar_relatorio(); return
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\RPASelenium\RPAsPegasusSelenium\utils\actions.py", line 35, in safe_action
+    result = func()
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI143162\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosCartõesBandeira\cadastrodecartõesbandeira4ºcenario.py", line 102, in preencher_campos_obrigatórios
+    safe_action(doc, "Preenchendo campo De", lambda: driver.find_element(By.CSS_SELECTOR,
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        "#fmod_10010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10094.categoriaHolder > div > div > div:nth-child(3) > input").send_keys("1"), driver, wait)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\RPASelenium\RPAsPegasusSelenium\utils\actions.py", line 35, in safe_action
+    result = func()
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI143162\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosCartõesBandeira\cadastrodecartõesbandeira4ºcenario.py", line 103, in <lambda>
+    "#fmod_10010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10094.categoriaHolder > div > div > div:nth-child(3) > input").send_keys("1"), driver, wait)
+                                                                                                                                                           ~~~~~~~~~^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webelement.py", line 304, in send_keys
+    self._execute(
+    ~~~~~~~~~~~~~^
+        Command.SEND_KEYS_TO_ELEMENT, {"text": "".join(keys_to_typing(value)), "value": keys_to_typing(value)}
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webelement.py", line 573, in _execute
+    return self._parent.execute(command, params)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 458, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.ElementNotInteractableException: Message: element not interactable
+  (Session info: chrome=140.0.7339.129); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementnotinteractableexception
+Stacktrace:
+	GetHandleVerifier [0x0x9bc333+65459]
+	GetHandleVerifier [0x0x9bc374+65524]
+	(No symbol) [0x0x7dd7c0]
+	(No symbol) [0x0x821f62]
+	(No symbol) [0x0x8205e6]
+	(No symbol) [0x0x849dfc]
+	(No symbol) [0x0x81cbf4]
+	(No symbol) [0x0x849fb4]
+	(No symbol) [0x0x86b606]
+	(No symbol) [0x0x849bf6]
+	(No symbol) [0x0x81b38e]
+	(No symbol) [0x0x81c274]
+	GetHandleVerifier [0x0xc3eda3+2697763]
+	GetHandleVerifier [0x0xc39ec7+2677575]
+	GetHandleVerifier [0x0x9e4194+228884]
+	GetHandleVerifier [0x0x9d49f8+165496]
+	GetHandleVerifier [0x0x9db18d+192013]
+	GetHandleVerifier [0x0x9c47d8+99416]
+	GetHandleVerifier [0x0x9c4972+99826]
+	GetHandleVerifier [0x0x9aebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+

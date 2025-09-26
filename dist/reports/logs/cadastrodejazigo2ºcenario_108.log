@@ -1,0 +1,53 @@
+🚀 Iniciando teste corrigido...
+🔄 Acessando sistema... (Tentativa 1)
+✅ Acessando sistema realizada com sucesso.
+🔄 Realizando login... (Tentativa 1)
+✅ Realizando login realizada com sucesso.
+🔄 Esperando sistema carregar e ajustando zoom... (Tentativa 1)
+✅ Esperando sistema carregar e ajustando zoom realizada com sucesso.
+🔄 Abrindo menu Jazigos... (Tentativa 1)
+✅ Abrindo menu Jazigos realizada com sucesso.
+🔄 Clicando em Cadastrar... (Tentativa 1)
+🔄 Tentando estratégia: aguardar_e_clicar_normal
+✅ Clicando em Cadastrar realizada com sucesso.
+🔄 Preenchendo Número do Jazigo... (Tentativa 1)
+✅ Preenchendo Número do Jazigo realizada com sucesso.
+🔄 Preenchendo Letra do Jazigo... (Tentativa 1)
+✅ Preenchendo Letra do Jazigo realizada com sucesso.
+🔄 Abrindo LOV para selecionar Quadra... (Tentativa 1)
+🔄 Tentando estratégia: aguardar_e_clicar_normal
+✅ Abrindo LOV para selecionar Quadra realizada com sucesso.
+🔄 Inserindo nome da Quadra... (Tentativa 1)
+✅ Inserindo nome da Quadra realizada com sucesso.
+🔄 Pesquisando Quadra... (Tentativa 1)
+🔄 Tentando estratégia: aguardar_e_clicar_normal
+✅ Pesquisando Quadra realizada com sucesso.
+🔄 Selecionando Quadra... (Tentativa 1)
+🔍 Tentando estratégia 1: //td[contains(text(), 'QUADRA TESTE SELENIUM AUTOM...
+⚠️ Nenhum elemento encontrado com estratégia 1
+🔍 Tentando estratégia 2: //td[contains(text(), 'QUADRA TESTE SELENIUM AUTOM...
+⚠️ Nenhum elemento encontrado com estratégia 2
+🔍 Tentando estratégia 3: //tr[.//td[contains(text(), 'QUADRA TESTE SELENIUM...
+⚠️ Nenhum elemento encontrado com estratégia 3
+🔍 Tentando estratégia 4: //tr[@ref='31100067' and @role='row' and contains(...
+✅ Item selecionado com estratégia 4
+✅ Selecionando Quadra realizada com sucesso.
+🔄 Selecionando Tipo de Jazigo... (Tentativa 1)
+✅ Selecionando Tipo de Jazigo realizada com sucesso.
+🔄 Selecionando Situação... (Tentativa 1)
+✅ Selecionando Situação realizada com sucesso.
+🔄 Selecionando Ala... (Tentativa 1)
+✅ Selecionando Ala realizada com sucesso.
+🔄 Selecionando Categoria... (Tentativa 1)
+✅ Selecionando Categoria realizada com sucesso.
+🔄 Preenchendo dimensões do jazigo... (Tentativa 1)
+✅ Preenchendo dimensões do jazigo realizada com sucesso.
+🔄 Cancelando cadastro... (Tentativa 1)
+🔄 Tentando estratégia: aguardar_e_clicar_normal
+✅ Cancelando cadastro realizada com sucesso.
+🔄 Fechando modal após cancelamento... (Tentativa 1)
+🔄 Tentando estratégia: aguardar_e_clicar_normal
+✅ Fechando modal após cancelamento realizada com sucesso.
+✅ Teste concluído com sucesso!
+📄 Relatório salvo como: relatorio_jazigos_cenario_2_20250926_131631.docx
+🏁 Execução finalizada.

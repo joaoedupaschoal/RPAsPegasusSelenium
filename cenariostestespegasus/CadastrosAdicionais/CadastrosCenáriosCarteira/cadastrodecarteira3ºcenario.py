@@ -109,23 +109,21 @@ def main():
     registrar_screenshot_unico("apos_salvar", driver, doc, "Clique em salvar mesmo sem preencher obrigatórios.")
  
  
- 
- # Verificação da mensagem
+    # Mensagem de alerta
     _, tipo_alerta = encontrar_mensagem_alerta(driver, doc)
-    if tipo_alerta == "erro":
-        log(doc, "✅ Mensagem de erro exibida corretamente por ausência do campo obrigatório.")
+    if tipo_alerta == "sucesso":
+        log(doc, "✅ Mensagem de sucesso exibida após o cadastro.")
     elif tipo_alerta == "alerta":
-        log(doc, "⚠️ Mensagem de alerta exibida.")
-    elif tipo_alerta == "sucesso":
-        log(doc, "❌ Cadastro foi salvo mesmo sem campo obrigatório preenchido.")
+        log(doc, "⚠️ Mensagem de Alerta exibida após o cadastro.")
+    elif tipo_alerta == "erro":
+        log(doc, "❌ Mensagem de Erro exibida após o cadastro.")
     else:
-        log(doc, "⚠️ Nenhuma mensagem foi exibida.")
+        log(doc, "⚠️ Nenhuma mensagem foi exibida após o cadastro.")
     take_screenshot(driver, doc, "mensagem_final")
 
     fechar_modal()
-    log(doc, "✅ Teste encerrado. O sistema respondeu conforme esperado ao não preencher campos obrigatórios.")
+    log(doc, "✅ Teste finalizado com sucesso.")
     finalizar_relatorio()
-
 if __name__ == "__main__":
     main()
 

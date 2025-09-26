@@ -1,0 +1,67 @@
+🔄 Acessando o sistema...
+✅ Acessando o sistema realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_o_sistema_115915.png
+📸 Sistema acessado.
+🖼️ Screenshot: screenshots\url_acessada_115915.png
+🔄 Realizando login...
+✅ Realizando login realizado com sucesso.
+🖼️ Screenshot: screenshots\realizando_login_115921.png
+📸 Login realizado.
+🖼️ Screenshot: screenshots\login_concluido_115940.png
+🔄 Ajustando zoom...
+✅ Ajustando zoom realizado com sucesso.
+🖼️ Screenshot: screenshots\ajustando_zoom_115941.png
+🔄 Abrindo menu Área...
+Traceback (most recent call last):
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI143162\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosÁreas\cadastrodeareas1ºcenario.py", line 162, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI143162\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosÁreas\cadastrodeareas1ºcenario.py", line 123, in main
+    if not safe_action(doc, "Abrindo menu Área", abrir_menu, driver, wait)[0]:
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\RPASelenium\RPAsPegasusSelenium\utils\actions.py", line 35, in safe_action
+    result = func()
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI143162\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosÁreas\cadastrodeareas1ºcenario.py", line 74, in abrir_menu
+    campo.click()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webelement.py", line 120, in click
+    self._execute(Command.CLICK_ELEMENT)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webelement.py", line 573, in _execute
+    return self._parent.execute(command, params)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 458, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.ElementClickInterceptedException: Message: element click intercepted: Element <input type="text" class="boxsize" maclength="50" placeholder="Busque um cadastro"> is not clickable at point (45, 65). Other element would receive the click: <div class="sideMenu animate" style="z-index: 200; border-right: 4px solid rgb(41, 86, 36);">...</div>
+  (Session info: chrome=140.0.7339.129); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x9bc333+65459]
+	GetHandleVerifier [0x0x9bc374+65524]
+	(No symbol) [0x0x7dd973]
+	(No symbol) [0x0x82dbc0]
+	(No symbol) [0x0x82bf23]
+	(No symbol) [0x0x8299c7]
+	(No symbol) [0x0x828c66]
+	(No symbol) [0x0x81d195]
+	(No symbol) [0x0x849dfc]
+	(No symbol) [0x0x81cbf4]
+	(No symbol) [0x0x849fb4]
+	(No symbol) [0x0x86b606]
+	(No symbol) [0x0x849bf6]
+	(No symbol) [0x0x81b38e]
+	(No symbol) [0x0x81c274]
+	GetHandleVerifier [0x0xc3eda3+2697763]
+	GetHandleVerifier [0x0xc39ec7+2677575]
+	GetHandleVerifier [0x0x9e4194+228884]
+	GetHandleVerifier [0x0x9d49f8+165496]
+	GetHandleVerifier [0x0x9db18d+192013]
+	GetHandleVerifier [0x0x9c47d8+99416]
+	GetHandleVerifier [0x0x9c4972+99826]
+	GetHandleVerifier [0x0x9aebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+

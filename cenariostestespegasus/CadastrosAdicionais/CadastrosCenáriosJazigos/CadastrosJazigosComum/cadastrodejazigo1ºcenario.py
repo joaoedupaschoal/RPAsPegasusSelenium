@@ -395,6 +395,25 @@ def gerar_dados_jazigo():
     
     return (numero_aleatorio, letra_aleatoria, altura_cm, largura_cm, comprimento_cm)
 
+def encontrar_mensagem_alerta():
+    seletores = [
+        (".alerts.salvo", "✅ Menasagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Menasagem de Alerta"),
+        (".alerts.erro", "❌ Menasagem de Erro"),
+    ]
+
+    for seletor, tipo in seletores:
+        try:
+            elemento = driver.find_element(By.CSS_SELECTOR, seletor)
+            if elemento.is_displayed():
+                log(doc, f"📢 {tipo}: {elemento.text}")
+                return elemento
+        except:
+            continue
+
+    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
+    return None
+
 def finalizar_relatorio():
     nome_arquivo = f"relatorio_jazigos_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     try:
@@ -506,32 +525,13 @@ try:
     safe_action_enhanced(driver, doc, "Fechando modal após salvamento", 
         lambda: safe_click_enhanced(driver, "#fmod_7 > div.wdTop.ui-draggable-handle > div > a"))
     
-    # Verificação de mensagens
     time.sleep(1.5)
 
-    try:
-        # Verifica se há mensagens de sucesso/erro
-        alertas = driver.find_elements(By.CSS_SELECTOR, ".alerts")
-        for alerta in alertas:
-            if alerta.is_displayed():
-                log(doc, f"📢 Mensagem do sistema: {alerta.text}")
-    except:
-        pass
+    encontrar_mensagem_alerta()
 
-    log(doc, "✅ Teste concluído com sucesso!")
-
+    log(doc, "✅ Teste finalizado com sucesso.")
+    finalizar_relatorio()
 except Exception as e:
-    log(doc, f"❌ ERRO FATAL: {str(e)}")
-    try:
-        take_screenshot(driver, doc, "erro_fatal")
-    except:
-        pass
+    log(doc, f"❌ Erro inesperado durante a execução do teste: {e}")
+    finalizar_relatorio()
 
-finally:
-    try:
-        finalizar_relatorio() 
-        driver.quit()
-    except:
-        pass
-    
-    log(doc, "🏁 Execução finalizada.")

@@ -1,0 +1,24 @@
+🚀 Iniciando teste de cadastro de quadras...
+🔄 Acessando sistema... (Tentativa 1)
+✅ Acessando sistema realizada com sucesso.
+🔄 Realizando login... (Tentativa 1)
+✅ Realizando login realizada com sucesso.
+🔄 Esperando sistema carregar e ajustando zoom... (Tentativa 1)
+✅ Esperando sistema carregar e ajustando zoom realizada com sucesso.
+🔄 Abrindo menu Quadras... (Tentativa 1)
+✅ Abrindo menu Quadras realizada com sucesso.
+🔄 Clicando em Cadastrar... (Tentativa 1)
+🔄 Tentando estratégia: aguardar_e_clicar_normal
+✅ Clicando em Cadastrar realizada com sucesso.
+🔄 Preenchendo total de jazigos... (Tentativa 1)
+✅ Preenchendo total de jazigos realizada com sucesso.
+🔄 Salvando cadastro... (Tentativa 1)
+🔄 Tentando estratégia: aguardar_e_clicar_normal
+✅ Salvando cadastro realizada com sucesso.
+🔄 Fechando modal após salvamento... (Tentativa 1)
+🔄 Tentando estratégia: aguardar_e_clicar_normal
+✅ Fechando modal após salvamento realizada com sucesso.
+📢 ⚠️ Alerta: O campo "Nome" é obrigatório.
+✅ Teste executado com sucesso!
+📄 Relatório salvo como: relatorio_quadras_cenario_4_20250926_133904.docx
+🏁 Execução finalizada.

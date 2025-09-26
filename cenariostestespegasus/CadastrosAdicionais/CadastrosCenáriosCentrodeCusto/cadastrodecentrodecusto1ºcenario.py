@@ -164,6 +164,43 @@ safe_action(doc, "Fechando modal", lambda: wait.until(
     "#fmod_10005 > div.wdTop.ui-draggable-handle > div.wdClose > a"))
 ).click(), driver, wait)
 
+
+    # Mensagem de alerta
+# Função para encontrar mensagem de alerta
+def encontrar_mensagem_alerta(driver, doc):
+    try:
+        # Exemplo de busca por mensagem de alerta/sucesso/erro
+        alerta = driver.find_element(By.CSS_SELECTOR, ".ui-growl-message")
+        texto = alerta.text.lower()
+        if "sucesso" in texto:
+            return texto, "sucesso"
+        elif "alerta" in texto:
+            return texto, "alerta"
+        elif "erro" in texto:
+            return texto, "erro"
+        else:
+            return texto, "desconhecido"
+    except Exception:
+        return None, None
+
+# Função para tirar screenshot
+def take_screenshot(driver, doc, nome):
+    registrar_screenshot_unico(nome, driver, doc, f"Screenshot: {nome}")
+
+
+# Bloco final do teste
+_, tipo_alerta = encontrar_mensagem_alerta(driver, doc)
+if tipo_alerta == "sucesso":
+    log(doc, "✅ Mensagem de sucesso exibida após o cadastro.")
+elif tipo_alerta == "alerta":
+    log(doc, "⚠️ Mensagem de Alerta exibida após o cadastro.")
+elif tipo_alerta == "erro":
+    log(doc, "❌ Mensagem de Erro exibida após o cadastro.")
+else:
+    log(doc, "⚠️ Nenhuma mensagem foi exibida após o cadastro.")
+take_screenshot(driver, doc, "mensagem_final")
+
+
 log(doc, "✅ Teste executado com sucesso.")
 registrar_screenshot_unico("finalizacao_teste", driver, doc, "Tela final após o cadastro")
 finalizar_relatorio()

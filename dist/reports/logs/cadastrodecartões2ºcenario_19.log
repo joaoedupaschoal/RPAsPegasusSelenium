@@ -1,0 +1,63 @@
+🔄 Acessando o sistema...
+✅ Acessando o sistema realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_o_sistema_120845.png
+🖼️ Screenshot: screenshots\url_acessada_120846.png
+🔄 Realizando login...
+✅ Realizando login realizado com sucesso.
+🖼️ Screenshot: screenshots\realizando_login_120848.png
+🖼️ Screenshot: screenshots\login_concluido_120853.png
+🔄 Ajustando zoom...
+✅ Ajustando zoom realizado com sucesso.
+🖼️ Screenshot: screenshots\ajustando_zoom_120854.png
+🔄 Abrindo menu Cartão...
+✅ Abrindo menu Cartão realizado com sucesso.
+🖼️ Screenshot: screenshots\abrindo_menu_cartão_120857.png
+🖼️ Screenshot: screenshots\menu_aberto_120858.png
+🔄 Acessando formulário...
+✅ Acessando formulário realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_formulário_120900.png
+🖼️ Screenshot: screenshots\formulario_aberto_120900.png
+🔄 Preenchendo campos...
+🔄 Preenchendo campos obrigatórios.
+🔄 Selecionando bandeira...
+❌ Erro ao tentar selecionando bandeira: Message: 
+Stacktrace:
+	GetHandleVerifier [0x0x9bc333+65459]
+	GetHandleVerifier [0x0x9bc374+65524]
+	(No symbol) [0x0x7dd973]
+	(No symbol) [0x0x8276e7]
+	(No symbol) [0x0x827a8b]
+	(No symbol) [0x0x86dea2]
+	(No symbol) [0x0x849e44]
+	(No symbol) [0x0x86b606]
+	(No symbol) [0x0x849bf6]
+	(No symbol) [0x0x81b38e]
+	(No symbol) [0x0x81c274]
+	GetHandleVerifier [0x0xc3eda3+2697763]
+	GetHandleVerifier [0x0xc39ec7+2677575]
+	GetHandleVerifier [0x0x9e4194+228884]
+	GetHandleVerifier [0x0x9d49f8+165496]
+	GetHandleVerifier [0x0x9db18d+192013]
+	GetHandleVerifier [0x0x9c47d8+99416]
+	GetHandleVerifier [0x0x9c4972+99826]
+	GetHandleVerifier [0x0x9aebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🖼️ Screenshot: screenshots\erro_selecionando_bandeira_120911.png
+✅ Campos preenchidos com sucesso.
+🖼️ Screenshot: screenshots\campos_preenchidos_120912.png
+✅ Preenchendo campos realizado com sucesso.
+🖼️ Screenshot: screenshots\preenchendo_campos_120912.png
+🔄 Cancelando cadastro...
+❌ Cadastro cancelado pelo usuário.
+🖼️ Screenshot: screenshots\cadastro_cancelado_120913.png
+✅ Cancelando cadastro realizado com sucesso.
+🖼️ Screenshot: screenshots\cancelando_cadastro_120913.png
+🔄 Fechando formulário...
+✅ Fechando formulário realizado com sucesso.
+🖼️ Screenshot: screenshots\fechando_formulário_120915.png
+🖼️ Screenshot: screenshots\formulario_fechado_120915.png
+✅ Teste do cenário 2 concluído com sucesso (cancelamento).
+📄 Relatório salvo como: relatorio_cartoes_cenario_2_20250926_120915.docx

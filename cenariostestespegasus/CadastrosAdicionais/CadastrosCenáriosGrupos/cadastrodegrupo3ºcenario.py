@@ -108,9 +108,9 @@ def finalizar_relatorio():
 
 def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
+        (".alerts.salvo", "✅ Menasagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Menasagem de Alerta"),
+        (".alerts.erro", "❌ Menasagem de Erro"),
     ]
 
     for seletor, tipo in seletores:
@@ -181,6 +181,7 @@ try:
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_10024 > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span"))).click()
     ))
 
+    time.sleep(2),
 
     safe_action(doc, "Salvando cadastro", lambda: driver.find_element(
         By.CSS_SELECTOR, "#fmod_10024 > div.wdTelas > div.telaCadastro.clearfix > div.btnHolder > a.btModel.btGray.btsave"

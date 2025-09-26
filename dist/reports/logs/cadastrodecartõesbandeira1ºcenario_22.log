@@ -1,0 +1,103 @@
+🔄 Acessando o sistema...
+✅ Acessando o sistema realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_o_sistema_121046.png
+🔄 Realizando login...
+✅ Realizando login realizado com sucesso.
+🖼️ Screenshot: screenshots\realizando_login_121048.png
+🔄 Ajustando zoom...
+✅ Ajustando zoom realizado com sucesso.
+🖼️ Screenshot: screenshots\ajustando_zoom_121054.png
+🔄 Abrindo menu Cartão Bandeira...
+✅ Abrindo menu Cartão Bandeira realizado com sucesso.
+🖼️ Screenshot: screenshots\abrindo_menu_cartão_bandeira_121055.png
+🔄 Acessando formulário...
+✅ Acessando formulário realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_formulário_121056.png
+🔄 Preenchendo campos completos...
+🔄 Preenchendo nome...
+❌ Erro ao tentar preenchendo nome: Message: no such element: Unable to locate element: {"method":"css selector","selector":"#fmod_10010 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10010.categoriaHolder > div:nth-child(1) > div > div:nth-child(2) > input"}
+  (Session info: chrome=140.0.7339.129); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Stacktrace:
+	GetHandleVerifier [0x0x9bc333+65459]
+	GetHandleVerifier [0x0x9bc374+65524]
+	(No symbol) [0x0x7dd973]
+	(No symbol) [0x0x8276e7]
+	(No symbol) [0x0x827a8b]
+	(No symbol) [0x0x86dea2]
+	(No symbol) [0x0x849e44]
+	(No symbol) [0x0x86b606]
+	(No symbol) [0x0x849bf6]
+	(No symbol) [0x0x81b38e]
+	(No symbol) [0x0x81c274]
+	GetHandleVerifier [0x0xc3eda3+2697763]
+	GetHandleVerifier [0x0xc39ec7+2677575]
+	GetHandleVerifier [0x0x9e4194+228884]
+	GetHandleVerifier [0x0x9d49f8+165496]
+	GetHandleVerifier [0x0x9db18d+192013]
+	GetHandleVerifier [0x0x9c47d8+99416]
+	GetHandleVerifier [0x0x9c4972+99826]
+	GetHandleVerifier [0x0x9aebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🖼️ Screenshot: screenshots\erro_preenchendo_nome_121056.png
+🔄 Preenchendo tarifa...
+✅ Preenchendo tarifa realizado com sucesso.
+🖼️ Screenshot: screenshots\preenchendo_tarifa_121058.png
+🔄 Preenchendo dias...
+✅ Preenchendo dias realizado com sucesso.
+🖼️ Screenshot: screenshots\preenchendo_dias_121059.png
+🔄 Selecionando tipo cartão...
+✅ Selecionando tipo cartão realizado com sucesso.
+🖼️ Screenshot: screenshots\selecionando_tipo_cartão_121059.png
+🔄 Selecionando tipo cobrança...
+✅ Selecionando tipo cobrança realizado com sucesso.
+🖼️ Screenshot: screenshots\selecionando_tipo_cobrança_121059.png
+🔄 Selecionando conta crédito 1...
+✅ Selecionando conta crédito 1 realizado com sucesso.
+🖼️ Screenshot: screenshots\selecionando_conta_crédito_1_121105.png
+🔄 Selecionando conta crédito 2...
+✅ Selecionando conta crédito 2 realizado com sucesso.
+🖼️ Screenshot: screenshots\selecionando_conta_crédito_2_121110.png
+🔄 Selecionando centro de custo...
+✅ Selecionando centro de custo realizado com sucesso.
+🖼️ Screenshot: screenshots\selecionando_centro_de_custo_121115.png
+🔄 Selecionando histórico padrão...
+✅ Selecionando histórico padrão realizado com sucesso.
+🖼️ Screenshot: screenshots\selecionando_histórico_padrão_121120.png
+🔄 Acessando aba Parametrização...
+✅ Acessando aba Parametrização realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_aba_parametrização_121121.png
+🔄 Preenchendo campo De...
+✅ Preenchendo campo De realizado com sucesso.
+🖼️ Screenshot: screenshots\preenchendo_campo_de_121121.png
+🔄 Preenchendo campo Até...
+✅ Preenchendo campo Até realizado com sucesso.
+🖼️ Screenshot: screenshots\preenchendo_campo_até_121121.png
+🔄 Preenchendo Tarifa em %...
+✅ Preenchendo Tarifa em % realizado com sucesso.
+🖼️ Screenshot: screenshots\preenchendo_tarifa_em_%_121122.png
+🔄 Clicando em Adicionar...
+✅ Clicando em Adicionar realizado com sucesso.
+🖼️ Screenshot: screenshots\clicando_em_adicionar_121122.png
+🖼️ Screenshot: screenshots\preenchimento_completo_121122.png
+✅ Preenchendo campos completos realizado com sucesso.
+🖼️ Screenshot: screenshots\preenchendo_campos_completos_121122.png
+🔄 Salvando dados...
+🔄 Clicando em Salvar...
+✅ Clicando em Salvar realizado com sucesso.
+🖼️ Screenshot: screenshots\clicando_em_salvar_121122.png
+✅ Salvando dados realizado com sucesso.
+🖼️ Screenshot: screenshots\salvando_dados_121123.png
+⚠️ Mensagem de alerta: O campo "Nome *" é obrigatório.
+🖼️ Screenshot: screenshots\mensagem_alerta_121124.png
+⚠️ Mensagem de alerta exibida.
+🔄 Fechando formulário...
+🔄 Fechando modal...
+✅ Fechando modal realizado com sucesso.
+🖼️ Screenshot: screenshots\fechando_modal_121124.png
+✅ Fechando formulário realizado com sucesso.
+🖼️ Screenshot: screenshots\fechando_formulário_121125.png
+✅ Teste concluído com sucesso.
+📄 Relatório salvo como: relatorio_cartoes_bandeira_cenario_1_20250926_121125.docx

@@ -122,9 +122,9 @@ def main():
     if tipo_alerta == "sucesso":
         log(doc, "✅ Mensagem de sucesso exibida após o cadastro.")
     elif tipo_alerta == "alerta":
-        log(doc, "⚠️ Alerta exibido após o cadastro.")
+        log(doc, "⚠️ Mensagem de Alerta exibida após o cadastro.")
     elif tipo_alerta == "erro":
-        log(doc, "❌ Erro exibido após o cadastro.")
+        log(doc, "❌ Mensagem de Erro exibida após o cadastro.")
     else:
         log(doc, "⚠️ Nenhuma mensagem foi exibida após o cadastro.")
     take_screenshot(driver, doc, "mensagem_final")

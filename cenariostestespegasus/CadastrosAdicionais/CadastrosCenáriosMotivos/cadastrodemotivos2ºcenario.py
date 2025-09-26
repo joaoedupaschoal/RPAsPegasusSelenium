@@ -84,12 +84,10 @@ def gerar_dados_motivo():
     return motivo
 
 def encontrar_mensagem_alerta():
-    """Busca por mensagens de alerta na página de forma segura."""
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
-        (".alerts", "📢 Mensagem"),  # Seletor genérico para qualquer alert
+        (".alerts.salvo", "✅ Menasagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Menasagem de Alerta"),
+        (".alerts.erro", "❌ Menasagem de Erro"),
     ]
 
     for seletor, tipo in seletores:

@@ -129,21 +129,20 @@ def main():
     registrar_screenshot_unico("formulario_cancelado", driver, doc, "Formulário cancelado com sucesso.")
     log(doc, "✅ Teste de cancelamento concluído.")
 
+    # Mensagem de alerta
     _, tipo_alerta = encontrar_mensagem_alerta(driver, doc)
     if tipo_alerta == "sucesso":
-        log(doc, "✅ Cadastro salvo com sucesso.")
-    elif tipo_alerta == "erro":
-        log(doc, "❌ Erro ao tentar salvar.")
+        log(doc, "✅ Mensagem de sucesso exibida após o cadastro.")
     elif tipo_alerta == "alerta":
-        log(doc, "⚠️ Alerta exibido.")
+        log(doc, "⚠️ Mensagem de Alerta exibida após o cadastro.")
+    elif tipo_alerta == "erro":
+        log(doc, "❌ Mensagem de Erro exibida após o cadastro.")
     else:
-        log(doc, "⚠️ Nenhuma mensagem exibida.")
-    registrar_screenshot_unico("mensagem_final", driver, doc)
+        log(doc, "⚠️ Nenhuma mensagem foi exibida após o cadastro.")
+    take_screenshot(driver, doc, "mensagem_final")
 
-    if not safe_action(doc, "Fechando formulário", fechar_modal, driver, wait)[0]: finalizar_relatorio(); return
-    registrar_screenshot_unico("formulario_fechado", driver, doc)
-
-    log(doc, "✅ Teste concluído com sucesso.")
+    fechar_modal()
+    log(doc, "✅ Teste finalizado com sucesso.")
     finalizar_relatorio()
 
 if __name__ == "__main__":

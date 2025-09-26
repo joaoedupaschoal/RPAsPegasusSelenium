@@ -53,12 +53,12 @@ doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 screenshot_registradas = set()
 
 def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, btn_pesquisar_selector, resultado_xpath):
+    """Abre modal e seleciona um item"""
     def acao():
         # Abre o modal
         open_lov = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, btn_selector)))
         open_lov.click()
-
-        time.sleep(5)
+        time.sleep(3)
 
         # Aguarda campo pesquisa
         campo_pesquisa = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, pesquisa_selector)))
@@ -68,13 +68,12 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
         # Clica pesquisar
         pesquisar = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, btn_pesquisar_selector)))
         pesquisar.click()
-        time.sleep(1)
-        # Espera o resultado carregar
-        wait.until(EC.presence_of_element_located((By.XPATH, resultado_xpath)))
-        wait.until(EC.visibility_of_element_located((By.XPATH, resultado_xpath)))
-        wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))
+        time.sleep(3)
+        pesquisar.click()
+        time.sleep(3)
 
-        # Relocaliza no último instante (evita stale element)
+        # Espera o resultado e clica
+        wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))
         resultado = driver.find_element(By.XPATH, resultado_xpath)
         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", resultado)
         time.sleep(0.2)
@@ -188,9 +187,9 @@ def selecionar_opcao(selector, texto):
 
 def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
+        (".alerts.salvo", "✅ Menasagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Menasagem de Alerta"),
+        (".alerts.erro", "❌ Menasagem de Erro"),
     ]
 
     for seletor, tipo in seletores:

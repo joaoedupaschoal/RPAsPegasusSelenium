@@ -316,9 +316,9 @@ def gerar_dados_jazigo():
 def encontrar_mensagem_alerta(driver, doc):
     """Função para encontrar mensagens de alerta do sistema"""
     seletores = [
-        (".alerts.salvo", "sucesso"),
-        (".alerts.alerta", "alerta"),
-        (".alerts.erro", "erro"),
+        (".alerts.salvo", "Sucesso"),
+        (".alerts.alerta", "Alerta"),
+        (".alerts.erro", "Erro"),
         (".alerts", "geral")
     ]
 

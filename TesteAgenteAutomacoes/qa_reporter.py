@@ -31,8 +31,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any
-import os, traceback, platform
-import io
+import platform
 import re
 # Dependências opcionais (não travar execução caso ausentes)
 _HAS_MPL = False

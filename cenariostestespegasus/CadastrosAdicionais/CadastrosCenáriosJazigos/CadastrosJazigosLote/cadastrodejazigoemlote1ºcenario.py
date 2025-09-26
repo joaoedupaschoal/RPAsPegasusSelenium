@@ -76,6 +76,7 @@ def aguardar_elemento_disponivel(driver, selector, by_type=By.CSS_SELECTOR, time
     except TimeoutException:
         return None
 
+
 def safe_click_enhanced(driver, selector, by_type=By.CSS_SELECTOR, timeout=30):
     """Função de clique ultra-robusta com múltiplas estratégias"""
     strategies = [
@@ -341,9 +342,9 @@ def gerar_dados_jazigo():
 def encontrar_mensagem_alerta(driver, doc):
     """Função para encontrar mensagens de alerta do sistema"""
     seletores = [
-        (".alerts.salvo", "sucesso"),
-        (".alerts.alerta", "alerta"),
-        (".alerts.erro", "erro"),
+        (".alerts.salvo", "Sucesso"),
+        (".alerts.alerta", "Alerta"),
+        (".alerts.erro", "Erro"),
         (".alerts", "geral")
     ]
 

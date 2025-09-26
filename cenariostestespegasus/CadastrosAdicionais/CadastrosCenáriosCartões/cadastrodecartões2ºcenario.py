@@ -139,7 +139,21 @@ def main():
     if not safe_action(doc, "Fechando formulário", fechar_modal, driver, wait)[0]: finalizar_relatorio(); return
     registrar_screenshot_unico("formulario_fechado", driver, doc)
 
-    log(doc, "✅ Teste do cenário 2 concluído com sucesso (cancelamento).")
+
+     # Mensagem de alerta
+    _, tipo_alerta = encontrar_mensagem_alerta(driver, doc)
+    if tipo_alerta == "sucesso":
+        log(doc, "✅ Mensagem de sucesso exibida após o cadastro.")
+    elif tipo_alerta == "alerta":
+        log(doc, "⚠️ Mensagem de Alerta exibida após o cadastro.")
+    elif tipo_alerta == "erro":
+        log(doc, "❌ Mensagem de Erro exibida após o cadastro.")
+    else:
+        log(doc, "⚠️ Nenhuma mensagem foi exibida após o cadastro.")
+    take_screenshot(driver, doc, "mensagem_final")
+
+    fechar_modal()
+    log(doc, "✅ Teste finalizado com sucesso.")
     finalizar_relatorio()
 
 if __name__ == "__main__":

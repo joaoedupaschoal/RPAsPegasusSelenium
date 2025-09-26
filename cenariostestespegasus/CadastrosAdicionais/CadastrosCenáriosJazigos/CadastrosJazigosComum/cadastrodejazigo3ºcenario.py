@@ -75,6 +75,25 @@ def aguardar_elemento_disponivel(driver, selector, by_type=By.CSS_SELECTOR, time
     except TimeoutException:
         return None
 
+def encontrar_mensagem_alerta():
+    seletores = [
+        (".alerts.salvo", "✅ Menasagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Menasagem de Alerta"),
+        (".alerts.erro", "❌ Menasagem de Erro"),
+    ]
+
+    for seletor, tipo in seletores:
+        try:
+            elemento = driver.find_element(By.CSS_SELECTOR, seletor)
+            if elemento.is_displayed():
+                log(doc, f"📢 {tipo}: {elemento.text}")
+                return elemento
+        except:
+            continue
+
+    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
+    return None
+
 def safe_click_enhanced(driver, selector, by_type=By.CSS_SELECTOR, timeout=30):
     """Função de clique ultra-robusta com múltiplas estratégias"""
     strategies = [
@@ -494,14 +513,8 @@ try:
     
     # Verificação de mensagens
     time.sleep(1.5)
-    try:
-        # Verifica se há mensagens de sucesso/erro
-        alertas = driver.find_elements(By.CSS_SELECTOR, ".alerts")
-        for alerta in alertas:
-            if alerta.is_displayed():
-                log(doc, f"📢 Mensagem do sistema: {alerta.text}")
-    except:
-        pass
+    
+    encontrar_mensagem_alerta()
 
     log(doc, "✅ Teste concluído com sucesso!")
 

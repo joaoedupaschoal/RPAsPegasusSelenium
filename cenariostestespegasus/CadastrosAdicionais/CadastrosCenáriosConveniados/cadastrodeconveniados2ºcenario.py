@@ -90,6 +90,7 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
         pesquisar.click()
         time.sleep(3)
         pesquisar.click()
+        time.sleep(3)
 
         # Espera o resultado e clica
         wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))
@@ -123,14 +124,6 @@ def finalizar_relatorio():
     subprocess.run(["start", "winword", nome_arquivo], shell=True)
     driver.quit()
 
-def encontrar_mensagem_alerta():
-    try:
-        alerta = WebDriverWait(driver, 5).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "div.ui-messages-info > ul > li"))
-        )
-        log(doc, f"📢 Mensagem exibida: {alerta.text}")
-    except:
-        log(doc, "⚠️ Nenhuma mensagem foi exibida após cancelar.")
 
 
 
@@ -167,9 +160,9 @@ def finalizar_relatorio():
 
 def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.cancelo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
+        (".alerts.salvo", "✅ Menasagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Menasagem de Alerta"),
+        (".alerts.erro", "❌ Menasagem de Erro"),
     ]
     for seletor, tipo in seletores:
         try:
