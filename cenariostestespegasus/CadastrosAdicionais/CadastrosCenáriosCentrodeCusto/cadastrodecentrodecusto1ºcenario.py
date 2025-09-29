@@ -82,6 +82,8 @@ def safe_action(doc, descricao, func, driver=None, wait=None):
             registrar_screenshot_unico(f"erro_{descricao.lower().replace(' ', '_')}", driver, doc)
         return False, str(e)
 
+
+
 def login():
     wait.until(EC.presence_of_element_located((By.ID, "j_id15:email"))).send_keys(LOGIN_EMAIL)
     wait.until(EC.presence_of_element_located((By.ID, "j_id15:senha"))).send_keys(LOGIN_PASSWORD, Keys.ENTER)
@@ -167,21 +169,24 @@ safe_action(doc, "Fechando modal", lambda: wait.until(
 
     # Mensagem de alerta
 # Função para encontrar mensagem de alerta
-def encontrar_mensagem_alerta(driver, doc):
-    try:
-        # Exemplo de busca por mensagem de alerta/sucesso/erro
-        alerta = driver.find_element(By.CSS_SELECTOR, ".ui-growl-message")
-        texto = alerta.text.lower()
-        if "sucesso" in texto:
-            return texto, "sucesso"
-        elif "alerta" in texto:
-            return texto, "alerta"
-        elif "erro" in texto:
-            return texto, "erro"
-        else:
-            return texto, "desconhecido"
-    except Exception:
-        return None, None
+def encontrar_mensagem_alerta():
+    seletores = [
+        (".alerts.salvo", "✅ Mensagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+        (".alerts.erro", "❌ Mensagem de Erro"),
+    ]
+
+    for seletor, tipo in seletores:
+        try:
+            elemento = driver.find_element(By.CSS_SELECTOR, seletor)
+            if elemento.is_displayed():
+                log(doc, f"📢 {tipo}: {elemento.text}")
+                return elemento
+        except:
+            continue
+
+    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
+    return None
 
 # Função para tirar screenshot
 def take_screenshot(driver, doc, nome):
@@ -189,16 +194,9 @@ def take_screenshot(driver, doc, nome):
 
 
 # Bloco final do teste
-_, tipo_alerta = encontrar_mensagem_alerta(driver, doc)
-if tipo_alerta == "sucesso":
-    log(doc, "✅ Mensagem de sucesso exibida após o cadastro.")
-elif tipo_alerta == "alerta":
-    log(doc, "⚠️ Mensagem de Alerta exibida após o cadastro.")
-elif tipo_alerta == "erro":
-    log(doc, "❌ Mensagem de Erro exibida após o cadastro.")
-else:
-    log(doc, "⚠️ Nenhuma mensagem foi exibida após o cadastro.")
-take_screenshot(driver, doc, "mensagem_final")
+
+    encontrar_mensagem_alerta()
+    
 
 
 log(doc, "✅ Teste executado com sucesso.")

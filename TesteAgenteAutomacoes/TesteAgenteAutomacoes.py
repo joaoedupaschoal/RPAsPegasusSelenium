@@ -37,9 +37,63 @@ DIR_REPORTS = OUT_BASE / "reports"
 for d in (DIR_REPORTS,):
     d.mkdir(parents=True, exist_ok=True)
 
+# ===== Helpers de execução/parse de logs =====
+import re
+from pathlib import Path
+import subprocess
 
-ERROR_RX = re.compile(r'(?i)\berro\b')  # casa "Erro" como palavra (case-insensitive)
-FORCE_OK_RX = re.compile(r'\[TESTE_OK\]', re.IGNORECASE)  # opcional
+ERROR_TAG   = re.compile(r'(?i)mensagem\s*de\s*erro\s*:\s*(.+)')
+TRACEBACK   = re.compile(r'Traceback \(most recent call last\):')
+SUCCESS_TAG = re.compile(r'(?i)\b(realizad[ao]|concluíd[ao])\s+com\s+sucesso\b')
+
+def parse_result(stdout_text: str, returncode: int):
+    """
+    Converte o texto do log + returncode em ('OK'|'FAIL', 'mensagem de erro'|'' )
+    Regras:
+      - Se achar 'Mensagem de Erro:' => FAIL
+      - Se achar Traceback => FAIL
+      - Se achar '... com sucesso' => OK
+      - Caso contrário, usa o returncode
+    """
+    clean = re.sub(r'\S+\.(png|jpg|jpeg)', '[arquivo]', stdout_text)  # ruído
+    m = ERROR_TAG.search(clean)
+    if m:
+        return 'FAIL', m.group(1).strip()
+    if TRACEBACK.search(clean):
+        return 'FAIL', 'Exceção (Traceback) detectada no log'
+    if SUCCESS_TAG.search(clean):
+        return 'OK', ''
+    return ('FAIL', 'Falha sem mensagem') if returncode != 0 else ('OK', '')
+
+def save_full_log(base_reports_dir: Path, scenario_label: str, text: str) -> Path:
+    """Salva o log completo do cenário dentro de reports/logs/"""
+    p = Path(base_reports_dir) / "logs"
+    p.mkdir(parents=True, exist_ok=True)
+    fp = p / f"{scenario_label}.log.txt"
+    fp.write_text(text, encoding="utf-8", errors="replace")
+    return fp
+
+def execute_scenario(label_exec: str, cmd, cwd: Path | None, reports_dir: Path):
+    """
+    Executa o comando do cenário, captura stdout+stderr (UTF-8, sem cortar),
+    salva o log e devolve (status, err_msg, log_path, rc, log_txt)
+    """
+    proc = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        shell=isinstance(cmd, str),
+        cwd=str(cwd) if cwd else None,
+    )
+    stdout = proc.stdout or ""
+    stderr = proc.stderr or ""
+    log_txt = stdout + ("\n-- STDERR --\n" + stderr if stderr else "")
+    status, err_msg = parse_result(log_txt, proc.returncode)
+    log_path = save_full_log(reports_dir, label_exec, log_txt)
+    return status, err_msg, log_path, proc.returncode, log_txt
+# ===== Fim helpers =====
 
 
 try:
@@ -2088,10 +2142,11 @@ def _python_cmd():
 
 
 
-ERROR_RX = re.compile(r'^\s*Mensagem de Erro:', re.IGNORECASE | re.MULTILINE)
+ERROR_RX = re.compile(r'^.*Mensagem de Erro.*$', re.IGNORECASE | re.MULTILINE)
 
 # Flag do Windows para não abrir console no processo-filho
 CREATE_NO_WINDOW = 0x08000000 if os.name == "nt" else 0
+
 
 def _run_cenario_and_classify(path: Path, idx: int | None = None, total: int | None = None):
     """
@@ -2136,7 +2191,7 @@ def _run_cenario_and_classify(path: Path, idx: int | None = None, total: int | N
     print(full_log.rstrip())
     print("\n─── FIM DO LOG ─────────────────────────────────────────────")
 
-    # ERRO somente se houver a palavra "Erro" no log
+    # ERRO somente se houver a palavra "Mensagem de Erro" no log
     has_error_text = bool(ERROR_RX.search(full_log))
     is_error = has_error_text
 
@@ -2147,11 +2202,14 @@ def _run_cenario_and_classify(path: Path, idx: int | None = None, total: int | N
             start = max(0, m.start() - 120)
             end   = min(len(full_log), m.end() + 200)
             snippet = full_log[start:end].strip()
-        print("[FAIL] Erro detectado por log (palavra 'Erro')")
+        print("[FAIL] Erro detectado por log (palavra 'Mensagem de Erro')")
         return rc, "ERROR", (snippet or "Erro detectado no log."), full_log
     else:
         print("[OK]")
         return rc, "SUCCESS", None, full_log
+
+
+
 
 
 
@@ -2309,6 +2367,7 @@ def _collect_scenarios(node: dict):
     return out
 
 
+
 # ===================== menus =====================
 
 def executar_menu_scripts(node: Any, breadcrumb: str = ""):
@@ -2393,17 +2452,24 @@ def executar_menu_scripts(node: Any, breadcrumb: str = ""):
                 except Exception:
                     pass
 
-                rep.finish_scenario(
-                    h,
-                    status=status,
-                    error_message=err_msg,
-                    extra={
-                        "path": str(path_exec),
-                        "returncode": rc,
-                        "file_name": Path(path_exec).name  # <-- novo campo
-                    }
-                )
+               # --- salvar o log COMPLETO e guardar o caminho em uma variável ---
+                    # --- salvar log completo em reports/logs ---
+                    (reports_dir / "logs").mkdir(parents=True, exist_ok=True)
+                    saved_log_path = reports_dir / "logs" / f"{Path(path_exec).stem}_{idx:02d}.log"
+                    saved_log_path.write_text(full_log, encoding="utf-8", errors="ignore")
 
+                    # --- finalizar o cenário no relatório, incluindo o caminho do log ---
+                    rep.finish_scenario(
+                            h,
+                            status=status,
+                            error_message=err_msg,
+                            extra={
+                                "path": str(path_exec),
+                                "returncode": rc,
+                                "file_name": Path(path_exec).name,
+                                "logfile": str(saved_log_path)   # <<< adicionado
+                            }
+                        )
             rep.end_run()
             docx_path = rep.save_docx("Relatorio_QA")
             print(f"\nRelatório QA gerado: {docx_path}")

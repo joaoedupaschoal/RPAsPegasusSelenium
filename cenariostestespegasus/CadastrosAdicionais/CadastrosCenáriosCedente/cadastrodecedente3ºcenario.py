@@ -25,7 +25,8 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from utils.actions import log, take_screenshot, safe_action, encontrar_mensagem_alerta, ajustar_zoom
+from utils.actions import log, take_screenshot, safe_action, ajustar_zoom, registrar_screenshot_unico
+
 
 URL = "http://localhost:8080/gs/index.xhtml"
 LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
@@ -80,6 +81,26 @@ def main():
         log(doc, "✅ Menu Cedente localizado e aberto.")
         take_screenshot(driver, doc, "menu_capelas_aberto")
 
+    def encontrar_mensagem_alerta():
+        seletores = [
+            (".alerts.salvo", "✅ Mensagem de Sucesso"),
+            (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+            (".alerts.erro", "❌ Mensagem de Erro"),
+        ]
+
+        for seletor, tipo in seletores:
+            try:
+                elemento = driver.find_element(By.CSS_SELECTOR, seletor)
+                if elemento.is_displayed():
+                    log(doc, f"📢 {tipo}: {elemento.text}")
+                    return elemento
+            except:
+                continue
+
+        log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
+        return None
+
+
     def clicar_em_cadastrar():
         log(doc, "🔄 Acessando o formulário de cadastro.")
         take_screenshot(driver, doc, "cadastro_inicio")
@@ -120,16 +141,9 @@ def main():
     preencher_campos_e_salvar()
     
     # Mensagem de alerta
-    _, tipo_alerta = encontrar_mensagem_alerta(driver, doc)
-    if tipo_alerta == "sucesso":
-        log(doc, "✅ Mensagem de sucesso exibida após o cadastro.")
-    elif tipo_alerta == "alerta":
-        log(doc, "⚠️ Mensagem de Alerta exibida após o cadastro.")
-    elif tipo_alerta == "erro":
-        log(doc, "❌ Mensagem de Erro exibida após o cadastro.")
-    else:
-        log(doc, "⚠️ Nenhuma mensagem foi exibida após o cadastro.")
-    take_screenshot(driver, doc, "mensagem_final")
+
+    encontrar_mensagem_alerta()
+    
 
     fechar_modal()
     log(doc, "✅ Teste finalizado com sucesso.")

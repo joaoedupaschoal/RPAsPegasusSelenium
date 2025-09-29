@@ -43,9 +43,9 @@ def safe_action(doc, name, func, driver, wait, error_msg=None):
 
 def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.salvo", "✅ Menasagem de Sucesso"),
-        (".alerts.alerta", "⚠️ Menasagem de Alerta"),
-        (".alerts.erro", "❌ Menasagem de Erro"),
+        (".alerts.salvo", "✅ Sucesso"),
+        (".alerts.alerta", "⚠️ Alerta"),
+        (".alerts.erro", "❌ Erro"),
     ]
     for seletor, tipo, emoji in seletores:
         try:

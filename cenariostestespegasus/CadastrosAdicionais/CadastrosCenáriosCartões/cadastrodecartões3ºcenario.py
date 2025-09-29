@@ -27,7 +27,7 @@ import faker
 fake = faker.Faker()    
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from utils.actions import log, take_screenshot, safe_action, encontrar_mensagem_alerta, ajustar_zoom
+from utils.actions import log, take_screenshot, safe_action,  ajustar_zoom
 
 URL = "http://localhost:8080/gs/index.xhtml"
 LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
@@ -61,6 +61,26 @@ def main():
         except Exception as e:
             log(doc, f"Erro ao abrir o Word: {e}")
         driver.quit()
+
+    def encontrar_mensagem_alerta():
+        seletores = [
+            (".alerts.salvo", "✅ Mensagem de Sucesso"),
+            (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+            (".alerts.erro", "❌ Mensagem de Erro"),
+        ]
+
+        for seletor, tipo in seletores:
+            try:
+                elemento = driver.find_element(By.CSS_SELECTOR, seletor)
+                if elemento.is_displayed():
+                    log(doc, f"📢 {tipo}: {elemento.text}")
+                    return elemento
+            except:
+                continue
+
+        log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
+        return None
+
 
     def login():
         wait.until(EC.presence_of_element_located((By.ID, "j_id15:email"))).send_keys(LOGIN_EMAIL)
@@ -146,16 +166,9 @@ def main():
     if not safe_action(doc, "Clicando em Salvar", salvar, driver, wait)[0]: finalizar_relatorio(); return
     registrar_screenshot_unico("apos_salvar", driver, doc)
 
-    _, tipo_alerta = encontrar_mensagem_alerta(driver, doc)
-    if tipo_alerta == "sucesso":
-        log(doc, "✅ Mensagem de sucesso exibida.")
-    elif tipo_alerta == "alerta":
-        log(doc, "⚠️ Mensagem de alerta exibida.")
-    elif tipo_alerta == "erro":
-        log(doc, "❌ Mensagem de erro exibida.")
-    else:
-        log(doc, "⚠️ Nenhuma mensagem exibida.")
-    registrar_screenshot_unico("mensagem_final", driver, doc)
+
+    encontrar_mensagem_alerta()
+    
 
     if not safe_action(doc, "Fechando formulário", fechar_modal, driver, wait)[0]: finalizar_relatorio(); return
     registrar_screenshot_unico("formulario_fechado", driver, doc)

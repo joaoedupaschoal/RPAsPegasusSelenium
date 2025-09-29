@@ -24,7 +24,7 @@ import time
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from utils.actions import log, take_screenshot, safe_action, encontrar_mensagem_alerta, ajustar_zoom
+from utils.actions import log, take_screenshot, safe_action,  ajustar_zoom
 
 URL = "http://localhost:8080/gs/index.xhtml"
 LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
@@ -48,6 +48,26 @@ def main():
     chrome_options.add_argument("--start-maximized")
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     wait = WebDriverWait(driver, 10)
+
+    def encontrar_mensagem_alerta():
+        seletores = [
+            (".alerts.salvo", "✅ Mensagem de Sucesso"),
+            (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+            (".alerts.erro", "❌ Mensagem de Erro"),
+        ]
+
+        for seletor, tipo in seletores:
+            try:
+                elemento = driver.find_element(By.CSS_SELECTOR, seletor)
+                if elemento.is_displayed():
+                    log(doc, f"📢 {tipo}: {elemento.text}")
+                    return elemento
+            except:
+                continue
+
+        log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
+        return None
+
 
     def finalizar_relatorio():
         doc_name = f"relatorio_atendentes_cenario_2_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
@@ -128,6 +148,9 @@ def main():
     if not safe_action(doc, "Fechando formulário", fechar_modal, driver, wait)[0]: finalizar_relatorio(); return
     registrar_screenshot_unico("formulario_fechado", driver, doc)
 
+
+    encontrar_mensagem_alerta()
+    
     log(doc, "✅ Teste de cancelamento concluído com sucesso.")
     finalizar_relatorio()
 

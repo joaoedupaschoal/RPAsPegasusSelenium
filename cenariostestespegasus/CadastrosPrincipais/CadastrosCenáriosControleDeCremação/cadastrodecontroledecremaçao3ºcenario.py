@@ -104,9 +104,9 @@ def registrar_screenshot_unico(nome, driver, doc, descricao=None):
 
 def encontrar_mensagem_alerta(driver, doc):
     seletores = [
-        (".alerts.salvo", "✅ Menasagem de Sucesso"),
-        (".alerts.alerta", "⚠️ Menasagem de Alerta"),
-        (".alerts.erro", "❌ Menasagem de Erro"),
+        (".alerts.salvo", "✅ Mensagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+        (".alerts.erro", "❌ Mensagem de Erro"),
     ]
 
     for seletor, tipo in seletores:

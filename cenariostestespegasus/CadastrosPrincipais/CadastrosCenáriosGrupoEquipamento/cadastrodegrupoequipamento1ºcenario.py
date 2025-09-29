@@ -79,9 +79,9 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
+        (".alerts.salvo", "✅ Mensagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+        (".alerts.erro", "❌ Mensagem de Erro"),
     ]
 
     for seletor, tipo in seletores:

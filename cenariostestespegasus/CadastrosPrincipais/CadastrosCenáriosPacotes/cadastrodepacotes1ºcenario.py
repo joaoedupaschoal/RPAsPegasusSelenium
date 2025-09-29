@@ -167,7 +167,7 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
         pesquisar.click()
         time.sleep(3)
         pesquisar.click()
-        time.sleep(3)
+        time.sleep(5)
 
         # Espera o resultado e clica
         wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))
@@ -180,9 +180,9 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
 
 def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
+        (".alerts.salvo", "✅ Mensagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+        (".alerts.erro", "❌ Mensagem de Erro"),
     ]
 
     for seletor, tipo in seletores:

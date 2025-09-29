@@ -130,9 +130,9 @@ def abrir_modal_e_selecionar_robusto(btn_selector, pesquisa_selector, termo_pesq
 
 def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
+        (".alerts.salvo", "✅ Mensagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+        (".alerts.erro", "❌ Mensagem de Erro"),
     ]
     for seletor, tipo in seletores:
         try:
