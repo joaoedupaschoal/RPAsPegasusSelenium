@@ -170,7 +170,7 @@ PEGASUS_PASSWORD = os.getenv("PEGASUS_PASSWORD", "071999gs")
 
 def autenticar() -> bool:
     clear_screen()
-    print("===== AUTOMAÇÕES PEGASUS =====\n")
+    print("===== TESTES AUTOMATIZADOS - PEGASUS =====\n")
     pwd = read_password_masked("Digite a senha para entrar: ")
     if not pwd:
         print("\n[ERRO] Senha vazia.")
@@ -2438,38 +2438,36 @@ def executar_menu_scripts(node: Any, breadcrumb: str = ""):
             rep.start_run(summary=f"Execução em cadeia — {node.get('label','')}")
 
             for idx, (label_exec, path_exec) in enumerate(scen_list, 1):
-                h = rep.start_scenario(label_exec, test_type="CADASTRO")
-                try:
-                    rc, status, err_msg, full_log = _run_cenario_and_classify(Path(path_exec), idx, total)
-                except Exception as e:
-                    rc, status, err_msg, full_log = (1, "ERROR", f"Falha no runner: {e}", "")
+                            h = rep.start_scenario(label_exec, test_type="CADASTRO")
+                            try:
+                                rc, status, err_msg, full_log = _run_cenario_and_classify(Path(path_exec), idx, total)
+                            except Exception as e:
+                                rc, status, err_msg, full_log = (1, "ERROR", f"Falha no runner: {e}", "")
 
-                try:
-                    (reports_dir / "logs").mkdir(parents=True, exist_ok=True)
-                    (reports_dir / "logs" / f"{Path(path_exec).stem}_{idx:02d}.log").write_text(
-                        full_log, encoding="utf-8", errors="ignore"
-                    )
-                except Exception:
-                    pass
+                            # Salvar log completo
+                            try:
+                                (reports_dir / "logs").mkdir(parents=True, exist_ok=True)
+                                saved_log_path = reports_dir / "logs" / f"{Path(path_exec).stem}_{idx:02d}.log"
+                                saved_log_path.write_text(full_log, encoding="utf-8", errors="ignore")
+                            except Exception:
+                                saved_log_path = None
 
-               # --- salvar o log COMPLETO e guardar o caminho em uma variável ---
-                    # --- salvar log completo em reports/logs ---
-                    (reports_dir / "logs").mkdir(parents=True, exist_ok=True)
-                    saved_log_path = reports_dir / "logs" / f"{Path(path_exec).stem}_{idx:02d}.log"
-                    saved_log_path.write_text(full_log, encoding="utf-8", errors="ignore")
+                            # Limpar mensagem de erro se contiver "realizada com sucesso"
+                            if err_msg and "realizada com sucesso" in err_msg.lower():
+                                err_msg = None
 
-                    # --- finalizar o cenário no relatório, incluindo o caminho do log ---
-                    rep.finish_scenario(
-                            h,
-                            status=status,
-                            error_message=err_msg,
-                            extra={
-                                "path": str(path_exec),
-                                "returncode": rc,
-                                "file_name": Path(path_exec).name,
-                                "logfile": str(saved_log_path)   # <<< adicionado
-                            }
-                        )
+                            # Finalizar cenário no relatório
+                            rep.finish_scenario(
+                                h,
+                                status=status,
+                                error_message=err_msg,
+                                extra={
+                                    "path": str(path_exec),
+                                    "returncode": rc,
+                                    "file_name": Path(path_exec).name,
+                                    "logfile": str(saved_log_path) if saved_log_path else None
+                                }
+                            )
             rep.end_run()
             docx_path = rep.save_docx("Relatorio_QA")
             print(f"\nRelatório QA gerado: {docx_path}")
