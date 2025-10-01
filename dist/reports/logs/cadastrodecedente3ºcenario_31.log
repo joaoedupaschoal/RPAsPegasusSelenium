@@ -1,0 +1,23 @@
+🔄 Acessando a URL do sistema.
+🖼️ Screenshot: screenshots\url_acessada_163846.png
+🔄 Iniciando login no sistema.
+🖼️ Screenshot: screenshots\login_inicio_163847.png
+✅ Login realizado com sucesso.
+🖼️ Screenshot: screenshots\login_concluido_163850.png
+🔄 Abrindo o menu principal.
+🖼️ Screenshot: screenshots\menu_inicio_163857.png
+✅ Menu Cedente localizado e aberto.
+🖼️ Screenshot: screenshots\menu_capelas_aberto_163901.png
+🔄 Acessando o formulário de cadastro.
+🖼️ Screenshot: screenshots\cadastro_inicio_163902.png
+✅ Formulário de cadastro aberto.
+🖼️ Screenshot: screenshots\cadastro_aberto_163904.png
+🔄 Clicando no botão 'Salvar'.
+✅ Cadastro enviado com sucesso.
+🖼️ Screenshot: screenshots\apos_clicar_salvar_163906.png
+📢 ⚠️ Mensagem de Alerta: O campo "Nome *" é obrigatório.
+🔄 Fechando o formulário.
+✅ Formulário fechado.
+🖼️ Screenshot: screenshots\formulario_fechado_163908.png
+✅ Teste finalizado com sucesso.
+📄 Relatório salvo como: relatorio_cedentes_cenario_3_20251001_163908.docx

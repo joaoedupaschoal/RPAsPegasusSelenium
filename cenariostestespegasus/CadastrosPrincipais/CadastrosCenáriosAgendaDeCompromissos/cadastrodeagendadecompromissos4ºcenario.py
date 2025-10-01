@@ -160,9 +160,8 @@ def preencher_data(selector, valor):
         campo.send_keys(valor)  # Simula o foco no próximo campo
         time.sleep(0.2)
         campo.send_keys(valor)  # Simula o foco no próximo campo
-        time.sleep(0.5)
-        campo.send_keys(valor)  # Simula o foco no próximo campo
         time.sleep(0.2)
+
 
 
     return acao

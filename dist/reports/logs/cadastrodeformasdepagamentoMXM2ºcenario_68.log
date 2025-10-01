@@ -1,0 +1,597 @@
+🔄 Acessando sistema...
+✅ Acessando sistema realizada com sucesso.
+🔄 Realizando login...
+✅ Realizando login realizada com sucesso.
+🔄 Esperando sistema carregar e ajustando zoom...
+🔍 Zoom ajustado para 90%.
+✅ Esperando sistema carregar e ajustando zoom realizada com sucesso.
+🔄 Abrindo menu Formas de Pagamento MXM...
+✅ Abrindo menu Formas de Pagamento MXM realizada com sucesso.
+🔄 Clicando em Cadastrar...
+✅ Clicando em Cadastrar realizada com sucesso.
+🔄 Selecionando a Filial...
+✅ Selecionando a Filial realizada com sucesso.
+🔄 Selecionando a Forma de Pagamento 'Boleto'...
+✅ Selecionando a Forma de Pagamento 'Boleto' realizada com sucesso.
+🔄 Preechendo o Código MXM...
+✅ Preechendo o Código MXM realizada com sucesso.
+🔄 Adicionando Forma de Pagamento...
+✅ Adicionando Forma de Pagamento realizada com sucesso.
+🔄 Selecionando a Forma de Pagamento 'Cartão de Crédito'...
+✅ Selecionando a Forma de Pagamento 'Cartão de Crédito' realizada com sucesso.
+🔄 Preechendo o Código MXM...
+✅ Preechendo o Código MXM realizada com sucesso.
+🔄 Selecionando a Bandeira do Cartão de Crédito...
+❌ Erro ao selecionando a bandeira do cartão de crédito: Message: stale element reference: stale element not found in the current frame
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#staleelementreferenceexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x324330]
+	(No symbol) [0x0x326734]
+	(No symbol) [0x0x3267c8]
+	(No symbol) [0x0x36941a]
+	(No symbol) [0x0x35d11a]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Adicionando Forma de Pagamento...
+❌ Erro ao adicionando forma de pagamento: Message: element click intercepted: Element <a class="btAddGroup">...</a> is not clickable at point (931, 360). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Selecionando a Forma de Pagamento 'Cartão de Débito'...
+✅ Selecionando a Forma de Pagamento 'Cartão de Débito' realizada com sucesso.
+🔄 Preechendo o Código MXM...
+✅ Preechendo o Código MXM realizada com sucesso.
+🔄 Selecionando a Bandeira do Cartão de Débito...
+❌ Erro ao selecionando a bandeira do cartão de débito: Message: element click intercepted: Element <a class="sprites sp-openLov"></a> is not clickable at point (707, 326). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Adicionando Forma de Pagamento...
+❌ Erro ao adicionando forma de pagamento: Message: element click intercepted: Element <a class="btAddGroup">...</a> is not clickable at point (931, 360). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Selecionando a Forma de Pagamento 'Cheque a Prazo'...
+✅ Selecionando a Forma de Pagamento 'Cheque a Prazo' realizada com sucesso.
+🔄 Preechendo o Código MXM...
+✅ Preechendo o Código MXM realizada com sucesso.
+🔄 Adicionando Forma de Pagamento...
+❌ Erro ao adicionando forma de pagamento: Message: element click intercepted: Element <a class="btAddGroup">...</a> is not clickable at point (931, 311). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Selecionando a Forma de Pagamento 'Cheque a Vista'...
+✅ Selecionando a Forma de Pagamento 'Cheque a Vista' realizada com sucesso.
+🔄 Preechendo o Código MXM...
+✅ Preechendo o Código MXM realizada com sucesso.
+🔄 Adicionando Forma de Pagamento...
+❌ Erro ao adicionando forma de pagamento: Message: element click intercepted: Element <a class="btAddGroup">...</a> is not clickable at point (931, 311). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Selecionando a Forma de Pagamento 'Depósito'...
+✅ Selecionando a Forma de Pagamento 'Depósito' realizada com sucesso.
+🔄 Preechendo o Código MXM...
+✅ Preechendo o Código MXM realizada com sucesso.
+🔄 Selecionando a opção para não possuir titulo de OS...
+❌ Erro ao selecionando a opção para não possuir titulo de os: Message: element click intercepted: Element <input type="radio" class="fc tituloOS" value="NAO" name="tituloOS"> is not clickable at point (544, 324). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Adicionando Forma de Pagamento...
+❌ Erro ao adicionando forma de pagamento: Message: element click intercepted: Element <a class="btAddGroup">...</a> is not clickable at point (931, 360). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Selecionando a Forma de Pagamento 'Dinheiro'...
+✅ Selecionando a Forma de Pagamento 'Dinheiro' realizada com sucesso.
+🔄 Preechendo o Código MXM...
+✅ Preechendo o Código MXM realizada com sucesso.
+🔄 Selecionando a opção para não possuir titulo de OS...
+❌ Erro ao selecionando a opção para não possuir titulo de os: Message: element click intercepted: Element <input type="radio" class="fc tituloOS" value="NAO" name="tituloOS"> is not clickable at point (544, 324). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Adicionando Forma de Pagamento...
+❌ Erro ao adicionando forma de pagamento: Message: element click intercepted: Element <a class="btAddGroup">...</a> is not clickable at point (931, 360). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Selecionando a Forma de Pagamento 'Retorno Bancário'...
+✅ Selecionando a Forma de Pagamento 'Retorno Bancário' realizada com sucesso.
+🔄 Preechendo o Código MXM...
+✅ Preechendo o Código MXM realizada com sucesso.
+🔄 Adicionando Forma de Pagamento...
+❌ Erro ao adicionando forma de pagamento: Message: element click intercepted: Element <a class="btAddGroup">...</a> is not clickable at point (931, 311). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Selecionando a Forma de Pagamento 'Vindi'...
+✅ Selecionando a Forma de Pagamento 'Vindi' realizada com sucesso.
+🔄 Preechendo o Código MXM...
+✅ Preechendo o Código MXM realizada com sucesso.
+🔄 Adicionando Forma de Pagamento...
+❌ Erro ao adicionando forma de pagamento: Message: element click intercepted: Element <a class="btAddGroup">...</a> is not clickable at point (931, 311). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Selecionando a Forma de Pagamento 'Faturado'...
+✅ Selecionando a Forma de Pagamento 'Faturado' realizada com sucesso.
+🔄 Preechendo o Código MXM...
+✅ Preechendo o Código MXM realizada com sucesso.
+🔄 Adicionando Forma de Pagamento...
+❌ Erro ao adicionando forma de pagamento: Message: element click intercepted: Element <a class="btAddGroup">...</a> is not clickable at point (931, 311). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Selecionando a Forma de Pagamento 'PIX'...
+✅ Selecionando a Forma de Pagamento 'PIX' realizada com sucesso.
+🔄 Preechendo o Código MXM...
+✅ Preechendo o Código MXM realizada com sucesso.
+🔄 Selecionando a opção para não possuir titulo de OS...
+❌ Erro ao selecionando a opção para não possuir titulo de os: Message: element click intercepted: Element <input type="radio" class="fc tituloOS" value="NAO" name="tituloOS"> is not clickable at point (544, 324). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Adicionando Forma de Pagamento...
+❌ Erro ao adicionando forma de pagamento: Message: element click intercepted: Element <a class="btAddGroup">...</a> is not clickable at point (931, 360). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Selecionando a Forma de Pagamento 'Transferência'...
+✅ Selecionando a Forma de Pagamento 'Transferência' realizada com sucesso.
+🔄 Preechendo o Código MXM...
+✅ Preechendo o Código MXM realizada com sucesso.
+🔄 Selecionando a opção para não possuir titulo de OS...
+❌ Erro ao selecionando a opção para não possuir titulo de os: Message: element click intercepted: Element <input type="radio" class="fc tituloOS" value="NAO" name="tituloOS"> is not clickable at point (544, 324). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Adicionando Forma de Pagamento...
+❌ Erro ao adicionando forma de pagamento: Message: element click intercepted: Element <a class="btAddGroup">...</a> is not clickable at point (931, 360). Other element would receive the click: <div class="modal overflow" style="z-index: 10002; left: 50%; top: 50%; width: 800px; height: 570px; margin-left: -400px; margin-top: -285px;">...</div>
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x36dbc0]
+	(No symbol) [0x0x36bf23]
+	(No symbol) [0x0x3699c7]
+	(No symbol) [0x0x368c66]
+	(No symbol) [0x0x35d195]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🔄 Cancelando cadastro...
+✅ Cancelando cadastro realizada com sucesso.
+🔄 Fechando modal após cancelamento...
+✅ Fechando modal após cancelamento realizada com sucesso.
+ℹ️ Nenhuma mensagem de alerta encontrada.
+✅ Teste concluído com sucesso.
+📄 Relatório salvo como: relatorio_formas_de_pagamento_mxm_cenario_2_20251001_171207.docx

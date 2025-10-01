@@ -171,16 +171,27 @@ PEGASUS_PASSWORD = os.getenv("PEGASUS_PASSWORD", "071999gs")
 def autenticar() -> bool:
     clear_screen()
     print("===== TESTES AUTOMATIZADOS - PEGASUS =====\n")
-    pwd = read_password_masked("Digite a senha para entrar: ")
-    if not pwd:
-        print("\n[ERRO] Senha vazia.")
-        time.sleep(1.2)
-        return False
-    if pwd != PEGASUS_PASSWORD:
-        print("\n[ERRO] Senha incorreta.")
-        time.sleep(1.2)
-        return False
-    return True
+
+    max_tentativas = 3
+    for tentativa in range(1, max_tentativas + 1):
+        pwd = read_password_masked("Digite a senha para entrar: ")
+        
+        if not pwd:
+            print("\n[ERRO] Senha vazia.")
+            time.sleep(1.2)
+            continue
+
+        if pwd == PEGASUS_PASSWORD:
+            return True
+        else:
+            print(f"\n[ERRO] Senha incorreta, tente novamente [{tentativa}/{max_tentativas}]")
+            time.sleep(1.2)
+
+    # Se chegou aqui, é porque errou todas as tentativas
+    print("\n[ERRO] Número máximo de tentativas excedido.")
+    time.sleep(1.5)
+    return False
+
 
 def main():
     show_loading()                  # splash inicial
@@ -802,23 +813,23 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                 "scenarios": {
                     "1": {
                         "label": 'Cenário 1: Nesse teste, o robô preencherá todos os campos e salvará o cadastro de novos Jazigos em Lote.',
-                        "file": BASE_SCRIPTS / "CadastrosAdicionais" / "CadastrosCenáriosJazigos" / "CadastrosJazigosLote" / "cadastrodejazigo1ºcenario.py",
+                        "file": BASE_SCRIPTS / "CadastrosAdicionais" / "CadastrosCenáriosJazigos" / "CadastrosJazigosLote" / "cadastrodejazigoemlote1ºcenario.py",
                     },
                     "2": {
                         "label": 'Cenário 2: Nesse teste, o robô preencherá todos os campos e cancelará o cadastro de novos Jazigos em Lote.',
-                        "file": BASE_SCRIPTS / "CadastrosAdicionais" / "CadastrosCenáriosJazigos" / "CadastrosJazigosLote" / "cadastrodejazigo2ºcenario.py",
+                        "file": BASE_SCRIPTS / "CadastrosAdicionais" / "CadastrosCenáriosJazigos" / "CadastrosJazigosLote" / "cadastrodejazigoemlote2ºcenario.py",
                     },
                     "3": {
                         "label": "Cenário 3: Nesse teste, o robô preencherá APENAS os dados obrigatórios e salvará o cadastro de novos Jazigos em Lote.",
-                        "file": BASE_SCRIPTS / "CadastrosAdicionais" / "CadastrosCenáriosJazigos" / "CadastrosJazigosLote" / "cadastrodejazigo3ºcenario.py",
+                        "file": BASE_SCRIPTS / "CadastrosAdicionais" / "CadastrosCenáriosJazigos" / "CadastrosJazigosLote" / "cadastrodejazigoemlote3ºcenario.py",
                     },
                     "4": {
                         "label": "Cenário 4: Nesse teste, o robô preencherá todos os dados NÃO obrigatórios e salvará o cadastro de novos Jazigos em Lote, com a finalidade de validar o disparo de mensagens no sistema.",
-                        "file": BASE_SCRIPTS / "CadastrosAdicionais" / "CadastrosCenáriosJazigos" / "CadastrosJazigosLote" / "cadastrodejazigo4ºcenario.py",
+                        "file": BASE_SCRIPTS / "CadastrosAdicionais" / "CadastrosCenáriosJazigos" / "CadastrosJazigosLote" / "cadastrodejazigoemlote4ºcenario.py",
                     },
                     "5": {
                         "label": "Cenário 5: Nesse teste, o robô preencherá todos os dados, excedendo o limite máximo de Jazigos de uma Quadra e clicará em Salvar, com a finalidade de validar o disparo de mensagens no sistema.",
-                        "file": BASE_SCRIPTS / "CadastrosAdicionais" / "CadastrosCenáriosJazigos" / "CadastrosJazigosLote" / "cadastrodejazigo5ºcenario.py",
+                        "file": BASE_SCRIPTS / "CadastrosAdicionais" / "CadastrosCenáriosJazigos" / "CadastrosJazigosLote" / "cadastrodejazigoemlote5ºcenario.py",
                     },
                 }
             }, 

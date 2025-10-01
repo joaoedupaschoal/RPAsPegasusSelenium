@@ -66,6 +66,9 @@ def main():
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
         time.sleep(2)
 
+    def ajustar_zoom(driver):
+        driver.execute_script("document.body.style.zoom='90%'")
+  
     def encontrar_mensagem_alerta():
         seletores = [
             (".alerts.salvo", "✅ Mensagem de Sucesso"),
@@ -103,7 +106,7 @@ def main():
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
             "#fmod_10011 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div > div > div:nth-child(4) > div > a"))).click()
         tr = wait.until(EC.presence_of_element_located((By.XPATH,
-            "//tr[td[contains(text(), 'GETNET - CARTAO DE DEBITO - MASTERCARD')]]")))
+            "//tr[td[contains(text(), 'BANDEIRA TESTE')]]")))
         driver.execute_script("arguments[0].scrollIntoView(true);", tr)
         time.sleep(0.5)
         tr.click()
@@ -133,7 +136,8 @@ def main():
             "#BtYes"))).click()
         log(doc, "❌ Cadastro cancelado pelo usuário.")
         registrar_screenshot_unico("cadastro_cancelado", driver, doc)
-
+        time.sleep(2)
+        
     def fechar_modal():
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
             "#fmod_10011 > div.wdTop.ui-draggable-handle > div.wdClose > a"))).click()

@@ -22,12 +22,22 @@ from datetime import datetime
 import subprocess
 import time
 import os
+import random
+from faker import Faker
+from faker.providers import BaseProvider
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from utils.actions import log, take_screenshot, safe_action,  ajustar_zoom
 
+# ==== PROVIDERS CUSTOMIZADOS ====
+class BrasilProvider(BaseProvider):
+    def rg(self):
+        numeros = [str(random.randint(0, 9)) for _ in range(8)]
+        return ''.join(numeros) + '-' + str(random.randint(0, 9))
 
+fake = Faker("pt_BR")
+fake.add_provider(BrasilProvider)
 
 URL = "http://localhost:8080/gs/index.xhtml"
 LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
@@ -105,7 +115,7 @@ def main():
         log(doc, "🔄 Preenchendo o campo 'Código da Área'.")
         campo_codigo = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR,
             "#fmod_10050 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(2) > input")))
-        campo_codigo.send_keys("COD1234")
+        campo_codigo.send_keys("COD" + str(fake.random_int(min=1, max=1000)))
         log(doc, "✅ Campo 'Código da Área' preenchido.")
         registrar_screenshot_unico("codigo_area_preenchido", driver, doc)
 

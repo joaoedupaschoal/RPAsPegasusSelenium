@@ -75,6 +75,9 @@ def main():
         log(doc, "✅ Menu Capelas aberto.")
         take_screenshot(driver, doc, "menu_capelas_concluido")
 
+    def ajustar_zoom(driver):
+        driver.execute_script("document.body.style.zoom='90%'")
+        
     def encontrar_mensagem_alerta():
         seletores = [
             (".alerts.salvo", "✅ Mensagem de Sucesso"),
@@ -152,8 +155,6 @@ def main():
 
     encontrar_mensagem_alerta()
     
-
-    fechar_modal()
     log(doc, "✅ Teste finalizado com sucesso.")
     finalizar_relatorio()
 

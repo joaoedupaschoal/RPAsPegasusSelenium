@@ -87,6 +87,9 @@ def main():
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
         time.sleep(2)
 
+    def ajustar_zoom(driver):
+        driver.execute_script("document.body.style.zoom='90%'")
+  
     def abrir_menu():
         driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2)
         campo = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']")))
@@ -107,11 +110,11 @@ def main():
         
         # Aguarda o carregamento real da tabela e busca o TR que contém o texto exato
         tr = wait.until(EC.presence_of_element_located((By.XPATH,
-            "//tr[td[contains(text(), 'GETNET - CARTAO DE DEBITO - MASTERCARD')]]")))
+            "//tr[td[contains(text(), 'BANDEIRA TESTE')]]")))
 
         tr.click()
 
-        log(doc, "✅ Bandeira 'GETNET - CARTAO DE DEBITO - MASTERCARD' selecionada com sucesso.")
+        log(doc, "✅ Bandeira 'BANDEIRA TESTE' selecionada com sucesso.")
         registrar_screenshot_unico("bandeira_selecionada", driver, doc)
 
 

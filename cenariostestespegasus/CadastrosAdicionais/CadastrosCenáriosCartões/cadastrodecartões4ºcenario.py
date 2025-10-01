@@ -86,6 +86,9 @@ def main():
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
         time.sleep(2)
 
+    def ajustar_zoom(driver):
+        driver.execute_script("document.body.style.zoom='90%'")
+  
     def abrir_menu():
         driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2)
         campo = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']")))

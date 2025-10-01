@@ -200,13 +200,6 @@ try:
         By.CSS_SELECTOR, "#fmod_10030 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroCor > div.btnHolder > a.btModel.btGray.btcancel"
     ).click())
 
-    safe_action(doc, "Confirmando o cancelamento", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
-            "#BtYes"))).click(),
-    ))
-
-
-
 
     safe_action(doc, "Fechando modal após cancelamento", lambda: wait.until(EC.element_to_be_clickable((
         By.CSS_SELECTOR, "#fmod_10030 > div.wdTop.ui-draggable-handle > div.wdClose > a"

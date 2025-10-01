@@ -1,0 +1,76 @@
+🔄 Acessando o sistema...
+✅ Acessando o sistema realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_o_sistema_163329.png
+🔄 Realizando login...
+✅ Realizando login realizado com sucesso.
+🖼️ Screenshot: screenshots\realizando_login_163333.png
+🔄 Ajustando zoom...
+✅ Ajustando zoom realizado com sucesso.
+🖼️ Screenshot: screenshots\ajustando_zoom_163345.png
+🔄 Abrindo menu Cartão Bandeira...
+✅ Abrindo menu Cartão Bandeira realizado com sucesso.
+🖼️ Screenshot: screenshots\abrindo_menu_cartão_bandeira_163346.png
+🔄 Acessando formulário...
+✅ Acessando formulário realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_formulário_163347.png
+🔄 Preenchendo campos completos...
+🔄 Preenchendo nome...
+Traceback (most recent call last):
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI55242\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosCartõesBandeira\cadastrodecartõesbandeira2ºcenario.py", line 185, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI55242\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosCartõesBandeira\cadastrodecartõesbandeira2ºcenario.py", line 173, in main
+    if not safe_action(doc, "Preenchendo campos completos", preencher_campos_completos, driver, wait)[0]: finalizar_relatorio(); return
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\RPASelenium\RPAsPegasusSelenium\utils\actions.py", line 35, in safe_action
+    result = func()
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI55242\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosCartõesBandeira\cadastrodecartõesbandeira2ºcenario.py", line 115, in preencher_campos_completos
+    safe_action(doc, descricao, lambda s=seletor, v=valor: driver.find_element(By.CSS_SELECTOR, s).send_keys(v), driver, wait)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\RPASelenium\RPAsPegasusSelenium\utils\actions.py", line 35, in safe_action
+    result = func()
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI55242\cenariostestespegasus\CadastrosAdicionais\CadastrosCenáriosCartõesBandeira\cadastrodecartõesbandeira2ºcenario.py", line 115, in <lambda>
+    safe_action(doc, descricao, lambda s=seletor, v=valor: driver.find_element(By.CSS_SELECTOR, s).send_keys(v), driver, wait)
+                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webelement.py", line 304, in send_keys
+    self._execute(
+    ~~~~~~~~~~~~~^
+        Command.SEND_KEYS_TO_ELEMENT, {"text": "".join(keys_to_typing(value)), "value": keys_to_typing(value)}
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webelement.py", line 573, in _execute
+    return self._parent.execute(command, params)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\webdriver.py", line 458, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Gold System\AppData\Roaming\Python\Python313\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.ElementNotInteractableException: Message: element not interactable
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementnotinteractableexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d7c0]
+	(No symbol) [0x0x361f62]
+	(No symbol) [0x0x3605e6]
+	(No symbol) [0x0x389dfc]
+	(No symbol) [0x0x35cbf4]
+	(No symbol) [0x0x389fb4]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+

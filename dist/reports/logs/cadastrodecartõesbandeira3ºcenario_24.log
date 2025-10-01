@@ -1,0 +1,61 @@
+🔄 Acessando o sistema...
+✅ Acessando o sistema realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_o_sistema_163358.png
+🖼️ Screenshot: screenshots\url_acessada_163359.png
+🔄 Realizando login...
+✅ Realizando login realizado com sucesso.
+🖼️ Screenshot: screenshots\realizando_login_163403.png
+🖼️ Screenshot: screenshots\login_concluido_163410.png
+🔄 Ajustando zoom...
+✅ Ajustando zoom realizado com sucesso.
+🖼️ Screenshot: screenshots\ajustando_zoom_163410.png
+🔄 Abrindo menu Cartão Bandeira...
+✅ Abrindo menu Cartão Bandeira realizado com sucesso.
+🖼️ Screenshot: screenshots\abrindo_menu_cartão_bandeira_163411.png
+🖼️ Screenshot: screenshots\menu_aberto_163412.png
+🔄 Acessando formulário...
+✅ Acessando formulário realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_formulário_163415.png
+🖼️ Screenshot: screenshots\formulario_aberto_163416.png
+🔄 Preenchendo campos...
+🔄 Selecionando conta crédito 1...
+❌ Erro ao tentar selecionando conta crédito 1: Message: no such element: Unable to locate element: {"method":"xpath","selector":"//tr[contains(., 'PLANO DE CONTAS DÉBITO SELENIUM')]"}
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception
+Stacktrace:
+	GetHandleVerifier [0x0x4fc333+65459]
+	GetHandleVerifier [0x0x4fc374+65524]
+	(No symbol) [0x0x31d973]
+	(No symbol) [0x0x3676e7]
+	(No symbol) [0x0x367a8b]
+	(No symbol) [0x0x3adea2]
+	(No symbol) [0x0x389e44]
+	(No symbol) [0x0x3ab606]
+	(No symbol) [0x0x389bf6]
+	(No symbol) [0x0x35b38e]
+	(No symbol) [0x0x35c274]
+	GetHandleVerifier [0x0x77eda3+2697763]
+	GetHandleVerifier [0x0x779ec7+2677575]
+	GetHandleVerifier [0x0x524194+228884]
+	GetHandleVerifier [0x0x5149f8+165496]
+	GetHandleVerifier [0x0x51b18d+192013]
+	GetHandleVerifier [0x0x5047d8+99416]
+	GetHandleVerifier [0x0x504972+99826]
+	GetHandleVerifier [0x0x4eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+🖼️ Screenshot: screenshots\erro_selecionando_conta_crédito_1_163424.png
+✅ Preenchendo campos realizado com sucesso.
+🖼️ Screenshot: screenshots\preenchendo_campos_163425.png
+🔄 Clicando em Salvar...
+✅ Clicando em Salvar realizado com sucesso.
+🖼️ Screenshot: screenshots\clicando_em_salvar_163425.png
+🖼️ Screenshot: screenshots\apos_salvar_163425.png
+📢 ⚠️ Mensagem de Alerta: O campo "Conta Crédito *" é obrigatório.
+🔄 Fechando formulário...
+✅ Fechando formulário realizado com sucesso.
+🖼️ Screenshot: screenshots\fechando_formulário_163426.png
+🖼️ Screenshot: screenshots\formulario_fechado_163426.png
+✅ Teste concluído com sucesso.
+📄 Relatório salvo como: relatorio_cartoes_bandeira_cenario_3_20251001_163426.docx

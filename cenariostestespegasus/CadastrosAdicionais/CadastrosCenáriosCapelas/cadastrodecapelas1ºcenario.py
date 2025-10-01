@@ -54,6 +54,10 @@ def main():
             log(doc, f"Erro ao abrir o Word: {e}")
         driver.quit()
 
+    def ajustar_zoom(driver):
+        driver.execute_script("document.body.style.zoom='90%'")
+
+
     def login():
         log(doc, "🔄 Iniciando login no sistema.")
         take_screenshot(driver, doc, "login_inicio")
@@ -161,7 +165,6 @@ def main():
     log(doc, "🔄 Acessando a URL do sistema.")
     driver.get(URL)
     take_screenshot(driver, doc, "url_acessada")
-
     login()
     ajustar_zoom(driver)
     abrir_menu_capelas()

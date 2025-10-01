@@ -85,6 +85,9 @@ def main():
         log(doc, "✅ Login realizado com sucesso.")
         take_screenshot(driver, doc, "login_concluido")
 
+    def ajustar_zoom(driver):
+        driver.execute_script("document.body.style.zoom='90%'")
+  
     def abrir_menu_capelas():
         log(doc, "🔄 Acessando o menu Capelas.")
         take_screenshot(driver, doc, "menu_inicio")

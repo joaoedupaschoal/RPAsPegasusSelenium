@@ -589,7 +589,7 @@ try:
     safe_action(doc, "Fechando modal", lambda: (
         log(doc, "Clicando no X..."),
         clicar_elemento_js(driver, wait, "#fmod_10046 > div.wdTop.ui-draggable-handle > div.wdClose > a", "X"),
-        time.sleep(5)
+        time.sleep(7)
     ))
 
 

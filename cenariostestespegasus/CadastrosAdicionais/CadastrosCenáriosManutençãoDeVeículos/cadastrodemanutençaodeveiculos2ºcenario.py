@@ -399,12 +399,12 @@ try:
         preencher_campo_com_retry(driver, wait, "#fmod_10062 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroManutencaoVeiculo > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_grupoDadosManutencao > div > div > div:nth-child(6) > textarea", 'NENHUMA MANUTENÇÃO NECESSÁRIA, VEÍCULO EM PERFEITO ESTADO PARA USO')
     ))
 
-    safe_action(doc, "Salvando cadastro de manutenção", lambda: (
+    safe_action(doc, "Cancelando cadastro de manutenção", lambda: (
         click_element_safely(driver, wait, "#fmod_10062 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroManutencaoVeiculo > div.btnHolder > a.btModel.btGray.btcancel"),
         time.sleep(2)
     ))
 
-    safe_action(doc, "Fechando modal após salvamento", lambda: (
+    safe_action(doc, "Fechando modal após cancelamento", lambda: (
         click_element_safely(driver, wait, "#fmod_10062 > div.wdTop.ui-draggable-handle > div.wdClose > a")
     ))
 

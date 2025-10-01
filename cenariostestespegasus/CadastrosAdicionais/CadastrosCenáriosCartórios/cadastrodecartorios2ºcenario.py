@@ -35,9 +35,9 @@ LOGIN_PASSWORD = "071999gs"
 def main():
     doc = Document()
     doc.add_heading("RELATÓRIO DO TESTE", 0)
-    doc.add_paragraph("Cadastro de Carrtórios.")
+    doc.add_paragraph("Cadastro de Cartórios.")
     doc.add_paragraph(f"🗕️ Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-    doc.add_paragraph("O robô preencherá os campos obrigatórios e opcionais e realizará o cadastro de um Cartório.")
+    doc.add_paragraph("O robô preencherá os campos obrigatórios e opcionais e cancelará o cadastro de um Cartório.")
 
     chrome_options = Options()
     chrome_options.add_argument("--start-maximized")

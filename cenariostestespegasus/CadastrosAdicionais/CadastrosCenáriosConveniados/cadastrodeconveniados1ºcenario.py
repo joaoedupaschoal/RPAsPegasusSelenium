@@ -906,6 +906,8 @@ try:
         EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10063 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroConveniado > div.btnHolder > a.btModel.btGray.btsave"))
     ).click())
 
+    time.sleep(2)
+
     encontrar_mensagem_alerta()
 
     # Fechar modal

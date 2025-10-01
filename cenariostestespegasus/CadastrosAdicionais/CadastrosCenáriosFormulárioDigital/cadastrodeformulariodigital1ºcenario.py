@@ -101,7 +101,7 @@ def gerar_dados_formulario():
                 f'SIM, POSSUI FILHOS. (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})',
                 f'NÃO, NÃO POSSUI FILHOS. (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})'
             ],
-            'ordem': '00001'
+            'ordem': '9001'
         },
         {
             'descricao': f'CASADO? (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})',
@@ -111,7 +111,7 @@ def gerar_dados_formulario():
                 f'SIM, É CASADO. (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})',
                 f'NÃO, NÃO É CASADO. (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})'
             ],
-            'ordem': '00002'
+            'ordem': '9002'
         },
         {
             'descricao': f'TEM PET? (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})',
@@ -121,14 +121,14 @@ def gerar_dados_formulario():
                 f'SIM, TEM PET. (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})',
                 f'NÃO, NÃO TEM PET. (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})'
             ],
-            'ordem': '00003'
+            'ordem': '9003'
         },
         {
             'descricao': f'QUAL É O SEU NOME? (TESTE SELENIUM AUTOMATIZADO {numero_aleatorio})',
             'tipo': 'Dissertativa',
             'formato': 'Alfa númerica',
             'alternativas': [],
-            'ordem': '00004'
+            'ordem': '9004'
         }
     ]
     

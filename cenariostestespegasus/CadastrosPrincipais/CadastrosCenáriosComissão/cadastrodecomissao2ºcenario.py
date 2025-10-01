@@ -89,9 +89,9 @@ def main():
         campo.click()
         campo.send_keys("Comissão")
         
-        elemento = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[8]/a")))
+        elemento = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[7]/a")))
         elemento.click()
-        time.sleep(3)
+        time.sleep(4)
 
     def acessar_formulario():
         cadastrar = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 
