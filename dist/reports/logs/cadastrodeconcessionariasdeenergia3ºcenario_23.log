@@ -1,0 +1,36 @@
+🔄 Acessando o sistema...
+✅ Acessando o sistema realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_o_sistema_152919.png
+📸 Sistema acessado.
+🖼️ Screenshot: screenshots\url_acessada_152920.png
+🔄 Realizando login...
+✅ Realizando login realizado com sucesso.
+🖼️ Screenshot: screenshots\realizando_login_152923.png
+📸 Login realizado.
+🖼️ Screenshot: screenshots\login_concluido_152932.png
+🔄 Ajustando zoom...
+✅ Ajustando zoom realizado com sucesso.
+🖼️ Screenshot: screenshots\ajustando_zoom_152933.png
+🔄 Abrindo menu Concessionárias de Energia...
+✅ Abrindo menu Concessionárias de Energia realizado com sucesso.
+🖼️ Screenshot: screenshots\abrindo_menu_concessionárias_de_energia_152942.png
+📸 Menu 'Concessionárias de Energia' aberto.
+🖼️ Screenshot: screenshots\menu_aberto_152942.png
+🔄 Acessando formulário de cadastro...
+✅ Acessando formulário de cadastro realizado com sucesso.
+🖼️ Screenshot: screenshots\acessando_formulário_de_cadastro_152946.png
+📸 Formulário de cadastro aberto.
+🖼️ Screenshot: screenshots\formulario_aberto_152946.png
+🔄 Clicando no botão Salvar...
+✅ Clicando no botão Salvar realizado com sucesso.
+🖼️ Screenshot: screenshots\clicando_no_botão_salvar_152949.png
+📸 Clique no botão Salvar realizado.
+🖼️ Screenshot: screenshots\apos_salvar_152950.png
+Traceback (most recent call last):
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI282802\cenariostestespegasus\CadastrosPrincipais\CadastrosCenáriosConcessionáriasDeEnergia\cadastrodeconcessionariasdeenergia3ºcenario.py", line 158, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Gold System\AppData\Local\Temp\_MEI282802\cenariostestespegasus\CadastrosPrincipais\CadastrosCenáriosConcessionáriasDeEnergia\cadastrodeconcessionariasdeenergia3ºcenario.py", line 137, in main
+    _, tipo_alerta = encontrar_mensagem_alerta(driver, doc)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+TypeError: encontrar_mensagem_alerta() takes 0 positional arguments but 2 were given

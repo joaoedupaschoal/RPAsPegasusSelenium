@@ -126,7 +126,7 @@ try:
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_22 ul > li:nth-child(1) > a > span"))).click()
     ))
 
-
+    time.sleep(3)
 
     safe_action(doc, "Selecionando tipo do documento", lambda: (
         Select(wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,

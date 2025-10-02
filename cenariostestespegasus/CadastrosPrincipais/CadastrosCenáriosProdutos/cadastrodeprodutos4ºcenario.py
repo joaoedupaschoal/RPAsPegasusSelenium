@@ -37,7 +37,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== DOCUMENTO ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Cadastro de Produtos – Cenário 1: Preenchimento completo e salvamento.")
+doc.add_paragraph("Cadastro de Produtos – Cenário 4: Preenchimento dos campos NÃO obrigatórios e salvamento.")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -389,6 +389,8 @@ try:
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.btnHolder > a.btModel.btGray.btsave"))).click(),
         time.sleep(5)
     ))
+
+    time.sleep(5)
 
     safe_action(doc, "Salvando cadastro do Produto", lambda: (
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_3 > div.wdTelas > div.telaCadastro.clearfix > div.btnHolder > a.btModel.btGray.btsave"))).click(),

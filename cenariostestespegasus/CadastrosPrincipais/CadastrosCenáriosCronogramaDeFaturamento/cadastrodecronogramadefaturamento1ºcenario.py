@@ -110,24 +110,7 @@ def finalizar_relatorio():
     subprocess.run(["start", "winword", nome_arquivo], shell=True)
     driver.quit()
 
-def encontrar_mensagem_alerta():
-    seletores = [
-        (".alerts.salvo", "✅ Mensagem de Sucesso"),
-        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
-        (".alerts.erro", "❌ Mensagem de Erro"),
-    ]
 
-    for seletor, tipo in seletores:
-        try:
-            elemento = driver.find_element(By.CSS_SELECTOR, seletor)
-            if elemento.is_displayed():
-                log(doc, f"📢 {tipo}: {elemento.text}")
-                return elemento
-        except:
-            continue
-
-    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
-    return None
 
 def ajustar_zoom():
     try:
@@ -325,6 +308,26 @@ def main():
         salvar_btn.click()
         time.sleep(2)
 
+    def encontrar_mensagem_alerta():
+        seletores = [
+                (".alerts.salvo", "✅ Mensagem de Sucesso"),
+                (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+                (".alerts.erro", "❌ Mensagem de Erro"),
+            ]
+
+        for seletor, tipo in seletores:
+            try:
+                elemento = driver.find_element(By.CSS_SELECTOR, seletor)
+                if elemento.is_displayed():
+                    log(doc, f"📢 {tipo}: {elemento.text}")
+                return elemento
+            except:
+                continue
+
+        log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
+        return None
+
+
     def fechar_modal():
         x_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
             "#fmod_10053 > div.wdTop.ui-draggable-handle > div.wdClose > a")))
@@ -332,29 +335,28 @@ def main():
         time.sleep(1)
 
     # EXECUÇÃO COM safe_action INDIVIDUAL PARA CADA AÇÃO
-    if not safe_action(doc, "Acessando o sistema", lambda: driver.get(URL), driver, wait)[0]:
+    if not safe_action(doc, "Acessando o sistema", lambda: driver.get(URL), driver)[0]:
         finalizar_relatorio()
         return
-    registrar_screenshot_unico("url_acessada", driver, doc, "Sistema acessado.")
 
-    if not safe_action(doc, "Realizando login", login, driver, wait)[0]:
+
+    if not safe_action(doc, "Realizando Login", lambda: login, driver)[0]:
         finalizar_relatorio()
         return
-    registrar_screenshot_unico("login_concluido", driver, doc, "Login realizado.")
+
 
     if not safe_action(doc, "Ajustando zoom", lambda: ajustar_zoom(driver), driver, wait)[0]:
         finalizar_relatorio()
         return
 
-    if not safe_action(doc, "Abrindo menu Cronograma de Faturamento", abrir_menu, driver, wait)[0]:
+    if not safe_action(doc, "Abrindo menu do Cronograma de Faturamento", lambda: abrir_menu, driver)[0]:
         finalizar_relatorio()
         return
-    registrar_screenshot_unico("menu_aberto", driver, doc, "Menu 'Cronograma de Faturamento' aberto.")
 
-    if not safe_action(doc, "Acessando formulário de cadastro", acessar_formulario, driver, wait)[0]:
+
+    if not safe_action(doc, "Acessando Formulário de cadastro", lambda: acessar_formulario, driver)[0]:
         finalizar_relatorio()
         return
-    registrar_screenshot_unico("formulario_aberto", driver, doc, "Formulário de cadastro aberto.")
 
     # PREENCHIMENTO DOS CAMPOS - safe_action individual para cada campo
     if not safe_action(doc, "Preenchendo Exercício", preencher_exercicio, driver, wait)[0]:
@@ -413,17 +415,7 @@ def main():
         return
     registrar_screenshot_unico("apos_salvar", driver, doc, "Clique no botão Salvar realizado.")
 
-    # VERIFICANDO MENSAGEM DE RETORNO
-    _, tipo_alerta = encontrar_mensagem_alerta(driver, doc)
-    if tipo_alerta == "sucesso":
-        log(doc, "✅ Mensagem de sucesso exibida.")
-    elif tipo_alerta == "alerta":
-        log(doc, "⚠️ Mensagem de alerta exibida.")
-    elif tipo_alerta == "erro":
-        log(doc, "❌ Mensagem de erro exibida.")
-    else:
-        log(doc, "⚠️ Nenhuma mensagem encontrada após salvar.")
-    registrar_screenshot_unico("mensagem_final", driver, doc, "Mensagem exibida após salvar.")
+    encontrar_mensagem_alerta()
 
     # FECHANDO O FORMULÁRIO
     if not safe_action(doc, "Fechando formulário", fechar_modal, driver, wait)[0]:

@@ -116,6 +116,8 @@ try:
     safe_action(doc, "Clicando em Cadastrar", lambda: (
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div > ul > li:nth-child(1) > a > span"))).click()
     ))
+    time.sleep(3)
+
     safe_action(doc, "Selecionando Filial", lambda: (
         Select(wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_dadosEquipamento.categoriaHolder > div > div > div > div:nth-child(8) > select")))).select_by_visible_text("Filial Gold 1")
     ))
@@ -123,6 +125,8 @@ try:
     safe_action(doc, "Acessando aba Informações Adicionais", lambda: (
         wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Informações Adicionais')]"))).click()
     ))
+    
+    time.sleep(3)
 
     safe_action(doc, "Preenchendo descrição adicional", lambda: (
         wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_informacoesAdicionais.categoriaHolder > div > div > div > input"))).send_keys("TESTE DESCRIÇÃO CADEIRA DE RODAS SELENIUM AUTOMATIZADO")

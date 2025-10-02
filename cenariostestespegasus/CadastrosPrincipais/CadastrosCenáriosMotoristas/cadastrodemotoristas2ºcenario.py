@@ -285,6 +285,8 @@ try:
         "Carteira Assinada"
     ))
 
+    time.sleep(5)
+
     safe_action(doc, "Cancelando cadastro de motorista", lambda: wait.until(
         EC.presence_of_element_located((By.CSS_SELECTOR, '#fmod_10058 > div.wdTelas > div > div.btnHolder > a.btModel.btGray.btcancel'))
     ).click())

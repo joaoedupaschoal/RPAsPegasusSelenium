@@ -238,8 +238,9 @@ try:
     ))
 
 
-    encontrar_mensagem_alerta()
-
+    safe_action(doc, "Verificando mensagem de alerta", lambda: (
+        encontrar_mensagem_alerta()
+    ))
 
 except Exception as e:
     log(doc, f"❌ ERRO FATAL: {e}")

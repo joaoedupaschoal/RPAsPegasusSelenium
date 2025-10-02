@@ -256,7 +256,6 @@ try:
     ))
 
     safe_action(doc, "Verificando mensagem de alerta", lambda: (
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".alerts"))),
         encontrar_mensagem_alerta()
     ))
 

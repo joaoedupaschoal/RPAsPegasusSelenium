@@ -148,6 +148,7 @@ try:
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#fmod_200007 > div.wdTelas > div > ul > li:nth-child(1) > a > span"))).click()
     ))
 
+    time.sleep(5)
 
 
     safe_action(doc, "Salvando cadastro", lambda: driver.find_element(

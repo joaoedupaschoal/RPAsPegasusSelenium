@@ -329,6 +329,26 @@ def main():
             "#BtYes")))
         confirmar_btn.click()
         time.sleep(2) 
+        
+    def encontrar_mensagem_alerta():
+        seletores = [
+                (".alerts.salvo", "✅ Mensagem de Sucesso"),
+                (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+                (".alerts.erro", "❌ Mensagem de Erro"),
+            ]
+
+        for seletor, tipo in seletores:
+            try:
+                elemento = driver.find_element(By.CSS_SELECTOR, seletor)
+                if elemento.is_displayed():
+                    log(doc, f"📢 {tipo}: {elemento.text}")
+                return elemento
+            except:
+                continue
+
+        log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
+        return None
+
 
     def fechar_modal():
         x_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
@@ -425,17 +445,7 @@ def main():
     registrar_screenshot_unico("apos_cancelar", driver, doc, "Clique no botão Sim realizado.")
     
 
-    # VERIFICANDO MENSAGEM DE RETORNO
-    _, tipo_alerta = encontrar_mensagem_alerta(driver, doc)
-    if tipo_alerta == "sucesso":
-        log(doc, "✅ Mensagem de sucesso exibida.")
-    elif tipo_alerta == "alerta":
-        log(doc, "⚠️ Mensagem de alerta exibida.")
-    elif tipo_alerta == "erro":
-        log(doc, "❌ Mensagem de erro exibida.")
-    else:
-        log(doc, "⚠️ Nenhuma mensagem encontrada após cancelar.")
-    registrar_screenshot_unico("mensagem_final", driver, doc, "Mensagem exibida após cancelar.")
+    encontrar_mensagem_alerta()
 
     # FECHANDO O FORMULÁRIO
     if not safe_action(doc, "Fechando formulário", fechar_modal, driver, wait)[0]:

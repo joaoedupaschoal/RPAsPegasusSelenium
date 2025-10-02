@@ -29,7 +29,7 @@ class BrasilProvider(BaseProvider):
 
 # Inclui letras, dígitos e símbolos
 todos_caracteres = string.ascii_letters + string.digits + string.punctuation
-identificador = '▫︎'
+identificador = '♞'
 
 fake = Faker("pt_BR")
 fake.add_provider(BrasilProvider)
@@ -53,7 +53,7 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
         # Abre o modal
         open_lov = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, btn_selector)))
         open_lov.click()
-        time.sleep(3)
+        time.sleep(5)
 
         # Aguarda campo pesquisa
         campo_pesquisa = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, pesquisa_selector)))
@@ -65,6 +65,7 @@ def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, bt
         pesquisar.click()
         time.sleep(3)
         pesquisar.click()
+        time.sleep(3)
 
         # Espera o resultado e clica
         wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))

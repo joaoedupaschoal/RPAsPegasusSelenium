@@ -416,7 +416,7 @@ try:
 
     safe_action(doc, "Salvando cadastro do Produto", lambda: (
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_3 > div.wdTelas > div.telaCadastro.clearfix > div.btnHolder > a.btModel.btGray.btsave"))).click(),
-        time.sleep(1)
+        time.sleep(3)
     ))
 
     safe_action(doc, "Fechando modal após salvamento", lambda: (

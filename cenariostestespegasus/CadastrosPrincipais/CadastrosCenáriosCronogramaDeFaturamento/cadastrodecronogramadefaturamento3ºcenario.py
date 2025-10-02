@@ -307,17 +307,7 @@ def main():
         return
     registrar_screenshot_unico("apos_salvar", driver, doc, "Clique no botão Salvar realizado.")
 
-    # VERIFICANDO MENSAGEM DE RETORNO
-    _, tipo_alerta = encontrar_mensagem_alerta(driver, doc)
-    if tipo_alerta == "sucesso":
-        log(doc, "✅ Mensagem de sucesso exibida.")
-    elif tipo_alerta == "alerta":
-        log(doc, "⚠️ Mensagem de alerta exibida.")
-    elif tipo_alerta == "erro":
-        log(doc, "❌ Mensagem de erro exibida.")
-    else:
-        log(doc, "⚠️ Nenhuma mensagem encontrada após salvar.")
-    registrar_screenshot_unico("mensagem_final", driver, doc, "Mensagem exibida após salvar.")
+    encontrar_mensagem_alerta()
 
     # FECHANDO O FORMULÁRIO
     if not safe_action(doc, "Fechando formulário", fechar_modal, driver, wait)[0]:

@@ -158,16 +158,18 @@ try:
         By.CSS_SELECTOR, "#fmod_200004 > div.wdTelas > div.telaCadastro.clearfix > div.btnHolder > a.btModel.btGray.btcancel"
     ).click())
 
+    safe_action(doc, "Confirmando o cancelamento", lambda: (
+        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+            "#BtYes"))).click(),
+    ))
+
     safe_action(doc, "Fechando modal após cancelamento", lambda: wait.until(EC.element_to_be_clickable((
         By.CSS_SELECTOR, "#fmod_200004 > div.wdTop.ui-draggable-handle > div > a"
         ))
     ).click())
 
 
-    safe_action(doc, "Confirmando o cancelamento", lambda: (
-        wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
-            "#BtYes"))).click(),
-    ))
+
 
 
     encontrar_mensagem_alerta()

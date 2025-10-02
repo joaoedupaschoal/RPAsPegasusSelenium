@@ -1,0 +1,44 @@
+🔄 Acessando o sistema...
+✅ Acessando o sistema realizada com sucesso.
+📸 Sistema acessado.
+🔄 Realizando login...
+✅ Realizando login realizada com sucesso.
+📸 Login realizado.
+🔄 Ajustando zoom...
+✅ Ajustando zoom realizada com sucesso.
+🔄 Abrindo menu Cesta Básica...
+❌ Erro ao abrindo menu cesta básica: Message: stale element reference: stale element not found
+  (Session info: chrome=140.0.7339.208); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#staleelementreferenceexception
+Stacktrace:
+	GetHandleVerifier [0x0x10fc333+65459]
+	GetHandleVerifier [0x0x10fc374+65524]
+	(No symbol) [0x0xf1d973]
+	(No symbol) [0x0xf2f961]
+	(No symbol) [0x0xf2ea30]
+	(No symbol) [0x0xf24e1c]
+	(No symbol) [0x0xf23321]
+	(No symbol) [0x0xf26734]
+	(No symbol) [0x0xf267c8]
+	(No symbol) [0x0xf683ca]
+	(No symbol) [0x0xf68461]
+	(No symbol) [0x0xf5fc83]
+	(No symbol) [0x0xf89dfc]
+	(No symbol) [0x0xf5cbf4]
+	(No symbol) [0x0xf89fb4]
+	(No symbol) [0x0xfab606]
+	(No symbol) [0x0xf89bf6]
+	(No symbol) [0x0xf5b38e]
+	(No symbol) [0x0xf5c274]
+	GetHandleVerifier [0x0x137eda3+2697763]
+	GetHandleVerifier [0x0x1379ec7+2677575]
+	GetHandleVerifier [0x0x1124194+228884]
+	GetHandleVerifier [0x0x11149f8+165496]
+	GetHandleVerifier [0x0x111b18d+192013]
+	GetHandleVerifier [0x0x11047d8+99416]
+	GetHandleVerifier [0x0x1104972+99826]
+	GetHandleVerifier [0x0x10eebea+10346]
+	BaseThreadInitThunk [0x0x755bfcc9+25]
+	RtlGetAppContainerNamedObjectPath [0x0x773a82ae+286]
+	RtlGetAppContainerNamedObjectPath [0x0x773a827e+238]
+
+📄 Relatório salvo como: relatorio_cesta_basica_cenario_3_20251002_150705.docx
