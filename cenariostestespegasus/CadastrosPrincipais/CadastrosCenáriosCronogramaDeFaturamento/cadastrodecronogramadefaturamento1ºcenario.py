@@ -1,4 +1,4 @@
-# Refatorado e organizado: cadastrodeescalamotorista2ºcenario.py
+# Refatorado e corrigido: cadastrodecronogramadefaturamento1ºcenario.py
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -12,16 +12,19 @@ from docx import Document
 from docx.shared import Inches
 from faker import Faker
 from faker.providers import BaseProvider
-from validate_docbr import CPF
 from datetime import datetime, timedelta
 import subprocess
 import os
 import time
 import random
-import sys 
+import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+# ==== CONFIGURAÇÕES ====
+URL = "http://localhost:8080/gs/index.xhtml"
+LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
+LOGIN_PASSWORD = "071999gs"
 
 # ==== PROVIDERS CUSTOMIZADOS ====
 class BrasilProvider(BaseProvider):
@@ -32,114 +35,9 @@ class BrasilProvider(BaseProvider):
 fake = Faker("pt_BR")
 fake.add_provider(BrasilProvider)
 
-def gerar_datas_validas():
-    """Gera datas coerentes para admissão, início e fim da escala, e vencimento da CNH."""
-    hoje = datetime.today().date()
-    
-    # Data de admissão entre 10 anos atrás e hoje
-    data_admissao = fake.date_between(start_date=hoje - timedelta(days=3650), end_date=hoje)
-    
-    # Data de início da escala entre hoje e 1 ano no futuro
-    data_inicio = fake.date_between(start_date=hoje, end_date=hoje + timedelta(days=365))
-    
-    # Data fim entre 1 e 180 dias após a data de início
-    data_fim = data_inicio + timedelta(days=random.randint(1, 180))
-    
-    # Vencimento CNH entre hoje e 10 anos no futuro
-    vencimento_cnh = fake.date_between(start_date=hoje, end_date=hoje + timedelta(days=3650))
-    
-    return (data_admissao.strftime('%d/%m/%Y'), 
-            data_inicio.strftime('%d/%m/%Y'), 
-            data_fim.strftime('%d/%m/%Y'), 
-            vencimento_cnh.strftime('%d/%m/%Y'))
-
-def gerar_dados_documentos():
-    """Gera documentos fictícios para o cadastro."""
-    carteira_trabalho = str(random.randint(10000000, 99999999))
-    pis = fake.cpf().replace('.', '').replace('-', '')[:11]
-    cnh = str(random.randint(10000000000, 99999999999))
-    cpf = CPF().generate()
-    
-    return carteira_trabalho, pis, cnh, cpf
-
-# Gera os dados necessários
-data_admissao, data_inicio, data_fim, vencimento_cnh = gerar_datas_validas()
-carteira_trabalho, pis, cnh, cpf_valido = gerar_dados_documentos()
-
-# ==== CONFIGURAÇÕES ====
-URL = "http://localhost:8080/gs/index.xhtml"
-LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
-LOGIN_PASSWORD = "071999gs"
-
-# ==== DOCUMENTO ====
-doc = Document()
-doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Cadastro de Especialidades – Cenário 1: Preenchimento completo e salvamento.")
-doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-
-screenshot_registradas = set()
-
-# ==== FUNÇÕES DE UTILITÁRIO ====
-def log(doc, msg):
-    print(msg)
-    doc.add_paragraph(msg)
-
-def take_screenshot(driver, doc, nome):
-    if nome not in screenshot_registradas:
-        path = f"screenshots/{nome}.png"
-        os.makedirs("screenshots", exist_ok=True)
-        driver.save_screenshot(path)
-        doc.add_paragraph(f"Screenshot: {nome}")
-        doc.add_picture(path, width=Inches(5.5))
-        screenshot_registradas.add(nome)
-
-def safe_action(doc, descricao, func):
-    try:
-        log(doc, f"🔄 {descricao}...")
-        func()
-        log(doc, f"✅ {descricao} realizada com sucesso.")
-        take_screenshot(driver, doc, descricao.lower().replace(" ", "_"))
-    except Exception as e:
-        log(doc, f"❌ Erro ao {descricao.lower()}: {e}")
-        take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
-
-def finalizar_relatorio():
-    nome_arquivo = f"relatorio_especialidades_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
-    doc.save(nome_arquivo)
-    log(doc, f"📄 Relatório salvo como: {nome_arquivo}")
-    subprocess.run(["start", "winword", nome_arquivo], shell=True)
-    driver.quit()
-
-
-
-def ajustar_zoom():
-    try:
-        driver.execute_script("document.body.style.zoom='90%'")
-        log(doc, "🔍 Zoom ajustado para 90%.")
-    except Exception as e:
-        log(doc, f"⚠️ Erro ao ajustar zoom: {e}")
-
-# ==== INICIALIZAÇÃO DO DRIVER ====
-options = Options()
-options.add_argument("--start-maximized")
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-wait = WebDriverWait(driver, 20)
-
-URL = "http://localhost:8080/gs/index.xhtml"
-LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
-LOGIN_PASSWORD = "071999gs"
-
-# Configuração do Faker
-class BrasilProvider(BaseProvider):
-    def rg(self):
-        numeros = [str(random.randint(0, 9)) for _ in range(8)]
-        return ''.join(numeros) + '-' + str(random.randint(0, 9))
-
-fake = Faker("pt_BR")
-fake.add_provider(BrasilProvider)
-
-# Geração de dados aleatórios
+# ==== GERAÇÃO DE DADOS ====
 def gerar_datas_cronograma():
+    """Gera datas coerentes para o cronograma de faturamento."""
     hoje = datetime.today()
     
     # Gera uma data de leitura aleatória neste mês (entre dia 1 e 28)
@@ -156,40 +54,71 @@ def gerar_datas_cronograma():
         "data_entrega_conta": data_entrega.strftime("%d/%m/%Y")
     }
 
+# Gera as datas
 datas = gerar_datas_cronograma()
 
 # Controle de screenshots únicas
 screenshot_registradas = set()
-def registrar_screenshot_unico(nome, driver, doc, descricao=None):
-    if nome not in screenshot_registradas:
-        if descricao:
-            log(doc, f"📸 {descricao}")
-        take_screenshot(driver, doc, nome)
-        screenshot_registradas.add(nome)
-
 
 
 def main():
+    # ==== DOCUMENTO ====
     doc = Document()
     doc.add_heading("RELATÓRIO DO TESTE", 0)
-    doc.add_paragraph("Cadastro de Cronograma de Faturamento Teste.")
-    doc.add_paragraph(f"🗕️ Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+    doc.add_paragraph("Cadastro de Cronograma de Faturamento - Cenário 1")
+    doc.add_paragraph(f"🗓️ Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     doc.add_paragraph("Neste teste, o robô preencherá os campos obrigatórios e salvará o cadastro de um novo Cronograma de Faturamento.")
 
-    chrome_options = Options()
-    chrome_options.add_argument("--start-maximized")
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-    wait = WebDriverWait(driver, 10)
+    # ==== FUNÇÕES DE UTILIDADE ====
+    def log(msg):
+        print(msg)
+        doc.add_paragraph(msg)
+
+    def take_screenshot(nome):
+        if nome not in screenshot_registradas:
+            path = f"screenshots/{nome}.png"
+            os.makedirs("screenshots", exist_ok=True)
+            driver.save_screenshot(path)
+            doc.add_paragraph(f"Screenshot: {nome}")
+            try:
+                doc.add_picture(path, width=Inches(5.5))
+            except Exception as e:
+                log(f"⚠️ Erro ao adicionar imagem: {e}")
+            screenshot_registradas.add(nome)
+
+    def safe_action(descricao, func):
+        """Executa uma ação com tratamento de erro e retorna tupla (sucesso, resultado)"""
+        try:
+            log(f"📄 {descricao}...")
+            resultado = func()
+            log(f"✅ {descricao} realizada com sucesso.")
+            take_screenshot(descricao.lower().replace(" ", "_"))
+            return (True, resultado)
+        except Exception as e:
+            log(f"❌ Erro ao {descricao.lower()}: {e}")
+            take_screenshot(f"erro_{descricao.lower().replace(' ', '_')}")
+            return (False, None)
 
     def finalizar_relatorio():
         doc_name = f"relatorio_cronograma_faturamento_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
         doc.save(doc_name)
-        log(doc, f"📄 Relatório salvo como: {doc_name}")
+        log(f"📄 Relatório salvo como: {doc_name}")
         try:
             subprocess.run(["start", "winword", doc_name], shell=True)
         except Exception as e:
-            log(doc, f"Erro ao abrir o Word: {e}")
+            log(f"Erro ao abrir o Word: {e}")
         driver.quit()
+
+    # ==== INICIALIZAÇÃO DO DRIVER ====
+    chrome_options = Options()
+    chrome_options.add_argument("--start-maximized")
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    wait = WebDriverWait(driver, 20)
+
+    # ==== FUNÇÕES DE AÇÃO ====
+    def ajustar_zoom():
+        driver.execute_script("document.body.style.zoom='90%'")
+        log("🔍 Zoom ajustado para 90%.")
 
     def login():
         wait.until(EC.presence_of_element_located((By.ID, "j_id15:email"))).send_keys(LOGIN_EMAIL)
@@ -211,14 +140,14 @@ def main():
         time.sleep(2)
 
     def preencher_exercicio():
-        log(doc, "🔄 Preenchendo campo 'Exercício'.")
+        log("📄 Preenchendo campo 'Exercício'.")
         campo_exercicio = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 
             "#fmod_10053 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10080.categoriaHolder > div > div > div:nth-child(2) > input")))
         campo_exercicio.send_keys(fake.random_int(min=2020, max=2030))
-        log(doc, "✅ Campo 'Exercício' preenchido.")
+        log("✅ Campo 'Exercício' preenchido.")
 
     def selecionar_concessionaria():
-        log(doc, "🔄 Selecionando Concessionária.")
+        log("📄 Selecionando Concessionária.")
         open_lov_concessionaria = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 
             "#fmod_10053 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10080.categoriaHolder > div > div > div:nth-child(3) > div > a")))
         open_lov_concessionaria.click()
@@ -232,75 +161,75 @@ def main():
         concessionaria = wait.until(EC.element_to_be_clickable((By.XPATH, 
             "//td[contains(text(), 'TESTE CONCESSIONÁRIA DE ENERGIA SELENIUM AUTOMATIZ')]")))
         concessionaria.click()
-        log(doc, "✅ Concessionária selecionada.")
+        log("✅ Concessionária selecionada.")
 
     def preencher_lote():
-        log(doc, "🔄 Preenchendo campo 'Lote'.")
+        log("📄 Preenchendo campo 'Lote'.")
         campo_lote = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 
             "#fmod_10053 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10081.categoriaHolder > div > div > div:nth-child(3) > input")))
         campo_lote.send_keys(fake.random_int(min=1, max=99))
-        log(doc, "✅ Campo 'Lote' preenchido.")
+        log("✅ Campo 'Lote' preenchido.")
 
     def preencher_data_leitura():
-        log(doc, "🔄 Preenchendo campo 'Data de Leitura'.")
+        log("📄 Preenchendo campo 'Data de Leitura'.")
         campo_data_leitura = wait.until(EC.element_to_be_clickable((By.XPATH,
             "//input[@grupo='10087' and @ref='10257' and contains(@class, 'hasDatepicker isList mandatory fc')]")))
         campo_data_leitura.send_keys(datas["data_leitura"])
         driver.execute_script("arguments[0].value = arguments[1];", campo_data_leitura, datas["data_leitura"])
-        log(doc, "✅ Campo 'Data de Leitura' preenchido.")
+        log("✅ Campo 'Data de Leitura' preenchido.")
 
     def selecionar_dia_semana():
-        log(doc, "🔄 Selecionando dia da semana.")
+        log("📄 Selecionando dia da semana.")
         Select(driver.find_element(By.CSS_SELECTOR, 
             "#fmod_10053 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10081.categoriaHolder > div > div > div:nth-child(5) > select")).select_by_visible_text("Quarta-feira")
-        log(doc, "✅ Dia da semana selecionado.")
+        log("✅ Dia da semana selecionado.")
 
     def preencher_data_entrega_conta():
-        log(doc, "🔄 Preenchendo campo 'Data de Entrega da Conta'.")
+        log("📄 Preenchendo campo 'Data de Entrega da Conta'.")
         campo_data_entrega_conta = wait.until(EC.element_to_be_clickable((By.XPATH,
             "//input[@grupo='10087' and @ref='10259' and contains(@class, 'hasDatepicker isList mandatory fc')]")))
         campo_data_entrega_conta.send_keys(datas["data_entrega_conta"])
         driver.execute_script("arguments[0].value = arguments[1];", campo_data_entrega_conta, datas["data_entrega_conta"])
-        log(doc, "✅ Campo 'Data de Entrega da Conta' preenchido.")
+        log("✅ Campo 'Data de Entrega da Conta' preenchido.")
 
     def preencher_pfc():
-        log(doc, "🔄 Preenchendo campo 'PFC'.")
+        log("📄 Preenchendo campo 'PFC'.")
         campo_pfc = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 
             "#fmod_10053 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10081.categoriaHolder > div > div > div:nth-child(7) > input")))
         campo_pfc.send_keys(fake.random_int(min=1, max=99))
-        log(doc, "✅ Campo 'PFC' preenchido.")
+        log("✅ Campo 'PFC' preenchido.")
 
     def selecionar_mes_inicio():
-        log(doc, "🔄 Selecionando mês de início.")
+        log("📄 Selecionando mês de início.")
         Select(driver.find_element(By.CSS_SELECTOR, 
             "#fmod_10053 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10081.categoriaHolder > div > div > div:nth-child(8) > select")).select_by_visible_text("01-Janeiro")
-        log(doc, "✅ Mês de início selecionado.")
+        log("✅ Mês de início selecionado.")
 
     def preencher_dia_vencimento():
-        log(doc, "🔄 Preenchendo campo 'Dia de Vencimento'.")
+        log("📄 Preenchendo campo 'Dia de Vencimento'.")
         campo_dia_vencimento = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 
             "#fmod_10053 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10081.categoriaHolder > div > div > div:nth-child(9) > input")))
         campo_dia_vencimento.send_keys(fake.random_int(min=15, max=30))
-        log(doc, "✅ Campo 'Dia de Vencimento' preenchido.")
+        log("✅ Campo 'Dia de Vencimento' preenchido.")
 
     def selecionar_mes_fevereiro():
-        log(doc, "🔄 Selecionando mês de fevereiro.")
+        log("📄 Selecionando mês de fevereiro.")
         Select(driver.find_element(By.CSS_SELECTOR, 
             "#fmod_10053 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10081.categoriaHolder > div > div > div:nth-child(10) > select")).select_by_visible_text("02-Fevereiro")
-        log(doc, "✅ Mês de fevereiro selecionado.")
+        log("✅ Mês de fevereiro selecionado.")
 
     def selecionar_mes_marco():
-        log(doc, "🔄 Selecionando mês de março.")
+        log("📄 Selecionando mês de março.")
         Select(driver.find_element(By.CSS_SELECTOR, 
             "#fmod_10053 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10081.categoriaHolder > div > div > div:nth-child(11) > select")).select_by_visible_text("03-Março")
-        log(doc, "✅ Mês de março selecionado.")
+        log("✅ Mês de março selecionado.")
 
     def adicionar_item():
-        log(doc, "🔄 Clicando no botão 'Adicionar'.")
+        log("📄 Clicando no botão 'Adicionar'.")
         adicionar = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, 
             "#fmod_10053 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_10081.categoriaHolder > div > div > div.btnListHolder > a.btAddGroup")))
         adicionar.click()
-        log(doc, "✅ Item adicionado.")
+        log("✅ Item adicionado.")
 
     def salvar():
         salvar_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
@@ -310,23 +239,22 @@ def main():
 
     def encontrar_mensagem_alerta():
         seletores = [
-                (".alerts.salvo", "✅ Mensagem de Sucesso"),
-                (".alerts.alerta", "⚠️ Mensagem de Alerta"),
-                (".alerts.erro", "❌ Mensagem de Erro"),
-            ]
+            (".alerts.salvo", "✅ Mensagem de Sucesso"),
+            (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+            (".alerts.erro", "❌ Mensagem de Erro"),
+        ]
 
         for seletor, tipo in seletores:
             try:
                 elemento = driver.find_element(By.CSS_SELECTOR, seletor)
                 if elemento.is_displayed():
-                    log(doc, f"📢 {tipo}: {elemento.text}")
-                return elemento
+                    log(f"📢 {tipo}: {elemento.text}")
+                    return elemento
             except:
                 continue
 
-        log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
+        log("ℹ️ Nenhuma mensagem de alerta encontrada.")
         return None
-
 
     def fechar_modal():
         x_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
@@ -334,97 +262,122 @@ def main():
         x_btn.click()
         time.sleep(1)
 
-    # EXECUÇÃO COM safe_action INDIVIDUAL PARA CADA AÇÃO
-    if not safe_action(doc, "Acessando o sistema", lambda: driver.get(URL), driver)[0]:
+    def registrar_screenshot_unico(nome, descricao=None):
+        if nome not in screenshot_registradas:
+            if descricao:
+                log(f"📸 {descricao}")
+            take_screenshot(nome)
+
+    # ==== EXECUÇÃO DO TESTE ====
+    sucesso, _ = safe_action("Acessando o sistema", lambda: driver.get(URL))
+    if not sucesso:
         finalizar_relatorio()
         return
 
-
-    if not safe_action(doc, "Realizando Login", lambda: login, driver)[0]:
+    sucesso, _ = safe_action("Realizando Login", login)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-
-    if not safe_action(doc, "Ajustando zoom", lambda: ajustar_zoom(driver), driver, wait)[0]:
+    sucesso, _ = safe_action("Ajustando zoom", ajustar_zoom)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-    if not safe_action(doc, "Abrindo menu do Cronograma de Faturamento", lambda: abrir_menu, driver)[0]:
+    sucesso, _ = safe_action("Abrindo menu do Cronograma de Faturamento", abrir_menu)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-
-    if not safe_action(doc, "Acessando Formulário de cadastro", lambda: acessar_formulario, driver)[0]:
+    sucesso, _ = safe_action("Acessando Formulário de cadastro", acessar_formulario)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-    # PREENCHIMENTO DOS CAMPOS - safe_action individual para cada campo
-    if not safe_action(doc, "Preenchendo Exercício", preencher_exercicio, driver, wait)[0]:
+    # PREENCHIMENTO DOS CAMPOS
+    sucesso, _ = safe_action("Preenchendo Exercício", preencher_exercicio)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-    if not safe_action(doc, "Selecionando Concessionária", selecionar_concessionaria, driver, wait)[0]:
+    sucesso, _ = safe_action("Selecionando Concessionária", selecionar_concessionaria)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-    if not safe_action(doc, "Preenchendo Lote", preencher_lote, driver, wait)[0]:
+    sucesso, _ = safe_action("Preenchendo Lote", preencher_lote)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-    if not safe_action(doc, "Preenchendo Data de Leitura", preencher_data_leitura, driver, wait)[0]:
+    sucesso, _ = safe_action("Preenchendo Data de Leitura", preencher_data_leitura)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-    if not safe_action(doc, "Selecionando Dia da Semana", selecionar_dia_semana, driver, wait)[0]:
+    sucesso, _ = safe_action("Selecionando Dia da Semana", selecionar_dia_semana)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-    if not safe_action(doc, "Preenchendo Data de Entrega da Conta", preencher_data_entrega_conta, driver, wait)[0]:
+    sucesso, _ = safe_action("Preenchendo Data de Entrega da Conta", preencher_data_entrega_conta)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-    if not safe_action(doc, "Preenchendo PFC", preencher_pfc, driver, wait)[0]:
+    sucesso, _ = safe_action("Preenchendo PFC", preencher_pfc)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-    if not safe_action(doc, "Selecionando Mês de Início", selecionar_mes_inicio, driver, wait)[0]:
+    sucesso, _ = safe_action("Selecionando Mês de Início", selecionar_mes_inicio)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-    if not safe_action(doc, "Preenchendo Dia de Vencimento", preencher_dia_vencimento, driver, wait)[0]:
+    sucesso, _ = safe_action("Preenchendo Dia de Vencimento", preencher_dia_vencimento)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-    if not safe_action(doc, "Selecionando Mês de Fevereiro", selecionar_mes_fevereiro, driver, wait)[0]:
+    sucesso, _ = safe_action("Selecionando Mês de Fevereiro", selecionar_mes_fevereiro)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-    if not safe_action(doc, "Selecionando Mês de Março", selecionar_mes_marco, driver, wait)[0]:
+    sucesso, _ = safe_action("Selecionando Mês de Março", selecionar_mes_marco)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-    if not safe_action(doc, "Adicionando Item", adicionar_item, driver, wait)[0]:
+    sucesso, _ = safe_action("Adicionando Item", adicionar_item)
+    if not sucesso:
         finalizar_relatorio()
         return
 
-    registrar_screenshot_unico("campos_preenchidos", driver, doc, "Todos os campos preenchidos.")
+    registrar_screenshot_unico("campos_preenchidos", "Todos os campos preenchidos.")
 
     # SALVANDO O CADASTRO
-    if not safe_action(doc, "Clicando no botão Salvar", salvar, driver, wait)[0]:
+    sucesso, _ = safe_action("Clicando no botão Salvar", salvar)
+    if not sucesso:
         finalizar_relatorio()
         return
-    registrar_screenshot_unico("apos_salvar", driver, doc, "Clique no botão Salvar realizado.")
+    
+    registrar_screenshot_unico("apos_salvar", "Clique no botão Salvar realizado.")
 
     encontrar_mensagem_alerta()
 
     # FECHANDO O FORMULÁRIO
-    if not safe_action(doc, "Fechando formulário", fechar_modal, driver, wait)[0]:
+    sucesso, _ = safe_action("Fechando formulário", fechar_modal)
+    if not sucesso:
         finalizar_relatorio()
         return
-    registrar_screenshot_unico("formulario_fechado", driver, doc, "Formulário fechado.")
+    
+    registrar_screenshot_unico("formulario_fechado", "Formulário fechado.")
 
-    log(doc, "✅ Teste de cadastro de Cronograma de Faturamento concluído com sucesso.")
+    log("✅ Teste de cadastro de Cronograma de Faturamento concluído com sucesso.")
     finalizar_relatorio()
+
 
 if __name__ == "__main__":
     main()
