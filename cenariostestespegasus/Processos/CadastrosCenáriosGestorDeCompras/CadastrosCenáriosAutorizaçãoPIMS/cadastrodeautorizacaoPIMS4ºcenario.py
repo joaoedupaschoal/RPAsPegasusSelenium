@@ -177,13 +177,14 @@ def abrir_modal_e_selecionar_robusto_xpath(
     resultado_xpath,
     timeout=12,
     max_tentativas=3,
-    iframe_xpath=None,   # se o LOV abrir em iframe, informe o xpath aqui
+    iframe_xpath=None,       # se o LOV abrir em iframe, informe o xpath aqui
+    indice_lov=None,         # >>> usa clicar_lov_por_indice se informado
+    **_ignorar_kwargs        # >>> evita "unexpected keyword argument" se algo extra vier
 ):
     """
     Abre o modal (LOV), pesquisa pelo termo e clica no resultado.
-    - Usa retries
-    - Click normal + fallback via JS
-    - Clear resistente no input
+    - Opcional: abre o LOV clicando pelo índice (clicar_lov_por_indice)
+    - Usa retries, fallback JS e limpeza resistente do input
     - Opcional: troca para iframe do modal
     """
 
@@ -193,15 +194,12 @@ def abrir_modal_e_selecionar_robusto_xpath(
     def _clear_resistente(el):
         try:
             el.clear()
-            # alguns inputs ignoram clear(); garanta com CTRL+A + DEL
             el.send_keys(Keys.CONTROL, "a")
             el.send_keys(Keys.DELETE)
         except Exception:
-            # fallback final via JS
             driver.execute_script("arguments[0].value='';", el)
 
     def _aguardar_ajax_overlay():
-        # Ajuste se tiver seletor de overlay específico (ex: .blockScreen)
         t0 = time.time()
         while time.time() - t0 < 8:
             try:
@@ -218,29 +216,34 @@ def abrir_modal_e_selecionar_robusto_xpath(
         while tentativa < max_tentativas:
             tentativa += 1
             try:
-                # 1) Abrir o modal
-                btn = WebDriverWait(driver, timeout).until(
-                    EC.element_to_be_clickable((By.XPATH, btn_xpath))
-                )
-                try:
-                    btn.click()
-                except Exception:
-                    _js_click(btn)
+                # 1) Abrir o modal (por índice de LOV ou por XPATH do botão)
+                if indice_lov is not None:
+                    log(doc, f"🧭 Abrindo LOV pelo índice {indice_lov}…")
+                    clicar_lov_por_indice(indice_lov, max_tentativas=3, timeout=timeout)()
+                else:
+                    log(doc, "🧭 Abrindo LOV pelo XPATH do botão…")
+                    btn = WebDriverWait(driver, timeout).until(
+                        EC.element_to_be_clickable((By.XPATH, btn_xpath))
+                    )
+                    try:
+                        btn.click()
+                    except Exception:
+                        _js_click(btn)
 
                 # 2) (Opcional) Entrar no iframe do modal
                 if iframe_xpath:
-                    frame = WebDriverWait(driver, timeout).until(
+                    WebDriverWait(driver, timeout).until(
                         EC.frame_to_be_available_and_switch_to_it((By.XPATH, iframe_xpath))
                     )
 
-                # 3) Localizar e preparar campo de pesquisa
+                # 3) Campo de pesquisa
                 campo = WebDriverWait(driver, timeout).until(
                     EC.visibility_of_element_located((By.XPATH, pesquisa_xpath))
                 )
                 _clear_resistente(campo)
                 campo.send_keys(termo_pesquisa)
 
-                # 4) Clicar no botão Pesquisar (com fallback JS)
+                # 4) Botão Pesquisar
                 btn_pesq = WebDriverWait(driver, timeout).until(
                     EC.element_to_be_clickable((By.XPATH, btn_pesquisar_xpath))
                 )
@@ -252,7 +255,7 @@ def abrir_modal_e_selecionar_robusto_xpath(
                 _aguardar_ajax_overlay()
                 time.sleep(0.4)
 
-                # 5) Aguardar e clicar no resultado
+                # 5) Clicar no resultado
                 resultado = WebDriverWait(driver, timeout).until(
                     EC.element_to_be_clickable((By.XPATH, resultado_xpath))
                 )
@@ -270,7 +273,6 @@ def abrir_modal_e_selecionar_robusto_xpath(
                 return True
 
             except Exception as e:
-                # Se estava em iframe, volte para o conteúdo principal antes de tentar de novo
                 try:
                     driver.switch_to.default_content()
                 except Exception:
@@ -284,6 +286,7 @@ def abrir_modal_e_selecionar_robusto_xpath(
                     raise
 
     return acao
+
 
 from selenium.webdriver.common.by import By
 import time
@@ -786,6 +789,100 @@ def _textarea_js_react_input(elemento, texto):
         el.dispatchEvent(new Event('blur', {bubbles: true}));
     """, elemento, texto)
 
+
+
+def clicar_lov_por_indice(indice_lov: int, max_tentativas: int = 5, timeout: int = 10, scroll: bool = True):
+    """
+    Clica no ícone de LOV <a class="sprites sp-openLov"> pelo índice (ordem no DOM).
+    Retorna uma função 'acao' para ser usada com safe_action(..., lambda: ...).
+
+    Estratégias de clique:
+      1) Espera 'clickable' + click nativo
+      2) ScrollIntoView + click nativo
+      3) JavaScript click
+      4) ActionChains move_to_element + click
+    """
+    def acao():
+        if not isinstance(indice_lov, int) or indice_lov < 0:
+            raise ValueError(f"Índice inválido: {indice_lov}")
+
+        tentativa = 0
+        while tentativa < max_tentativas:
+            tentativa += 1
+            try:
+                log(doc, f"🔎 Tentativa {tentativa}: Localizando ícones LOV ('sp-openLov')...")
+                # Coleta atual dos elementos
+                elementos = driver.find_elements(By.CSS_SELECTOR, "a.sprites.sp-openLov")
+
+                if not elementos:
+                    if tentativa < max_tentativas:
+                        log(doc, f"⚠️ Nenhum ícone LOV encontrado (tentativa {tentativa}/{max_tentativas}). Reintentando...", "WARN")
+                        time.sleep(1.2)
+                        continue
+                    raise Exception("Nenhum ícone LOV ('a.sprites.sp-openLov') foi encontrado na página.")
+
+                if indice_lov >= len(elementos):
+                    raise Exception(f"Índice {indice_lov} inválido. Encontrados {len(elementos)} ícones LOV.")
+
+                # Mantém um localizador estável por índice para waits/refresh
+                locator_xpath = f"(//a[contains(@class,'sp-openLov')])[{indice_lov + 1}]"
+
+                # Reaponta o elemento pelo locator (evita stale)
+                elemento = driver.find_element(By.XPATH, locator_xpath)
+
+                log(doc, f"🎯 Preparando clique no LOV de índice {indice_lov} (total: {len(elementos)}).")
+
+                def _wait_clickable():
+                    wait.until(EC.element_to_be_clickable((By.XPATH, locator_xpath)))
+
+                estrategias = [
+                    # 1) Espera 'clickable' + click nativo
+                    lambda: (_wait_clickable(), elemento.click()),
+                    # 2) ScrollIntoView + click nativo
+                    lambda: (
+                        driver.execute_script("arguments[0].scrollIntoView({block:'center', inline:'nearest'});", elemento) if scroll else None,
+                        time.sleep(0.2),
+                        elemento.click()
+                    ),
+                    # 3) JavaScript click
+                    lambda: driver.execute_script("arguments[0].click();", elemento),
+                    # 4) ActionChains
+                    lambda: (ActionChains(driver).move_to_element(elemento).pause(0.1).click().perform())
+                ]
+
+                for i, estrategia in enumerate(estrategias, 1):
+                    try:
+                        log(doc, f"   ▶️ Estratégia {i} de clique no LOV...")
+                        estrategia()
+                        time.sleep(0.3)
+                        log(doc, f"✅ Clique no LOV (índice {indice_lov}) realizado com sucesso (estratégia {i}).")
+                        return True
+                    except (ElementClickInterceptedException, StaleElementReferenceException, JavascriptException, TimeoutException) as e:
+                        log(doc, f"⚠️ Estratégia {i} falhou: {e}", "WARN")
+                        # Tenta re-obter o elemento em caso de stale/interceptação
+                        try:
+                            _ = driver.find_elements(By.CSS_SELECTOR, "a.sprites.sp-openLov")
+                            elemento = driver.find_element(By.XPATH, locator_xpath)
+                        except Exception:
+                            pass
+                        continue
+
+                if tentativa < max_tentativas:
+                    log(doc, f"⚠️ Tentativa {tentativa} não conseguiu clicar no LOV. Reintentando em 1.2s…", "WARN")
+                    time.sleep(1.2)
+                    continue
+
+            except Exception as e:
+                if tentativa < max_tentativas:
+                    log(doc, f"⚠️ Erro na tentativa {tentativa}: {e}. Reintentando em 1.2s…", "WARN")
+                    time.sleep(1.2)
+                    continue
+                raise
+
+        raise Exception(f"Falha ao clicar no LOV de índice {indice_lov} após {max_tentativas} tentativas.")
+
+    return acao
+
 def preencher_textarea_por_indice(indice_campo, texto, max_tentativas=5, limpar_primeiro=True):
     """Preenche um <textarea> pelo índice (ordem no DOM) usando estratégias múltiplas"""
     def acao():
@@ -861,6 +958,70 @@ def preencher_textarea_por_indice(indice_campo, texto, max_tentativas=5, limpar_
 
         raise Exception(f"Falha ao preencher textarea {indice_campo} após {max_tentativas} tentativas.")
     return acao
+
+
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver import ActionChains
+from selenium.common.exceptions import StaleElementReferenceException, JavascriptException, TimeoutException
+import time
+import re
+def preencher_todos_valores_e_quantidades(
+    driver, wait,
+    valor_padrao="10,00",
+    quantidade_padrao="1",
+    valores_por_indice=None,         # ex.: ["10,00","12,50","9,90"]
+    quantidades_por_indice=None,     # ex.: ["2","1","3"]
+    pausa=0.3
+):
+    """
+    Procura APENAS input.vu (valor unitário) e input.innerQtdField (quantidade),
+    loga a quantidade e preenche TODOS os pares encontrados.
+
+    - Se 'valores_por_indice' / 'quantidades_por_indice' forem passados, usa-os por índice.
+      Caso a lista não tenha valor para algum índice, usa os padrões.
+    """
+    try:
+        valores = driver.find_elements(By.CSS_SELECTOR, "input.vu")
+        quantds = driver.find_elements(By.CSS_SELECTOR, "input.innerQtdField")
+
+        n_val = len(valores)
+        n_qtd = len(quantds)
+        n = min(n_val, n_qtd)
+
+        if n == 0:
+            raise Exception(f"Nenhum par de campos encontrado. vu={n_val}, innerQtdField={n_qtd}")
+
+        log(doc, f"🔎 Encontrados {n} pares de campos input.vu e input.innerQtdField, preenchendo...")
+
+        if n_val != n_qtd:
+            log(doc, f"⚠️ Tamanhos diferentes detectados (vu={n_val}, qtd={n_qtd}). Vou preencher até {n}.",)
+
+        def _clear_and_type(el, txt):
+            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+            try:
+                el.clear()
+            except Exception:
+                driver.execute_script("arguments[0].value='';", el)
+            el.send_keys(txt)
+            el.send_keys(Keys.TAB)
+
+        for i in range(n):
+            v = (valores_por_indice[i] if (isinstance(valores_por_indice, list) and i < len(valores_por_indice)) else valor_padrao)
+            q = (quantidades_por_indice[i] if (isinstance(quantidades_por_indice, list) and i < len(quantidades_por_indice)) else quantidade_padrao)
+
+            try:
+                _clear_and_type(valores[i], v);  time.sleep(pausa)
+                _clear_and_type(quantds[i], q);  time.sleep(pausa)
+                log(doc, f"✅ Produto {i+1}: Valor={v} | Quantidade={q}")
+            except Exception as e:
+                log(doc, f"❌ Falha ao preencher item {i+1}: {e}")
+
+        return True
+
+    except Exception as e:
+        log(doc, f"❌ Erro ao preencher todos os valores/quantidades: {e}")
+        return False
 
 # =========================
 # Helpers usados pela função
@@ -1032,29 +1193,16 @@ def executar_teste():
 
         time.sleep(5)
 
-        safe_action(doc, "Preenchendo Número do PIMS", lambda:
-            preencher_campo_xpath_com_retry(
-                driver, wait, "/html/body/div[18]/div[1]/div[2]/div/div[1]/input",
-                "200848"
-            )
-        )
 
-        safe_action(doc, "Preenchendo Data inicial", lambda: preencher_campo_xpath_com_retry(driver, wait, "//input[@type='text' and @class='hasDatepicker dataI' and @maxlength='10' and @style='width: 100px;' and @grupo='']", "06/10/2025"))
+        safe_action(doc, "Preenchendo Data inicial", lambda: preencher_campo_xpath_com_retry(driver, wait, "//input[@type='text' and @class='hasDatepicker dataI' and @maxlength='10' and @style='width: 100px;' and @grupo='']", "06/01/2025"))
 
 
-        safe_action(doc, "Selecionando Centro de Custo", abrir_modal_e_selecionar_robusto_xpath(
-            "//a[@class='sprites sp-openLov']",
-            "//input[@type='text' and @class='nomePesquisa' and @style='width:210px;' and @value='']",
-            "10.00.1090",
-            "(//a[contains(@class,'lpFind') and contains(.,'Pesquisar')])[1]",
-            "//tr[td[contains(text(), '10.00.1090')] and td[contains(text(), 'CENTRO DE CUSTO JOÃO')]]//a[contains(@class,'linkAlterar')]"
-        ))
 
 
 
         safe_action(doc, "Selecionando Departamento", selecionar_opcao_xpath(
             "/html/body/div[18]/div[1]/div[2]/div/div[5]/select",
-            "Teste"
+            "Comercial"
         ))
 
         safe_action(doc, "Selecionando Status", selecionar_opcao_xpath(
@@ -1067,17 +1215,30 @@ def executar_teste():
         safe_action(doc, "Pesquisando...", lambda:
             wait.until(EC.element_to_be_clickable((By.XPATH, '/html/body/div[18]/div[1]/div[2]/div/div[7]/a'))).click()
         )
-        time.sleep(5)
-        safe_action(doc, "Selecionando PIMS", lambda:
-            driver.execute_script(
-                "arguments[0].click();",
-                driver.find_element(
-                    By.XPATH,
-                    "(//li[contains(@class, 'itemSimple')])[1]"
+        time.sleep(10)
+
+        # Verificando lista de PIMS
+        log(doc, "🔄 Verificando lista de PIMS...")
+
+        # Busca todos os elementos com a classe 'itemSimple'
+        itens = driver.find_elements(By.XPATH, "//li[contains(@class, 'itemSimple')]")
+
+        # Se não encontrar nenhum item, registra aviso
+        if not itens:
+            log(doc, "⚠️ Nenhum registro encontrado na lista de PIMS.")
+        else:
+            log(doc, f"✅ {len(itens)} registro(s) encontrado(s). Selecionando o primeiro...")
+            safe_action(doc, "Selecionando PIMS", lambda:
+                driver.execute_script(
+                    "arguments[0].click();",
+                    itens[0]  # clica no primeiro item da lista
                 )
             )
-        )
-        time.sleep(2)
+            time.sleep(2)
+
+
+
+
         safe_action(doc, "Selecionando itens para a Autorização de PIMS", lambda:
             clicar_todos_em_aberto(driver, wait, doc)
 )
@@ -1093,34 +1254,39 @@ def executar_teste():
         )
         time.sleep(1)
 
-        safe_action(doc, "Selecionando Fornecedor", abrir_modal_e_selecionar_robusto_xpath(
-            "//a[@class='sprites sp-openLov']",
-            "//input[contains(@class, 'campoPesquisa')]",
-            "FORNECEDOR JOÃO TESTE 2",
-            "//a[contains(@class, 'btModel') and (.//span[contains(@class, 'sp-pesquisar')] or contains(., 'Pesquisar'))]",
-            "//tr[td[contains(text(), 'FORNECEDOR JOÃO TESTE 2')]]//a[contains(@class,'linkAlterar')]"
-        ))
+        safe_action(doc, "Selecionando Fornecedor",
+            abrir_modal_e_selecionar_robusto_xpath(
+                btn_xpath=None,  # ignorado quando usar indice_lov
+                pesquisa_xpath="//input[@id='txtPesquisa']",
+                termo_pesquisa="FORNECEDOR JOÃO TESTE 2",
+                btn_pesquisar_xpath="//a[contains(@class,'lpFind') and contains(normalize-space(.),'Pesquisar')]",
+                resultado_xpath="//tr[td[normalize-space(.)='FORNECEDOR JOÃO TESTE 2']]",
+                indice_lov=1  
+            )
+        )
+
+
 
         log(doc, "🔍 Verificando mensagens de alerta...")
         encontrar_mensagem_alerta()
 
         safe_action(doc, "Preenchendo Contato do Fornecedor", lambda:
             preencher_campo_xpath_com_retry(
-                driver, wait, "//input[contains(@class, 'contato')]",
+                driver, wait, "//input[@class='contato' and @type='text' and @maxlength='30' and @style='width: 105px;']",
                 "1799999999"
             )
         )
 
         safe_action(doc, "Preenchendo Telefone do Fornecedor", lambda:
             preencher_campo_xpath_com_retry(
-                driver, wait, "(//input[contains(@class, 'telefone')])[1]",
+                driver, wait, "//input[@class='telefone' and @type='text' and @maxlength='13' and @style='width:80px']",
                 "1799999999"
             )
         )
 
         safe_action(doc, "Preenchendo E-mail do Fornecedor", lambda:
             preencher_campo_xpath_com_retry(
-                driver, wait, "//input[contains(@class, 'email')]",
+                driver, wait, "//input[@class='email' and @type='text' and @maxlength='50' and @style='width: 132px']",
                 "teste@teste.selenium.com"
             )
         )
@@ -1136,32 +1302,22 @@ def executar_teste():
 
         safe_action(doc, "Preenchendo Condição de Pagamento", lambda:
             preencher_campo_xpath_com_retry(
-                driver, wait, "//input[contains(@class, 'tipoPagamento')]",
+                driver, wait, "//input[contains(@class,'formaPagamento') and @type='text' and @maxlength='255' and @style='width: 110px;']",
                 "100"
             )
         )
 
-
         safe_action(doc, "Preenchendo Forma de Pagamento", lambda:
             preencher_campo_xpath_com_retry(
-                driver, wait, "(//input[contains(@class, 'formaPagamento')])[1]",
+                driver, wait, "//input[@class='tipoPagamento' and @type='text' and @maxlength='100' and @style='width: 110px;']",
                 "Teste"
             )
         )
 
-        safe_action(doc, "Preenchendo Valor unitário do produto", lambda:
-            preencher_campo_xpath_com_retry(
-                driver, wait, "//input[contains(@class, 'vu')]",
-                "10,00"
-            )
+        safe_action(doc, "Preenchendo todos os valores e quantidades (padrão)", lambda:
+            preencher_todos_valores_e_quantidades(driver, wait, valor_padrao="10,00", quantidade_padrao="2")
         )
 
-        safe_action(doc, "Preenchendo Quantidade do produto", lambda:
-            preencher_campo_xpath_com_retry(
-                driver, wait, "//input[contains(@class, 'innerQtdField')]",
-                "2"
-            )
-        )
 
 
         safe_action(doc, "Finalizando", lambda:
@@ -1182,7 +1338,7 @@ def executar_teste():
         
         log(doc, "🔍 Verificando mensagens de alerta...")
         encontrar_mensagem_alerta()
-        
+
         time.sleep(2)
 
 

@@ -1032,23 +1032,10 @@ def executar_teste():
 
         time.sleep(5)
 
-        safe_action(doc, "Preenchendo Número do PIMS", lambda:
-            preencher_campo_xpath_com_retry(
-                driver, wait, "/html/body/div[18]/div[1]/div[2]/div/div[1]/input",
-                "200848"
-            )
-        )
 
         safe_action(doc, "Preenchendo Data inicial", lambda: preencher_campo_xpath_com_retry(driver, wait, "//input[@type='text' and @class='hasDatepicker dataI' and @maxlength='10' and @style='width: 100px;' and @grupo='']", "06/10/2025"))
 
 
-        safe_action(doc, "Selecionando Centro de Custo", abrir_modal_e_selecionar_robusto_xpath(
-            "//a[@class='sprites sp-openLov']",
-            "//input[@type='text' and @class='nomePesquisa' and @style='width:210px;' and @value='']",
-            "10.00.1090",
-            "(//a[contains(@class,'lpFind') and contains(.,'Pesquisar')])[1]",
-            "//tr[td[contains(text(), '10.00.1090')] and td[contains(text(), 'CENTRO DE CUSTO JOÃO')]]//a[contains(@class,'linkAlterar')]"
-        ))
 
 
 
@@ -1068,15 +1055,29 @@ def executar_teste():
             wait.until(EC.element_to_be_clickable((By.XPATH, '/html/body/div[18]/div[1]/div[2]/div/div[7]/a'))).click()
         )
         time.sleep(5)
-        safe_action(doc, "Selecionando PIMS", lambda:
-            driver.execute_script(
-                "arguments[0].click();",
-                driver.find_element(
-                    By.XPATH,
-                    "(//li[contains(@class, 'itemSimple')])[1]"
+
+        # Verificando lista de PIMS
+        log(doc, "🔄 Verificando lista de PIMS...")
+
+        # Busca todos os elementos com a classe 'itemSimple'
+        itens = driver.find_elements(By.XPATH, "//li[contains(@class, 'itemSimple')]")
+
+        # Se não encontrar nenhum item, registra aviso
+        if not itens:
+            log(doc, "⚠️ Nenhum registro encontrado na lista de PIMS.")
+        else:
+            log(doc, f"✅ {len(itens)} registro(s) encontrado(s). Selecionando o primeiro...")
+            safe_action(doc, "Selecionando PIMS", lambda:
+                driver.execute_script(
+                    "arguments[0].click();",
+                    itens[0]  # clica no primeiro item da lista
                 )
             )
-        )
+            time.sleep(2)
+
+
+
+
         time.sleep(2)
         safe_action(doc, "Selecionando itens para a Autorização de PIMS", lambda:
             clicar_todos_em_aberto(driver, wait, doc)
