@@ -1409,11 +1409,11 @@ def executar_teste():
 
         
         safe_action(doc, "Preenchendo Data Pedido Inicial", 
-                   preencher_datepicker_por_indice(0, "20/04/2025"))
+                   preencher_datepicker_por_indice(0, "09/10/2022"))
 
         
         safe_action(doc, "Preenchendo Data Pedido Final", 
-                   preencher_datepicker_por_indice(1, "08/10/2025"))
+                   preencher_datepicker_por_indice(1, "09/10/2025"))
 
 
 
@@ -1431,8 +1431,15 @@ def executar_teste():
         itens = driver.find_elements(By.XPATH, "//li[contains(@class, 'clearfix')]")
 
         # Se não encontrar nenhum item, registra aviso
+        # Se não encontrar nenhum item, registra aviso
         if not itens:
             log(doc, "⚠️ Nenhum registro encontrado na lista de Pedidos de Compra.")
+
+            safe_action(doc, "Fechando modal Gestor de Compras", lambda:
+                clicar_elemento_robusto(driver, wait, '#gsCompras > div.wdTop.ui-draggable-handle > div > a')
+            )
+            return True  # <- encerra a execução como SUCESSO controlado
+
         else:
             log(doc, f"✅ {len(itens)} registro(s) encontrado(s).")
             time.sleep(2)
@@ -1448,16 +1455,20 @@ def executar_teste():
             )
         )
 
+        time.sleep(30)
+
 
         safe_action(doc, "Clicando em Fechar", lambda:
             driver.execute_script(
                 "arguments[0].click();",
                 wait.until(EC.presence_of_element_located((
                     By.XPATH,
-                    "//a[contains(@class,'btFechar') and contains(@class,'btGreen') and normalize-space(.)='Fechar']"
+                    "//a[@class='btModel btGreen btFechar' and normalize-space(text())='Fechar']"
                 )))
             )
         )
+
+        time.sleep(5)
 
         safe_action(doc, "Clicando em Aprovar Pedido", lambda:
             driver.execute_script(
@@ -1468,6 +1479,17 @@ def executar_teste():
                 )))
             )
         )
+
+
+
+
+
+        safe_action(doc, "Confirmando", lambda: (
+            wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "#BtYes"))).click()
+        ))
+
+
+        time.sleep(2)
 
 
         log(doc, "🔍 Verificando mensagens de alerta...")

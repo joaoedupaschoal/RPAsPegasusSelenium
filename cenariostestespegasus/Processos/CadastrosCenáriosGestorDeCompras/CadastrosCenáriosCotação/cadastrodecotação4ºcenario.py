@@ -93,7 +93,7 @@ hora_sepultamento = fake.time(pattern="%H:%M")
 localizacao = fake.city()
 
 # ==== CONFIGURAÇÕES ====
-URL = "http://localhost:8080/gs/index.xhtml"
+URL = "http://localhost:8080/gs/login.xhtml"
 LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
 LOGIN_PASSWORD = "071999gs"
 
@@ -844,8 +844,8 @@ def preencher_dados_fornecedor_por_indices(
     idx_email: int,
     idx_condicao_pagamento: int,
     idx_forma_pagamento: int,
-    contato="1799999999",
-    telefone="1799999999",
+    contato="(17)99999-9999",
+    telefone="(17)99999-9999",
     email="teste@teste.selenium.com",
     condicao="100",
     forma="Teste"
@@ -1384,6 +1384,7 @@ def executar_teste():
 
         log(doc, "🔍 Verificando mensagens de alerta...")
         encontrar_mensagem_alerta()
+        time.sleep(3)
 
         safe_action(doc, "Preenchendo dados do Fornecedor por índice", lambda:
         preencher_dados_fornecedor_por_indices(
@@ -1393,8 +1394,8 @@ def executar_teste():
             idx_email=0,
             idx_condicao_pagamento=0,
             idx_forma_pagamento=0,
-            contato="1799999999",
-            telefone="1799999999",
+            contato="(17)99999-9999",
+            telefone="(17)99999-9999",
             email="teste@teste.selenium.com",
             condicao="100",
             forma="Teste"
@@ -1402,15 +1403,17 @@ def executar_teste():
     )
 
         safe_action(doc, "Preenchendo todos os valores e quantidades (padrão)", lambda:
-            preencher_todos_valores_e_quantidades(driver, wait, valor_padrao="10,00", quantidade_padrao="2")
+            preencher_todos_valores_e_quantidades(driver, wait, valor_padrao="R$ 10,00", quantidade_padrao="2")
         )
 
 
+        time.sleep(3)
 
         safe_action(doc, "Adicionando Nova Cotação", lambda:
             wait.until(EC.element_to_be_clickable((By.XPATH, "//a[@class='btModel btGray btsave fRight'][span[@class='sprites sp-addVerde'] and contains(., 'Nova Cotação')]"))).click()
         )
 
+        time.sleep(3)
 
 
         safe_action(doc, "Selecionando Fornecedor",
@@ -1423,6 +1426,7 @@ def executar_teste():
                 indice_lov=1
             )
         )
+        time.sleep(3)
 
 
         safe_action(doc, "Preenchendo dados do Fornecedor por índice", lambda:
@@ -1433,17 +1437,18 @@ def executar_teste():
                 idx_email=1,
                 idx_condicao_pagamento=1,
                 idx_forma_pagamento=1,
-                contato="1799999999",
-                telefone="1799999999",
+                contato="(17)99999-9999",
+                telefone="(17)99999-9999",
                 email="teste@teste.selenium.com",
                 condicao="100",
                 forma="Teste"
             )
         )
+        time.sleep(3)
 
 
         safe_action(doc, "Preenchendo todos os valores e quantidades (padrão)", lambda:
-            preencher_todos_valores_e_quantidades(driver, wait, valor_padrao="30,00", quantidade_padrao="3")
+            preencher_todos_valores_e_quantidades(driver, wait, valor_padrao="R$ 30,00", quantidade_padrao="3")
         )
 
 
@@ -1451,6 +1456,7 @@ def executar_teste():
         safe_action(doc, "Adicionando Nova Cotação", lambda:
             wait.until(EC.element_to_be_clickable((By.XPATH, "//a[@class='btModel btGray btsave fRight'][span[@class='sprites sp-addVerde'] and contains(., 'Nova Cotação')]"))).click()
         )
+        time.sleep(3)
 
         safe_action(doc, "Selecionando Fornecedor",
             abrir_modal_e_selecionar_robusto_xpath(
@@ -1462,6 +1468,7 @@ def executar_teste():
                 indice_lov=2
             )
         )
+        time.sleep(3)
 
         safe_action(doc, "Preenchendo dados do Fornecedor por índice", lambda:
             preencher_dados_fornecedor_por_indices(
@@ -1471,15 +1478,18 @@ def executar_teste():
                 idx_email=2,
                 idx_condicao_pagamento=2,
                 idx_forma_pagamento=2,
-                contato="1799999999",
-                telefone="1799999999",
+                contato="(17)99999-9999",
+                telefone="(17)99999-9999",
                 email="teste@teste.selenium.com",
                 condicao="100",
                 forma="Teste"
             )
         )
+
+        time.sleep(3)
+
         safe_action(doc, "Preenchendo todos os valores e quantidades (padrão)", lambda:
-            preencher_todos_valores_e_quantidades(driver, wait, valor_padrao="5,00", quantidade_padrao="5")
+            preencher_todos_valores_e_quantidades(driver, wait, valor_padrao="R$ 5,00", quantidade_padrao="5")
         )
 
 
