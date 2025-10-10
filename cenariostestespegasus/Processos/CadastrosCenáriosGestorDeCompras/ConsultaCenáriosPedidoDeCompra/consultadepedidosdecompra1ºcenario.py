@@ -2001,7 +2001,7 @@ def executar_teste():
 def main():
     global doc
     try:
-        log(doc, "🚀 Iniciando teste de Autorização de PIMS")
+        log(doc, "🚀 Iniciando teste de Pedido de Compra")
         sucesso = executar_teste()
         if sucesso:
             log(doc, "✅ Teste executado com sucesso!")
