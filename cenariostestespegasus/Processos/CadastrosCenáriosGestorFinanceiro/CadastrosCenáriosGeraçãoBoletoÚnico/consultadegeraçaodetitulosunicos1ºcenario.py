@@ -35,7 +35,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Geração de Títulos - Gestor Financeiro – Cenário 1: Rotina completa de Geração de Títulos")
+doc.add_paragraph("Gerar Boleto Único - Gestor Financeiro – Cenário 1: Rotina completa de Geração de Título Único")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -1496,7 +1496,7 @@ def finalizar_relatorio():
     """Salva relatório e fecha driver"""
     global driver, doc
     
-    nome_arquivo = f"relatorio_geracao_titulos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_geracao_titulos_unicos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     
     try:
         doc.save(nome_arquivo)
@@ -1775,6 +1775,98 @@ def validar_resultado_pesquisa(js_engine):
         log(doc, f"❌ Erro ao validar resultado: {e}")
         return False
 
+def forcar_retorno_tela_sistema(js_engine, esperado_selector="#gsFinan", timeout=12):
+    """
+    Força o retorno para a tela do sistema após confirmação de modal.
+    - js_engine: instância de JSForceEngine (tem driver, execute_js, force_click, etc.)
+    - esperado_selector: seletor que indica que a tela principal está visível (ajuste conforme sua UI)
+    """
+    driver = js_engine.driver
+    wait = WebDriverWait(driver, 3)
+    log(doc, "🔁 Forçando retorno para tela do sistema...")
+
+    try:
+        # 1) Volta para o conteúdo principal
+        try:
+            driver.switch_to.default_content()
+        except:
+            pass
+
+        # 2) Remove overlays/modais via JS (limpeza agressiva)
+        try:
+            js_engine.execute_js("""
+                document.querySelectorAll('.ui-widget-overlay, .blockUI, .modal-backdrop, .blockScreen, .overlay').forEach(function(o){
+                    o.style.display='none'; o.style.visibility='hidden'; o.style.opacity='0';
+                });
+                // Remove modais persistentes do DOM se existirem
+                document.querySelectorAll('.modal, .ui-dialog, [role=\"dialog\"]').forEach(function(m){
+                    try { m.remove(); } catch(e) {}
+                });
+                return true;
+            """)
+            log(doc, "   ✅ Overlays/modais escondidos/removidos (JS)")
+        except Exception as e:
+            log(doc, f"   ⚠️ Não foi possível limpar overlays via JS: {e}")
+
+        # 3) Tentar clicar no botão de fechar do módulo (ex.: wdClose)
+        try:
+            js_engine.force_click("#gsFinan > div.wdTop.ui-draggable-handle > div.wdClose > a", by_xpath=False, max_attempts=3)
+            log(doc, "   ✅ Botão de fechar do módulo clicado")
+        except Exception as e:
+            log(doc, f"   ⚠️ Botão de fechar do módulo não clicado: {e}")
+
+        # 4) Enviar ESC como fallback (fecha modais que respondem a ESC)
+        try:
+            ActionChains(driver).send_keys(Keys.ESCAPE).perform()
+            time.sleep(0.5)
+            log(doc, "   ✅ ESC enviado")
+        except Exception as e:
+            log(doc, f"   ⚠️ Falha ao enviar ESC: {e}")
+
+        # 5) Espera seletor da tela principal ficar presente/visível
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            try:
+                # Ajuste: se a sua tela principal tiver um elemento específico substitua o selector
+                element = driver.find_element(By.CSS_SELECTOR, esperado_selector)
+                # Checa visibilidade via JS para evitar false positives
+                visible = js_engine.execute_js("""
+                    var el = arguments[0];
+                    if(!el) return false;
+                    var s = window.getComputedStyle(el);
+                    return (s.display !== 'none' && s.visibility !== 'hidden' && parseFloat(s.opacity||1) > 0.01);
+                """, element)
+                if visible:
+                    log(doc, f"✅ Tela principal detectada ({esperado_selector})")
+                    return True
+            except Exception:
+                pass
+            time.sleep(0.5)
+
+        # 6) Último recurso: refresh da página para garantir estado limpo
+        try:
+            log(doc, "🔄 Último recurso: recarregando a página")
+            driver.refresh()
+            time.sleep(3)
+            # checa novamente
+            try:
+                driver.find_element(By.CSS_SELECTOR, esperado_selector)
+                log(doc, f"✅ Tela principal encontrada após refresh ({esperado_selector})")
+                return True
+            except:
+                pass
+        except Exception as e:
+            log(doc, f"⚠️ Falha ao recarregar página: {e}")
+
+        log(doc, "⚠️ Não foi possível garantir retorno total à tela do sistema")
+        return False
+
+    except Exception as e:
+        log(doc, f"❌ Erro em forcar_retorno_tela_sistema: {e}")
+        return False
+
+
+
 def confirmar_modal_geracao_titulos(js_engine, timeout=12, iframe_xpath=None):
     """
     Clica no 'Sim' da modal 'Confirme a geração de títulos...' e valida que ela fechou.
@@ -1936,16 +2028,16 @@ def executar_teste():
         # ===== GERAÇÃO DE TÍTULOS =====
         safe_action(doc, "Clicando em Geração de Títulos", lambda:
             js_engine.force_click(
-                '#gsFinan > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(6) > a > span'
+                '#gsFinan > div.wdTelas > div > ul > li:nth-child(7) > a > span'
             )
         )
         
         time.sleep(5)
         
         # ===== CONTRATANTE/TITULAR =====
-        safe_action(doc, "Selecionando Contratante/Titular", lambda:
+        safe_action(doc, "Selecionando Pessoa", lambda:
             lov_handler.open_and_select(
-                btn_index=0,
+                btn_index=2,
                 search_text="JOÃO EDUARDO JUSTINO PASCHOAL",
                 result_text="JOÃO EDUARDO JUSTINO PASCHOAL"
             )
@@ -1954,7 +2046,7 @@ def executar_teste():
         # ===== BUSCAR =====
         safe_action(doc, "Clicando em Buscar", lambda:
             js_engine.force_click(
-                "//a[@class='btModel btGray btBuscar' and normalize-space()='Buscar']",
+                "//a[@class='btModel btGray btPesquisarTitulos' and normalize-space()='Pesquisar']",
                 by_xpath=True
             )
         )
@@ -1977,78 +2069,10 @@ def executar_teste():
         # ===== PREENCHIMENTO DOS CAMPOS =====
         
         # Data Inicial
-        safe_action(doc, "Preenchendo Data Inicial", lambda:
+        safe_action(doc, "Preenchendo Vencimento", lambda:
             js_engine.force_datepicker(
                 "(//input[contains(@class, 'hasDatepicker')])[1]",
-                "09/03/2025",
-                by_xpath=True
-            )
-        )
-        
-        # Data Final
-        safe_action(doc, "Preenchendo Data Final", lambda:
-            js_engine.force_datepicker(
-                "(//input[contains(@class, 'hasDatepicker')])[2]",
-                "09/10/2025",
-                by_xpath=True
-            )
-        )
-        
-        # Dia de Vencimento
-        safe_action(doc, "Preenchendo Dia de Vencimento", lambda:
-            js_engine.force_fill(
-                "//input[@name='blf onb diaVencimento']",
-                "15",
-                by_xpath=True
-            )
-        )
-        
-        # Quantidade de Parcelas
-        safe_action(doc, "Preenchendo Quantidade de Parcelas", lambda:
-            js_engine.force_fill(
-                "//input[@name='qtdParcelas']",
-                "2",
-                by_xpath=True
-            )
-        )
-        
-        # Valor das Parcelas
-        safe_action(doc, "Preenchendo Valor das Parcelas", lambda:
-            js_engine.force_fill(
-                "//input[@name='blf valorParcela']",
-                "25,00",
-                by_xpath=True
-            )
-        )
-        
-        # ===== TIPO DE MENSALIDADE (LOV) =====
-
-        safe_action(doc, "Selecionando Tipo de Mensalidade",
-            abrir_modal_e_selecionar_robusto_xpath(
-                btn_xpath=None,  # ignorado quando usar indice_lov
-                pesquisa_xpath="//input[@class='nomePesquisa']",
-                termo_pesquisa="TESTE TIPO DE MENSALIDADE SELENIUM AUTOMATIZADO",
-                btn_pesquisar_xpath="//a[contains(@class,'lpFind') and contains(normalize-space(.),'Pesquisar')]",
-                resultado_xpath="//tr[td[normalize-space(.)='TESTE TIPO DE MENSALIDADE SELENIUM AUTOMATIZADO']]",
-                indice_lov=2  
-            )
-        )
-        
-        time.sleep(3)
-
-        # ===== CHECKBOX ANO COMPETÊNCIA =====
-        safe_action(doc, "Marcando checkbox Ano Competência", lambda:
-            js_engine.force_click(
-                "//input[@type='checkbox' and @value='S']",
-                by_xpath=True
-            )
-        )
-        
-        # ===== ANO COMPETÊNCIA =====
-        safe_action(doc, "Preenchendo Ano Competência", lambda:
-            js_engine.force_fill(
-                "//input[@type='text' and @class='fc qtdParcelas inteiro' and @name='qtdParcelas' and @maxlength='4']",
-                "2025",
+                "09/03/2026",
                 by_xpath=True
             )
         )
@@ -2069,6 +2093,11 @@ def executar_teste():
 
         time.sleep(1)
         
+        # força retorno à tela principal do módulo
+        safe_action(doc, "Forçando retorno à tela do sistema", lambda:
+            forcar_retorno_tela_sistema(js_engine, esperado_selector="#gsFinan", timeout=12)
+        )
+
         # ===== VERIFICAR MENSAGEM =====
         log(doc, "🔍 Verificando mensagens de alerta...")
         
@@ -2124,7 +2153,7 @@ def main():
     global doc
     
     try:
-        log(doc, "🚀 Iniciando teste de Geração de Títulos")
+        log(doc, "🚀 Iniciando teste de Geração de Títulos Únicos")
         log(doc, "=" * 70)
         
         sucesso = executar_teste()
