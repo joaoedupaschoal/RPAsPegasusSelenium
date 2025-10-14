@@ -35,7 +35,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Gerar Boleto Único - Gestor Financeiro – Cenário 1: Rotina completa de Geração de Título Único")
+doc.add_paragraph("Gerar Boleto Único - Gestor Financeiro – Cenário 2: Rotina completa de Geração de Título Único SEM preencher o Vencimento")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -1436,27 +1436,6 @@ class LOVHandler:
 
 # ==== WRAPPERS DE ALTO NÍVEL ====
 
-
-
-def encontrar_mensagem_alerta():
-    seletores = [
-        (".alerts.salvo", "✅ Mensagem de Sucesso"),
-        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
-        (".alerts.erro", "❌ Mensagem de Erro"),
-    ]
-
-    for seletor, tipo in seletores:
-        try:
-            elemento = driver.find_element(By.CSS_SELECTOR, seletor)
-            if elemento.is_displayed():
-                log(doc, f"📢 {tipo}: {elemento.text}")
-                return elemento
-        except:
-            continue
-
-    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
-    return None
-
 def safe_action(doc, descricao, func, max_retries=3):
     """Wrapper para ações com retry automático"""
     global driver
@@ -1517,7 +1496,7 @@ def finalizar_relatorio():
     """Salva relatório e fecha driver"""
     global driver, doc
     
-    nome_arquivo = f"relatorio_geracao_titulos_unicos_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_geracao_titulos_unicos_cenario_2_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     
     try:
         doc.save(nome_arquivo)
@@ -1897,6 +1876,25 @@ def forcar_retorno_tela_sistema(js_engine, esperado_selector="#gsFinan", timeout
     
 
 
+def encontrar_mensagem_alerta():
+    seletores = [
+        (".alerts.salvo", "✅ Mensagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+        (".alerts.erro", "❌ Mensagem de Erro"),
+    ]
+
+    for seletor, tipo in seletores:
+        try:
+            elemento = driver.find_element(By.CSS_SELECTOR, seletor)
+            if elemento.is_displayed():
+                log(doc, f"📢 {tipo}: {elemento.text}")
+                return elemento
+        except:
+            continue
+
+    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
+    return None
+
 def confirmar_modal_geracao_titulos(js_engine, timeout=12, iframe_xpath=None):
     """
     Clica no 'Sim' (id=BtYes) da modal de geração de boletos únicos e RETORNA IMEDIATAMENTE à tela principal.
@@ -2170,17 +2168,8 @@ def executar_teste():
         
         log(doc, "➡️ Título selecionado, prosseguindo...")
         
-        # ===== PREENCHIMENTO DOS CAMPOS =====
-        
-        # Data Inicial
-        safe_action(doc, "Preenchendo Vencimento", lambda:
-            js_engine.force_datepicker(
-                "(//input[contains(@class, 'hasDatepicker')])[3]",
-                "09/03/2026",
-                by_xpath=True
-            )
-        )
-        
+
+
         # ===== GERAR =====
         safe_action(doc, "Clicando em Gerar", lambda:
             js_engine.force_click(
@@ -2205,8 +2194,9 @@ def executar_teste():
 
         # ===== VERIFICAR MENSAGEM =====
         log(doc, "🔍 Verificando mensagens de alerta...")
-        
+
         encontrar_mensagem_alerta()
+
 
         log(doc, "🎉 Teste concluído com sucesso!")
         return True
@@ -2215,7 +2205,6 @@ def executar_teste():
         log(doc, f"❌ ERRO FATAL: {e}")
         take_screenshot(driver, doc, "erro_fatal")
         return False
-
 
 # ==== MAIN ====
 

@@ -35,7 +35,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Gerar Boleto Único - Gestor Financeiro – Cenário 1: Rotina completa de Geração de Título Único")
+doc.add_paragraph("Geração de Boletos - Gestor Financeiro – Cenário 1: Rotina completa de Geração de Boletos")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -1436,27 +1436,6 @@ class LOVHandler:
 
 # ==== WRAPPERS DE ALTO NÍVEL ====
 
-
-
-def encontrar_mensagem_alerta():
-    seletores = [
-        (".alerts.salvo", "✅ Mensagem de Sucesso"),
-        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
-        (".alerts.erro", "❌ Mensagem de Erro"),
-    ]
-
-    for seletor, tipo in seletores:
-        try:
-            elemento = driver.find_element(By.CSS_SELECTOR, seletor)
-            if elemento.is_displayed():
-                log(doc, f"📢 {tipo}: {elemento.text}")
-                return elemento
-        except:
-            continue
-
-    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
-    return None
-
 def safe_action(doc, descricao, func, max_retries=3):
     """Wrapper para ações com retry automático"""
     global driver
@@ -1517,7 +1496,7 @@ def finalizar_relatorio():
     """Salva relatório e fecha driver"""
     global driver, doc
     
-    nome_arquivo = f"relatorio_geracao_titulos_unicos_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_geracao_titulos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     
     try:
         doc.save(nome_arquivo)
@@ -1745,162 +1724,41 @@ def abrir_modal_e_selecionar_robusto_xpath(
 
     return acao
 
-def validar_resultado_pesquisa(js_engine):
-    """Valida se há títulos encontrados e seleciona o primeiro"""
+def validar_resultado_pesquisa(js_engine, tempo_maximo=10):
+    """Valida se há resultados de títulos pela presença da tabela 'niceTable padding10'"""
     try:
         log(doc, "🔍 Validando resultado da pesquisa...")
-        time.sleep(2)
-        
-        script = """
-        // Tenta clicar no checkbox principal "chkAll" se existir
-        var chkAll = document.querySelector("#chkAll");
-        if (chkAll && !chkAll.disabled) {
-            chkAll.scrollIntoView({block: 'center'});
-            chkAll.click();
-            console.log("✔ chkAll clicado");
-        } else {
-            console.log("ℹ chkAll não encontrado ou desabilitado");
-        }
 
-        // Procura checkboxes na tabela de resultados
-        var checkboxes = document.querySelectorAll(
-            "table tbody tr input[class='sorting_1'], " +
-            "input[class='sorting_1'], " +
-            "table tbody tr input[type='checkbox']"
-        );
-        
-        // Filtra visíveis e habilitados
-        var visible = [];
-        for (var i = 0; i < checkboxes.length; i++) {
-            var cb = checkboxes[i];
-            var style = window.getComputedStyle(cb);
-            if (style.display !== 'none' && 
-                style.visibility !== 'hidden' && 
-                cb.offsetParent !== null &&
-                !cb.disabled) {
-                visible.push(cb);
-            }
-        }
-        
-        if (visible.length === 0) return null;
-        
-        // Clica no primeiro
-        var first = visible[0];
-        first.scrollIntoView({block: 'center'});
-        first.click();
-        
-        return visible.length;
-        """
-        
-        result = js_engine.execute_js(script)
-        
-        if result is None or result == 0:
-            log(doc, "❌ Nenhum título encontrado")
+        tempo_inicial = time.time()
+        tabela_existe = False
+
+        # Espera ativa até a tabela aparecer ou o tempo máximo expirar
+        while time.time() - tempo_inicial < tempo_maximo:
+            script = """
+            var tabela = document.querySelector('table.niceTable.padding10');
+            return tabela ? true : false;
+            """
+            tabela_existe = js_engine.execute_js(script)
+
+            if tabela_existe:
+                break
+            time.sleep(1)
+
+        if tabela_existe:
+            log(doc, "✅ Tabela de Títulos carregada com sucesso, prosseguindo")
+            return True
+        else:
+            log(doc, "❌ Nenhum Título encontrado após aguardar carregamento")
             return False
-        
-        log(doc, f"✅ {result} título(s) encontrado(s), primeiro selecionado")
-        return True
-        
+
     except Exception as e:
         log(doc, f"❌ Erro ao validar resultado: {e}")
         return False
 
-def forcar_retorno_tela_sistema(js_engine, esperado_selector="#gsFinan", timeout=12):
-    """
-    Força o retorno para a tela do sistema após confirmação de modal.
-    - js_engine: instância de JSForceEngine (tem driver, execute_js, force_click, etc.)
-    - esperado_selector: seletor que indica que a tela principal está visível (ajuste conforme sua UI)
-    """
-    driver = js_engine.driver
-    wait = WebDriverWait(driver, 3)
-    log(doc, "🔁 Forçando retorno para tela do sistema...")
-
-    try:
-        # 1) Volta para o conteúdo principal
-        try:
-            driver.switch_to.default_content()
-        except:
-            pass
-
-        # 2) Remove overlays/modais via JS (limpeza agressiva)
-        try:
-            js_engine.execute_js("""
-                document.querySelectorAll('.ui-widget-overlay, .blockUI, .modal-backdrop, .blockScreen, .overlay').forEach(function(o){
-                    o.style.display='none'; o.style.visibility='hidden'; o.style.opacity='0';
-                });
-                // Remove modais persistentes do DOM se existirem
-                document.querySelectorAll('.modal, .ui-dialog, [role=\"dialog\"]').forEach(function(m){
-                    try { m.remove(); } catch(e) {}
-                });
-                return true;
-            """)
-            log(doc, "   ✅ Overlays/modais escondidos/removidos (JS)")
-        except Exception as e:
-            log(doc, f"   ⚠️ Não foi possível limpar overlays via JS: {e}")
-
-        # 3) Tentar clicar no botão de fechar do módulo (ex.: wdClose)
-        try:
-            js_engine.force_click("#gsFinan > div.wdTop.ui-draggable-handle > div.wdClose > a", by_xpath=False, max_attempts=3)
-            log(doc, "   ✅ Botão de fechar do módulo clicado")
-        except Exception as e:
-            log(doc, f"   ⚠️ Botão de fechar do módulo não clicado: {e}")
-
-        # 4) Enviar ESC como fallback (fecha modais que respondem a ESC)
-        try:
-            ActionChains(driver).send_keys(Keys.ESCAPE).perform()
-            time.sleep(0.5)
-            log(doc, "   ✅ ESC enviado")
-        except Exception as e:
-            log(doc, f"   ⚠️ Falha ao enviar ESC: {e}")
-
-        # 5) Espera seletor da tela principal ficar presente/visível
-        t0 = time.time()
-        while time.time() - t0 < timeout:
-            try:
-                # Ajuste: se a sua tela principal tiver um elemento específico substitua o selector
-                element = driver.find_element(By.CSS_SELECTOR, esperado_selector)
-                # Checa visibilidade via JS para evitar false positives
-                visible = js_engine.execute_js("""
-                    var el = arguments[0];
-                    if(!el) return false;
-                    var s = window.getComputedStyle(el);
-                    return (s.display !== 'none' && s.visibility !== 'hidden' && parseFloat(s.opacity||1) > 0.01);
-                """, element)
-                if visible:
-                    log(doc, f"✅ Tela principal detectada ({esperado_selector})")
-                    return True
-            except Exception:
-                pass
-            time.sleep(0.5)
-
-        # 6) Último recurso: refresh da página para garantir estado limpo
-        try:
-            log(doc, "🔄 Último recurso: recarregando a página")
-            driver.refresh()
-            time.sleep(3)
-            # checa novamente
-            try:
-                driver.find_element(By.CSS_SELECTOR, esperado_selector)
-                log(doc, f"✅ Tela principal encontrada após refresh ({esperado_selector})")
-                return True
-            except:
-                pass
-        except Exception as e:
-            log(doc, f"⚠️ Falha ao recarregar página: {e}")
-
-        log(doc, "⚠️ Não foi possível garantir retorno total à tela do sistema")
-        return False
-
-    except Exception as e:
-        log(doc, f"❌ Erro em forcar_retorno_tela_sistema: {e}")
-        return False
-    
-
-
 def confirmar_modal_geracao_titulos(js_engine, timeout=12, iframe_xpath=None):
     """
-    Clica no 'Sim' (id=BtYes) da modal de geração de boletos únicos e RETORNA IMEDIATAMENTE à tela principal.
-    Estratégia: clique agressivo + remoção forçada de overlays + validação instantânea do retorno.
+    Clica no 'Sim' da modal 'Confirme a geração de títulos...' e valida que ela fechou.
+    Retorna True somente se a modal deixar de estar visível.
     """
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
@@ -1910,183 +1768,149 @@ def confirmar_modal_geracao_titulos(js_engine, timeout=12, iframe_xpath=None):
     driver = js_engine.driver
     wait = WebDriverWait(driver, timeout)
 
-    # Sempre volta pro conteúdo principal
+    # Sair para o conteúdo principal
     try:
         driver.switch_to.default_content()
     except:
         pass
 
-    # Entra no iframe, se informado
+    # Se houver iframe, entrar (se não houver, ignora)
     if iframe_xpath:
         try:
             wait.until(EC.frame_to_be_available_and_switch_to_it((By.XPATH, iframe_xpath)))
         except:
             pass
 
-    log(doc, "🎯 Localizando botão 'Sim' e executando clique imediato...")
-
-    # CLIQUE AGRESSIVO E IMEDIATO NO BOTÃO SIM
-    clicado = js_engine.execute_js("""
-        // Localiza o botão #BtYes visível
-        var botoes = document.querySelectorAll('#BtYes, a[id="BtYes"], button[id="BtYes"]');
-        var btn = null;
-        
-        for (var i = 0; i < botoes.length; i++) {
-            var b = botoes[i];
-            var s = getComputedStyle(b);
-            if (b.offsetParent !== null && 
-                s.display !== 'none' && 
-                s.visibility !== 'hidden' && 
-                parseFloat(s.opacity || 1) > 0.01 &&
-                !b.disabled) {
-                btn = b;
-                break;
+    # 1) Espera a MODAL alvo ficar visível e marca o botão 'Sim' com data-aim temporário
+    found = js_engine.execute_js("""
+        // procura modais .modal visíveis e com o texto esperado
+        var modals = document.querySelectorAll('div.modal.overflow');
+        var alvo = null;
+        for (var i=0;i<modals.length;i++){
+            var m = modals[i];
+            var s = getComputedStyle(m);
+            var vis = (m.offsetParent!==null && s.display!=='none' && s.visibility!=='hidden' && parseFloat(s.opacity||1)>0.01);
+            if(!vis) continue;
+            var txt = (m.innerText||'').toLowerCase();
+            if(txt.indexOf('confirme a geração de títulos')!==-1){
+                alvo = m; break;
             }
         }
-        
-        if (!btn) return false;
-        
-        // CLIQUE MÚLTIPLO INSTANTÂNEO (garante que foi registrado)
-        btn.scrollIntoView({block: 'center'});
-        btn.focus();
-        
-        // Sequência de eventos em rapid-fire
-        ['mouseover', 'mouseenter', 'mousedown', 'mouseup', 'click'].forEach(function(tipo) {
-            var evt = new MouseEvent(tipo, {
-                bubbles: true,
-                cancelable: true,
-                view: window,
-                detail: 1
-            });
-            btn.dispatchEvent(evt);
-        });
-        
-        // Click nativo adicional
-        if (btn.click) btn.click();
-        
-        // REMOÇÃO IMEDIATA DE TODOS OVERLAYS/MODAIS (não espera AJAX)
-        var overlays = document.querySelectorAll(
-            '.ui-widget-overlay, .blockUI, .modal-backdrop, .blockScreen, ' +
-            '.overlay, [class*="overlay"], div.modal.overflow'
-        );
-        
-        overlays.forEach(function(o) {
-            o.style.display = 'none !important';
-            o.style.visibility = 'hidden !important';
-            o.style.opacity = '0 !important';
-            o.style.pointerEvents = 'none !important';
-            try { o.remove(); } catch(e) {}
-        });
-        
-        return true;
-    """)
-    
-    if not clicado:
-        raise Exception("Botão 'Sim' (#BtYes) não encontrado ou não clicável")
-    
-    log(doc, "✅ Clique executado + overlays removidos instantaneamente")
-    
-    # Volta para conteúdo principal imediatamente
-    try:
-        driver.switch_to.default_content()
-    except:
-        pass
-    
-    # VALIDAÇÃO IMEDIATA: verifica se #gsFinan está visível (sem loops de espera)
-    log(doc, "🔍 Validando retorno imediato à tela principal...")
-    
-    na_tela_principal = js_engine.execute_js("""
-        var gsFinan = document.querySelector('#gsFinan');
-        if (!gsFinan) return false;
-        
-        var s = getComputedStyle(gsFinan);
-        var visivel = (
-            gsFinan.offsetParent !== null &&
-            s.display !== 'none' &&
-            s.visibility !== 'hidden' &&
-            parseFloat(s.opacity || 1) > 0.01
-        );
-        
-        // Remove qualquer overlay residual
-        document.querySelectorAll('.ui-widget-overlay, .blockUI, .modal-backdrop, [class*="overlay"]').forEach(function(o) {
-            o.style.display = 'none';
-            o.style.visibility = 'hidden';
-            try { o.remove(); } catch(e) {}
-        });
-        
-        return visivel;
-    """)
-    
-    if na_tela_principal:
-        log(doc, "✅ Tela principal (#gsFinan) confirmada IMEDIATAMENTE")
-        return True
-    
-    # Se não detectou imediatamente, aguarda até 3 segundos máximo
-    log(doc, "⏳ Aguardando confirmação da tela principal (máx 3s)...")
-    for _ in range(6):  # 6 x 0.5s = 3s máximo
-        na_tela = js_engine.execute_js("""
-            var gsFinan = document.querySelector('#gsFinan');
-            if (!gsFinan) return false;
-            var s = getComputedStyle(gsFinan);
-            return (gsFinan.offsetParent !== null && 
-                    s.display !== 'none' && 
-                    s.visibility !== 'hidden' && 
-                    parseFloat(s.opacity || 1) > 0.01);
-        """)
-        
-        if na_tela:
-            log(doc, "✅ Tela principal confirmada")
-            return True
-        
-        time.sleep(0.5)
-    
-    # Último recurso: força remoção agressiva de tudo que pode estar bloqueando
-    log(doc, "🔧 Último recurso: limpeza agressiva total...")
-    js_engine.execute_js("""
-        // Remove TUDO que pode estar bloqueando a visualização
-        var selectores = [
-            '.ui-widget-overlay', '.blockUI', '.modal-backdrop', '.blockScreen',
-            '.overlay', '.loading', '.spinner', 'div.modal.overflow',
-            '[class*="overlay"]', '[class*="modal"]', '[class*="loading"]'
-        ];
-        
-        selectores.forEach(function(sel) {
-            document.querySelectorAll(sel).forEach(function(el) {
-                el.style.display = 'none !important';
-                el.style.visibility = 'hidden !important';
-                el.style.opacity = '0 !important';
-                try { el.remove(); } catch(e) {}
-            });
-        });
-        
-        // Força visibilidade do #gsFinan
-        var gsFinan = document.querySelector('#gsFinan');
-        if (gsFinan) {
-            gsFinan.style.display = 'block';
-            gsFinan.style.visibility = 'visible';
-            gsFinan.style.opacity = '1';
-        }
-        
-        return true;
-    """)
-    
-    # Validação final
-    na_tela = js_engine.execute_js("""
-        var gsFinan = document.querySelector('#gsFinan');
-        if (!gsFinan) return false;
-        var s = getComputedStyle(gsFinan);
-        return (gsFinan.offsetParent !== null && 
-                s.display !== 'none' && 
-                s.visibility !== 'hidden' && 
-                parseFloat(s.opacity || 1) > 0.01);
-    """)
-    
-    if not na_tela:
-        raise Exception("Não foi possível confirmar retorno à tela principal após clique")
-    
-    log(doc, "✅ Retorno à tela principal garantido")
-    return True
+        if(!alvo) return false;
 
+        // dentro da modal, localizar o 'Sim'
+        var btn = alvo.querySelector('a.btModel.btGray.btyes') 
+               || alvo.querySelector("a.btyes");
+        if(!btn) return false;
+
+        // marca para podermos clicar via CSS
+        btn.setAttribute('data-aim','confirm-yes');
+        return true;
+    """)
+    if not found:
+        # não achou a modal/btn — falhar explicitamente
+        return False
+
+    # 2) Clicar com o motor robusto (dispara sequência completa de eventos)
+    try:
+        js_engine.force_click("[data-aim='confirm-yes']", by_xpath=False)
+    except Exception:
+        # fallback por XPath direto na âncora com texto 'Sim'
+        js_engine.force_click("//div[contains(@class,'modal') and contains(.,'Confirme a geração de títulos')]//a[contains(@class,'btyes')]", by_xpath=True)
+
+    # 3) Aguarda processamento/overlays
+    js_engine.wait_ajax_complete(8)
+
+    # 4) Validar que a modal sumiu (não visível ou removida)
+    for _ in range(int(timeout*2)):  # ~timeout segundos
+        closed = js_engine.execute_js("""
+            var m = document.querySelector("div.modal.overflow");
+            if(!m) return true; // removida do DOM
+            var s = getComputedStyle(m);
+            var vis = (m.offsetParent!==null && s.display!=='none' && s.visibility!=='hidden' && parseFloat(s.opacity||1)>0.01);
+            if(!vis) return true; // oculta
+            // se ainda há modal visível, tenta verificar se a 'loadingContent' está ativa
+            var ld = m.querySelector('.loadingContent');
+            if(ld){
+                var sl = getComputedStyle(ld);
+                // se loading apareceu e depois some, a modal deve fechar logo
+            }
+            return false;
+        """)
+        if closed:
+            # remover o atributo temporário, se ainda existir
+            js_engine.execute_js("""
+                var b = document.querySelector("[data-aim='confirm-yes']");
+                if(b) b.removeAttribute('data-aim');
+                return true;
+            """)
+            return True
+        time.sleep(0.5)
+
+    # último recurso: força evento de mouse completo + tenta esconder overlays e verifica de novo
+    js_engine.execute_js("""
+        var b = document.querySelector("[data-aim='confirm-yes']") 
+             || document.querySelector("div.modal.overflow a.btModel.btGray.btyes");
+        if(b){
+            ['mouseover','mousedown','mouseup','click'].forEach(function(t){
+                b.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,view:window,detail:1}));
+            });
+            if(b.click) b.click();
+        }
+        document.querySelectorAll('.ui-widget-overlay,.blockUI,.modal-backdrop,[class*="overlay"]').forEach(function(o){
+            o.style.display='none'; o.style.visibility='hidden'; o.style.opacity='0';
+        });
+        return true;
+    """)
+    js_engine.wait_ajax_complete(4)
+
+    closed = js_engine.execute_js("""
+        var m = document.querySelector("div.modal.overflow");
+        if(!m) return true;
+        var s = getComputedStyle(m);
+        return !(m.offsetParent!==null && s.display!=='none' && s.visibility!=='hidden' && parseFloat(s.opacity||1)>0.01);
+    """)
+    return bool(closed)
+
+def selecionar_opcao_select(xpath_select, texto_opcao):
+    elemento = wait.until(EC.presence_of_element_located((By.XPATH, xpath_select)))
+    driver.execute_script("arguments[0].scrollIntoView({block:'center', inline:'nearest'});", elemento)
+    Select(elemento).select_by_visible_text(texto_opcao)
+
+
+def selecionar_opcao_xpath(xpath, texto):
+    def acao():
+        select_element = wait.until(EC.presence_of_element_located((By.XPATH, xpath)))
+        Select(select_element).select_by_visible_text(texto)
+    return acao
+
+def fechar_modal_com_retry(doc, js_engine, wait, max_tentativas=5, pausa=1.5):
+    """Fecha o modal clicando no X até ele desaparecer."""
+    xpath_modal = "//div[contains(@class,'modal') and contains(@style,'z-index')]"
+    xpath_fechar = "(//div[contains(@class,'modal') and not(contains(@style,'display: none'))]//a[@class='fa fa-close'])[last()]"
+
+    tentativa = 0
+    while tentativa < max_tentativas:
+        tentativa += 1
+        log(doc, f"🧩 Tentativa {tentativa} de fechar modal...")
+
+        try:
+            js_engine.force_click(xpath_fechar, by_xpath=True)
+            time.sleep(pausa)
+
+            # Verifica se ainda há modal visível
+            modais_visiveis = driver.find_elements(By.XPATH, xpath_modal)
+            modais_ativos = [m for m in modais_visiveis if "display: none" not in m.get_attribute("style")]
+
+            if not modais_ativos:
+                log(doc, "✅ Modal fechado com sucesso.")
+                return True
+
+        except Exception as e:
+            log(doc, f"⚠️ Tentativa {tentativa} falhou: {e}")
+
+    log(doc, "❌ Modal não foi fechado após todas as tentativas.")
+    return False
 
 
 # ==== EXECUÇÃO DO TESTE ====
@@ -2129,10 +1953,10 @@ def executar_teste():
         
         time.sleep(3)
         
-        # ===== GERAÇÃO DE TÍTULOS =====
-        safe_action(doc, "Clicando em Gerar Boleto Único", lambda:
+        # ===== GERAÇÃO DE BOLETOS =====
+        safe_action(doc, "Clicando em Impressão de Títulos", lambda:
             js_engine.force_click(
-                '#gsFinan > div.wdTelas > div > ul > li:nth-child(7) > a > span'
+                '#gsFinan > div.wdTelas > div > ul > li:nth-child(8) > a > span'
             )
         )
         
@@ -2141,73 +1965,150 @@ def executar_teste():
         # ===== CONTRATANTE/TITULAR =====
         safe_action(doc, "Selecionando Pessoa", lambda:
             lov_handler.open_and_select(
-                btn_index=2,
+                btn_index=0,
                 search_text="JOÃO EDUARDO JUSTINO PASCHOAL",
                 result_text="JOÃO EDUARDO JUSTINO PASCHOAL"
             )
         )
-        
+
+        safe_action(doc, "Selecionando Opção: 'Pagas'", lambda:
+            selecionar_opcao_select("//select[@class='tipoParcela']", "Pagas")
+        )
+
         # ===== BUSCAR =====
-        safe_action(doc, "Clicando em Buscar", lambda:
+        safe_action(doc, "Clicando em Pesquisar", lambda:
             js_engine.force_click(
-                "//a[@class='btModel btGray btPesquisarTitulos' and normalize-space()='Pesquisar']",
+                "//a[@class='btModel btGreen btPesquisar boxsize' and normalize-space()='Pesquisar']",
                 by_xpath=True
             )
         )
-        time.sleep(10)
-        
+
+        time.sleep(20)
         
        # ===== VALIDAÇÃO DO RESULTADO =====
-        resultado_ok = safe_action(
-            doc, 
-            "Validando e selecionando título", 
-            lambda: validar_resultado_pesquisa(js_engine)
-        )
-        
-        if not resultado_ok:
-            log(doc, "❌ Teste interrompido: nenhum título encontrado")
-            return False
-        
-        log(doc, "➡️ Título selecionado, prosseguindo...")
-        
-        # ===== PREENCHIMENTO DOS CAMPOS =====
-        
-        # Data Inicial
-        safe_action(doc, "Preenchendo Vencimento", lambda:
-            js_engine.force_datepicker(
-                "(//input[contains(@class, 'hasDatepicker')])[3]",
-                "09/03/2026",
-                by_xpath=True
-            )
-        )
-        
-        # ===== GERAR =====
-        safe_action(doc, "Clicando em Gerar", lambda:
+
+        # Chama a função para validar se a tabela apareceu
+        if validar_resultado_pesquisa(js_engine):
+            log(doc, "✅ Prosseguindo com o fluxo — tabela carregada com sucesso.")
+        else:
+            log(doc, "⚠️ Nenhum resultado encontrado — encerrando o processo.")
+            return  
+
+        safe_action(doc, "Visualizando Detalhes", lambda: (
             js_engine.force_click(
-                "//a[@class='btModel btGray btsave' and normalize-space()='Gerar']",
+                "//i[@class='sprites sp-dadosDinamicos' and @title='Visualizar Detalhes']",
+                by_xpath=True
+            ),
+            # Aguarda carregamento visual da tela/modal após o clique
+            wait.until(EC.presence_of_element_located((
+                By.XPATH,
+                "//div[contains(@class,'modal') or contains(@class,'detalhes') or contains(@class,'overflow')]"
+            ))),
+            time.sleep(1.5)  # pequena pausa extra pra o print sair certinho
+        ))
+
+        safe_action(doc, "Fechando aba de Detalhes", lambda:
+            fechar_modal_com_retry(doc, js_engine, wait)
+        )
+
+        safe_action(doc, "Selecionando Opção: 'Em aberto'", lambda:
+            selecionar_opcao_select("//select[@class='tipoParcela']", "Em aberto")
+        )
+
+        # ===== BUSCAR =====
+        safe_action(doc, "Clicando em Pesquisar", lambda:
+            js_engine.force_click(
+                "//a[@class='btModel btGreen btPesquisar boxsize' and normalize-space()='Pesquisar']",
+                by_xpath=True
+            )
+        )
+
+        time.sleep(20)
+        
+       # ===== VALIDAÇÃO DO RESULTADO =====
+
+        # Chama a função para validar se a tabela apareceu
+        if validar_resultado_pesquisa(js_engine):
+            log(doc, "✅ Prosseguindo com o fluxo — tabela carregada com sucesso.")
+        else:
+            log(doc, "⚠️ Nenhum resultado encontrado — encerrando o processo.")
+            return  
+
+        safe_action(doc, "Visualizando Detalhes", lambda: (
+            js_engine.force_click(
+                "//i[@class='sprites sp-dadosDinamicos' and @title='Visualizar Detalhes']",
+                by_xpath=True
+            ),
+            # Aguarda carregamento visual da tela/modal após o clique
+            wait.until(EC.presence_of_element_located((
+                By.XPATH,
+                "//div[contains(@class,'modal') or contains(@class,'detalhes') or contains(@class,'overflow')]"
+            ))),
+            time.sleep(1.5)  # pequena pausa extra pra o print sair certinho
+        ))
+
+        safe_action(doc, "Fechando aba de Detalhes", lambda:
+            fechar_modal_com_retry(doc, js_engine, wait)
+        )
+
+
+        safe_action(doc, "Selecionando Opção: 'Ambas'", lambda:
+            selecionar_opcao_select("//select[@class='tipoParcela']", "Ambas")
+        )
+
+        # ===== BUSCAR =====
+        safe_action(doc, "Clicando em Pesquisar", lambda:
+            js_engine.force_click(
+                "//a[@class='btModel btGreen btPesquisar boxsize' and normalize-space()='Pesquisar']",
+                by_xpath=True
+            )
+        )
+
+        time.sleep(20)
+        
+       # ===== VALIDAÇÃO DO RESULTADO =====
+
+        # Chama a função para validar se a tabela apareceu
+        if validar_resultado_pesquisa(js_engine):
+            log(doc, "✅ Prosseguindo com o fluxo — tabela carregada com sucesso.")
+        else:
+            log(doc, "⚠️ Nenhum resultado encontrado — encerrando o processo.")
+            return  
+
+        safe_action(doc, "Visualizando Detalhes", lambda: (
+            js_engine.force_click(
+                "//i[@class='sprites sp-dadosDinamicos' and @title='Visualizar Detalhes']",
+                by_xpath=True
+            ),
+            # Aguarda carregamento visual da tela/modal após o clique
+            wait.until(EC.presence_of_element_located((
+                By.XPATH,
+                "//div[contains(@class,'modal') or contains(@class,'detalhes') or contains(@class,'overflow')]"
+            ))),
+            time.sleep(1.5)  # pequena pausa extra pra o print sair certinho
+        ))
+
+        safe_action(doc, "Fechando aba de Detalhes", lambda:
+            fechar_modal_com_retry(doc, js_engine, wait)
+        )
+
+        # ===== FECHAR MODAIS =====
+
+        safe_action(doc, "Fechando aba de Geração de Boletos", lambda:
+            js_engine.force_click(
+                "//a[@class='sprites sp-fecharGrande' and @title='Sair']",
                 by_xpath=True
             )
         )
         
-        time.sleep(5)
-        
-        # ===== CONFIRMAR  E RETORNAR AO SISTEMA =====
-        safe_action(doc, "Confirmando", lambda: confirmar_modal_geracao_titulos(js_engine))
-
-
-
-        # ===== FECHAR MODAL =====
+        time.sleep(1)
+    
         safe_action(doc, "Fechando Gestor Financeiro", lambda:
             js_engine.force_click(
                 "#gsFinan > div.wdTop.ui-draggable-handle > div.wdClose > a"
             )
         )
-
-        # ===== VERIFICAR MENSAGEM =====
-        log(doc, "🔍 Verificando mensagens de alerta...")
         
-        encontrar_mensagem_alerta()
-
         log(doc, "🎉 Teste concluído com sucesso!")
         return True
         
@@ -2224,7 +2125,7 @@ def main():
     global doc
     
     try:
-        log(doc, "🚀 Iniciando teste de Geração de Títulos Únicos")
+        log(doc, "🚀 Iniciando teste de Geração de Títulos")
         log(doc, "=" * 70)
         
         sucesso = executar_teste()

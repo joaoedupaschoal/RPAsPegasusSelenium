@@ -35,7 +35,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Gerar Boleto Único - Gestor Financeiro – Cenário 1: Rotina completa de Geração de Título Único")
+doc.add_paragraph("Gerar Boleto Único - Gestor Financeiro – Cenário 3: Rotina completa de Geração de Título Único e cancelamento")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -1517,7 +1517,7 @@ def finalizar_relatorio():
     """Salva relatório e fecha driver"""
     global driver, doc
     
-    nome_arquivo = f"relatorio_geracao_titulos_unicos_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_geracao_titulos_unicos_cenario_3_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     
     try:
         doc.save(nome_arquivo)
@@ -2181,19 +2181,14 @@ def executar_teste():
             )
         )
         
-        # ===== GERAR =====
-        safe_action(doc, "Clicando em Gerar", lambda:
+        # ===== CANCELAR =====
+        safe_action(doc, "Clicando em Cancelar", lambda:
             js_engine.force_click(
-                "//a[@class='btModel btGray btsave' and normalize-space()='Gerar']",
+                "//a[@class='btModel btGray btcancel' and normalize-space()='Cancelar']",
                 by_xpath=True
             )
         )
         
-        time.sleep(5)
-        
-        # ===== CONFIRMAR  E RETORNAR AO SISTEMA =====
-        safe_action(doc, "Confirmando", lambda: confirmar_modal_geracao_titulos(js_engine))
-
 
 
         # ===== FECHAR MODAL =====

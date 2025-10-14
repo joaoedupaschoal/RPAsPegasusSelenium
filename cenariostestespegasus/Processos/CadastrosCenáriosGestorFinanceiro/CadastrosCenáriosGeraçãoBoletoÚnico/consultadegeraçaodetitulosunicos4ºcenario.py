@@ -35,7 +35,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Gerar Boleto Único - Gestor Financeiro – Cenário 1: Rotina completa de Geração de Título Único")
+doc.add_paragraph("Gerar Boleto Único - Gestor Financeiro – Cenário 4: Rotina de validação da mensagem de alerta disparada por causa da obrigatoriedade de filtros")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -1517,7 +1517,7 @@ def finalizar_relatorio():
     """Salva relatório e fecha driver"""
     global driver, doc
     
-    nome_arquivo = f"relatorio_geracao_titulos_unicos_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_geracao_titulos_unicos_cenario_4_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     
     try:
         doc.save(nome_arquivo)
@@ -2087,6 +2087,16 @@ def confirmar_modal_geracao_titulos(js_engine, timeout=12, iframe_xpath=None):
     log(doc, "✅ Retorno à tela principal garantido")
     return True
 
+def clicar_botao_buscar(js_engine):
+    """
+    Clica no botão 'Pesquisar' da tela de Geração de Títulos Únicos.
+    Usa clique forçado via JSForceEngine.
+    """
+    xpath_botao_buscar = "//a[@class='btModel btGray btPesquisarTitulos' and normalize-space()='Pesquisar']"
+
+    safe_action(doc, "Clicando em Buscar múltiplas vezes", lambda:
+        js_engine.force_click(xpath_botao_buscar, by_xpath=True)
+    )
 
 
 # ==== EXECUÇÃO DO TESTE ====
@@ -2138,71 +2148,17 @@ def executar_teste():
         
         time.sleep(5)
         
-        # ===== CONTRATANTE/TITULAR =====
-        safe_action(doc, "Selecionando Pessoa", lambda:
-            lov_handler.open_and_select(
-                btn_index=2,
-                search_text="JOÃO EDUARDO JUSTINO PASCHOAL",
-                result_text="JOÃO EDUARDO JUSTINO PASCHOAL"
-            )
-        )
+ 
         
-        # ===== BUSCAR =====
-        safe_action(doc, "Clicando em Buscar", lambda:
-            js_engine.force_click(
-                "//a[@class='btModel btGray btPesquisarTitulos' and normalize-space()='Pesquisar']",
-                by_xpath=True
-            )
-        )
-        time.sleep(10)
-        
-        
-       # ===== VALIDAÇÃO DO RESULTADO =====
-        resultado_ok = safe_action(
-            doc, 
-            "Validando e selecionando título", 
-            lambda: validar_resultado_pesquisa(js_engine)
-        )
-        
-        if not resultado_ok:
-            log(doc, "❌ Teste interrompido: nenhum título encontrado")
-            return False
-        
-        log(doc, "➡️ Título selecionado, prosseguindo...")
-        
-        # ===== PREENCHIMENTO DOS CAMPOS =====
-        
-        # Data Inicial
-        safe_action(doc, "Preenchendo Vencimento", lambda:
-            js_engine.force_datepicker(
-                "(//input[contains(@class, 'hasDatepicker')])[3]",
-                "09/03/2026",
-                by_xpath=True
-            )
-        )
-        
-        # ===== GERAR =====
-        safe_action(doc, "Clicando em Gerar", lambda:
-            js_engine.force_click(
-                "//a[@class='btModel btGray btsave' and normalize-space()='Gerar']",
-                by_xpath=True
-            )
-        )
-        
-        time.sleep(5)
-        
-        # ===== CONFIRMAR  E RETORNAR AO SISTEMA =====
-        safe_action(doc, "Confirmando", lambda: confirmar_modal_geracao_titulos(js_engine))
+        # ===== CLICANDO EM BUSCAR MÚLTIPLAS VEZES PRA ESTRESSAR O SISTEMA =====
 
-
-
-        # ===== FECHAR MODAL =====
-        safe_action(doc, "Fechando Gestor Financeiro", lambda:
-            js_engine.force_click(
-                "#gsFinan > div.wdTop.ui-draggable-handle > div.wdClose > a"
-            )
-        )
-
+        clicar_botao_buscar(js_engine)
+        clicar_botao_buscar(js_engine)
+        clicar_botao_buscar(js_engine)
+        clicar_botao_buscar(js_engine)
+        clicar_botao_buscar(js_engine)
+        clicar_botao_buscar(js_engine)
+        
         # ===== VERIFICAR MENSAGEM =====
         log(doc, "🔍 Verificando mensagens de alerta...")
         
