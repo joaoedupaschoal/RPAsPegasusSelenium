@@ -2087,276 +2087,275 @@ def encontrar_mensagem_alerta():
     log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
 
-
-def confirmar_modal_e_retornar_sistema(js_engine, seletor_botao="#BtYes", esperado_selector="#gsFinan", timeout=12, iframe_xpath=None):
+def confirmar_modal_e_retornar_sistema(
+    js_engine,
+    botao_xpath: str = "//a[@id='BtYes' and contains(@class,'btyes') and normalize-space()='Sim']",
+    esperado_selector: str = "#gsFinan",
+    timeout: int = 12,
+    iframe_xpath: str = None,
+    remove_overlays: bool = False,   # permanece desativado por padrão
+    doc=None
+):
     """
-    Confirma modal (se existir) e FORÇA retorno IMEDIATO à tela do sistema.
-    Combina: detecção condicional + clique agressivo + limpeza de overlays + validação de retorno.
-    
-    Args:
-        js_engine: instância de JSForceEngine (tem driver, execute_js, force_click, etc.)
-        seletor_botao: seletor CSS do botão a clicar (padrão: #BtYes)
-        esperado_selector: seletor que indica tela principal visível (padrão: #gsFinan)
-        timeout: tempo máximo de espera em segundos
-        iframe_xpath: xpath do iframe se o botão estiver dentro de um
-    
-    Returns:
-        bool: True se retornou com sucesso, False caso contrário
+    Confirma modal (se existir) e força retorno à tela do sistema.
+    CLICA via XPath no botão 'Sim' (#BtYes com class btyes e texto 'Sim').
     """
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.common.by import By
     from selenium.webdriver.common.keys import Keys
     from selenium.webdriver.common.action_chains import ActionChains
+    from selenium.common.exceptions import TimeoutException, StaleElementReferenceException, ElementClickInterceptedException, JavascriptException
     import time
 
     driver = js_engine.driver
     wait = WebDriverWait(driver, 3)
-    
-    log(doc, "🎯 Iniciando confirmação de modal e retorno ao sistema...")
+
+    def _log(msg):
+        try:
+            if doc is not None:
+                log(doc, msg)
+        except:
+            pass
+
+    _log("🎯 Iniciando confirmação de modal e retorno ao sistema (XPath) ...")
 
     try:
-        # ═══════════════════════════════════════════════════════════
-        # FASE 1: PREPARAÇÃO - Volta ao contexto principal
-        # ═══════════════════════════════════════════════════════════
+        # FASE 1: PREPARAÇÃO
         try:
             driver.switch_to.default_content()
         except:
             pass
 
-        # Entra no iframe se especificado
         if iframe_xpath:
             try:
                 wait.until(EC.frame_to_be_available_and_switch_to_it((By.XPATH, iframe_xpath)))
-                log(doc, f"   ✅ Entrou no iframe: {iframe_xpath}")
+                _log(f"   ✅ Entrou no iframe: {iframe_xpath}")
             except Exception as e:
-                log(doc, f"   ⚠️ Não foi possível entrar no iframe: {e}")
+                _log(f"   ⚠️ Não foi possível entrar no iframe: {e}")
 
-        # ═══════════════════════════════════════════════════════════
-        # FASE 2: DETECÇÃO E CLIQUE NO BOTÃO (SE EXISTIR)
-        # ═══════════════════════════════════════════════════════════
-        botao_existe = js_engine.execute_js(f"""
-            var botoes = document.querySelectorAll('{seletor_botao}, a[id="{seletor_botao.replace('#', '')}"], button[id="{seletor_botao.replace('#', '')}"]');
-            var btn = null;
-            
-            for (var i = 0; i < botoes.length; i++) {{
-                var b = botoes[i];
-                var s = getComputedStyle(b);
-                if (b.offsetParent !== null && 
-                    s.display !== 'none' && 
-                    s.visibility !== 'hidden' && 
-                    parseFloat(s.opacity || 1) > 0.01 &&
-                    !b.disabled) {{
-                    btn = b;
-                    break;
-                }}
-            }}
-            
-            return btn !== null;
-        """)
+        # FASE 2: DETECÇÃO E CLIQUE NO BOTÃO (XPATH)
+        try:
+            _log(f"🔎 Aguardando presença do botão via XPath: {botao_xpath}")
+            btn = WebDriverWait(driver, 3).until(
+                EC.presence_of_element_located((By.XPATH, botao_xpath))
+            )
+            _log("   ✅ Botão localizado (presence). Tentando cliques agressivos...")
+        except TimeoutException:
+            _log(f"   ℹ️ Botão não encontrado por XPath. Pulando clique…")
+            btn = None
 
-        if botao_existe:
-            log(doc, f"   ✅ Botão '{seletor_botao}' detectado, executando clique agressivo...")
-            
-            # CLIQUE AGRESSIVO MÚLTIPLO
-            clicado = js_engine.execute_js(f"""
-                var botoes = document.querySelectorAll('{seletor_botao}');
-                var btn = null;
-                
-                for (var i = 0; i < botoes.length; i++) {{
-                    var b = botoes[i];
-                    var s = getComputedStyle(b);
-                    if (b.offsetParent !== null && 
-                        s.display !== 'none' && 
-                        s.visibility !== 'hidden' && 
-                        parseFloat(s.opacity || 1) > 0.01 &&
-                        !b.disabled) {{
-                        btn = b;
-                        break;
-                    }}
-                }}
-                
-                if (!btn) return false;
-                
-                // Scroll e foco
-                btn.scrollIntoView({{block: 'center'}});
-                btn.focus();
-                
-                // Sequência de eventos em rapid-fire
-                ['mouseover', 'mouseenter', 'mousedown', 'mouseup', 'click'].forEach(function(tipo) {{
-                    var evt = new MouseEvent(tipo, {{
-                        bubbles: true,
-                        cancelable: true,
-                        view: window,
-                        detail: 1
-                    }});
-                    btn.dispatchEvent(evt);
-                }});
-                
-                // Click nativo adicional
-                if (btn.click) btn.click();
-                
+        if btn is not None:
+            # Estratégias de clique (em ordem)
+            estrategias = [
+                # 1) clickable + click nativo
+                lambda el: (WebDriverWait(driver, 3).until(EC.element_to_be_clickable((By.XPATH, botao_xpath))), el.click()),
+                # 2) scrollIntoView + click nativo
+                lambda el: (driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el), el.click()),
+                # 3) JS click direto no elemento
+                lambda el: driver.execute_script("arguments[0].click();", el),
+                # 4) Disparo de eventos + click()
+                lambda el: (
+                    driver.execute_script("""
+                        var e = arguments[0];
+                        ['mouseover','mouseenter','mousedown','mouseup','click'].forEach(function(t){
+                            e.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,view:window,detail:1}));
+                        });
+                        if(e.click) e.click();
+                    """, el)
+                ),
+                # 5) Actions
+                lambda el: ActionChains(driver).move_to_element(el).pause(0.1).click().perform(),
+            ]
+
+            clicked = False
+            for i, estrategia in enumerate(estrategias, 1):
+                try:
+                    _log(f"   ▶️ Estratégia {i}/{len(estrategias)} de clique…")
+                    estrategia(btn)
+                    time.sleep(0.25)
+                    _log(f"   ✅ Clique executado (estratégia {i})")
+                    clicked = True
+                    break
+                except (ElementClickInterceptedException, StaleElementReferenceException, JavascriptException, TimeoutException) as e:
+                    _log(f"   ⚠️ Estratégia {i} falhou: {type(e).__name__}")
+                    try:
+                        btn = driver.find_element(By.XPATH, botao_xpath)  # relocaliza
+                    except Exception:
+                        pass
+                except Exception as e:
+                    _log(f"   ⚠️ Erro inesperado na estratégia {i}: {e}")
+                    try:
+                        btn = driver.find_element(By.XPATH, botao_xpath)
+                    except Exception:
+                        pass
+
+            if not clicked:
+                _log("   ❌ Não foi possível clicar no botão 'Sim'. Continuando com fallbacks…")
+
+        # FASE 3: LIMPEZA DE OVERLAYS/MODAIS (OPCIONAL)
+        if remove_overlays:
+            _log("🧹 Removendo overlays e modais (opcional habilitado)…")
+            try:
+                driver.switch_to.default_content()
+            except:
+                pass
+            js_engine.execute_js("""
+                var selectores = [
+                    '.ui-widget-overlay', '.blockUI', '.modal-backdrop',
+                    '.blockScreen', '.overlay', '.loading', '.spinner',
+                    'div.modal.overflow', '.loadingContent'
+                ];
+                selectores.forEach(function(sel) {
+                    document.querySelectorAll(sel).forEach(function(el) {
+                        el.style.display = 'none';
+                        el.style.visibility = 'hidden';
+                        el.style.opacity = '0';
+                        el.style.pointerEvents = 'none';
+                    });
+                });
                 return true;
             """)
-            
-            if clicado:
-                log(doc, "   ✅ Clique executado com sucesso")
-                time.sleep(0.5)  # Pequena pausa para processar
-            else:
-                log(doc, "   ⚠️ Botão não clicável, continuando...")
-        else:
-            log(doc, f"   ℹ️ Botão '{seletor_botao}' não encontrado, pulando clique...")
+            _log("   ✅ Overlays/modais ocultados")
 
-        # ═══════════════════════════════════════════════════════════
-        # FASE 3: LIMPEZA AGRESSIVA DE OVERLAYS/MODAIS
-        # ═══════════════════════════════════════════════════════════
-        log(doc, "🧹 Removendo overlays e modais...")
-        
-        try:
-            driver.switch_to.default_content()
-        except:
-            pass
-
-        js_engine.execute_js("""
-            // Remove todos os overlays conhecidos
-            var selectores = [
-                '.ui-widget-overlay', '.blockUI', '.modal-backdrop', '.blockScreen',
-                '.overlay', '.loading', '.spinner', 'div.modal.overflow',
-                '[class*="overlay"]', '[class*="modal"]', '[class*="loading"]',
-                '.modal', '.ui-dialog', '[role="dialog"]'
-            ];
-            
-            selectores.forEach(function(sel) {
-                document.querySelectorAll(sel).forEach(function(el) {
-                    el.style.display = 'none';
-                    el.style.visibility = 'hidden';
-                    el.style.opacity = '0';
-                    el.style.pointerEvents = 'none';
-                    try { el.remove(); } catch(e) {}
-                });
-            });
-            
-            return true;
-        """)
-        
-        log(doc, "   ✅ Overlays/modais removidos")
-
-        # ═══════════════════════════════════════════════════════════
-        # FASE 4: TENTAR FECHAR MÓDULO (BOTÃO wdClose)
-        # ═══════════════════════════════════════════════════════════
+        # FASE 4: TENTAR FECHAR MÓDULO (wdClose)
         try:
             js_engine.force_click("#gsFinan > div.wdTop.ui-draggable-handle > div.wdClose > a", by_xpath=False, max_attempts=3)
-            log(doc, "   ✅ Botão de fechar do módulo clicado")
+            _log("   ✅ Botão de fechar do módulo clicado")
             time.sleep(0.5)
         except Exception as e:
-            log(doc, f"   ℹ️ Botão de fechar não disponível: {e}")
+            _log(f"   ℹ️ Botão de fechar não disponível: {e}")
 
-        # ═══════════════════════════════════════════════════════════
-        # FASE 5: FALLBACK - ESC
-        # ═══════════════════════════════════════════════════════════
+        # FASE 5: ESC
         try:
             ActionChains(driver).send_keys(Keys.ESCAPE).perform()
             time.sleep(0.3)
-            log(doc, "   ✅ ESC enviado como fallback")
+            _log("   ✅ ESC enviado como fallback")
         except Exception as e:
-            log(doc, f"   ⚠️ Não foi possível enviar ESC: {e}")
+            _log(f"   ⚠️ Não foi possível enviar ESC: {e}")
 
-        # ═══════════════════════════════════════════════════════════
-        # FASE 6: VALIDAÇÃO IMEDIATA DO RETORNO
-        # ═══════════════════════════════════════════════════════════
-        log(doc, f"🔍 Validando presença da tela principal ({esperado_selector})...")
-        
-        # Tentativa imediata
+        # FASE 6: VALIDAÇÃO IMEDIATA
+        _log(f"🔍 Validando presença da tela principal ({esperado_selector})…")
         na_tela = js_engine.execute_js(f"""
             var elemento = document.querySelector('{esperado_selector}');
             if (!elemento) return false;
-            
             var s = getComputedStyle(elemento);
-            return (
-                elemento.offsetParent !== null &&
-                s.display !== 'none' &&
-                s.visibility !== 'hidden' &&
-                parseFloat(s.opacity || 1) > 0.01
-            );
+            return (elemento.offsetParent !== null && s.display !== 'none' && s.visibility !== 'hidden' && parseFloat(s.opacity||1) > 0.01);
         """)
-        
         if na_tela:
-            log(doc, f"✅ Tela principal ({esperado_selector}) confirmada IMEDIATAMENTE")
+            _log(f"✅ Tela principal ({esperado_selector}) confirmada IMEDIATAMENTE")
             return True
 
-        # ═══════════════════════════════════════════════════════════
-        # FASE 7: ESPERA INTELIGENTE (ATÉ timeout)
-        # ═══════════════════════════════════════════════════════════
-        log(doc, f"⏳ Aguardando tela principal aparecer (máx {timeout}s)...")
-        
+        # FASE 7: ESPERA INTELIGENTE
+        _log(f"⏳ Aguardando tela principal aparecer (máx {timeout}s)…")
         t0 = time.time()
         while time.time() - t0 < timeout:
             try:
                 element = driver.find_element(By.CSS_SELECTOR, esperado_selector)
-                visible = js_engine.execute_js(f"""
+                visible = driver.execute_script("""
                     var el = arguments[0];
                     if(!el) return false;
                     var s = window.getComputedStyle(el);
                     return (s.display !== 'none' && s.visibility !== 'hidden' && parseFloat(s.opacity||1) > 0.01);
                 """, element)
-                
                 if visible:
-                    log(doc, f"✅ Tela principal ({esperado_selector}) detectada")
+                    _log(f"✅ Tela principal ({esperado_selector}) detectada")
                     return True
             except:
                 pass
-            
             time.sleep(0.5)
 
-        # ═══════════════════════════════════════════════════════════
-        # FASE 8: ÚLTIMO RECURSO - REFRESH + LIMPEZA FINAL
-        # ═══════════════════════════════════════════════════════════
-        log(doc, "🔄 Último recurso: refresh + limpeza final...")
-        
+        # FASE 8: ÚLTIMO RECURSO — REFRESH
+        _log("🔄 Último recurso: refresh (sem remover modais/overlays)")
         try:
             driver.refresh()
             time.sleep(3)
-            
-            # Limpeza pós-refresh
-            js_engine.execute_js("""
-                document.querySelectorAll('.ui-widget-overlay, .blockUI, .modal-backdrop, .overlay').forEach(function(o){
-                    o.style.display='none'; o.style.visibility='hidden'; o.style.opacity='0';
-                    try { o.remove(); } catch(e) {}
-                });
-            """)
-            
-            # Verifica novamente
             try:
                 element = driver.find_element(By.CSS_SELECTOR, esperado_selector)
-                visible = js_engine.execute_js("""
+                visible = driver.execute_script("""
                     var el = arguments[0];
                     if(!el) return false;
                     var s = window.getComputedStyle(el);
                     return (s.display !== 'none' && s.visibility !== 'hidden' && parseFloat(s.opacity||1) > 0.01);
                 """, element)
-                
                 if visible:
-                    log(doc, f"✅ Tela principal encontrada após refresh ({esperado_selector})")
+                    _log(f"✅ Tela principal encontrada após refresh ({esperado_selector})")
                     return True
             except:
                 pass
-                
         except Exception as e:
-            log(doc, f"⚠️ Falha ao recarregar página: {e}")
+            _log(f"⚠️ Falha ao recarregar página: {e}")
 
-        # ═══════════════════════════════════════════════════════════
-        # RESULTADO FINAL
-        # ═══════════════════════════════════════════════════════════
-        log(doc, "❌ Não foi possível confirmar retorno à tela do sistema")
+        _log("❌ Não foi possível confirmar retorno à tela do sistema")
         return False
 
     except Exception as e:
-        log(doc, f"❌ Erro em confirmar_modal_e_retornar_sistema: {e}")
+        _log(f"❌ Erro em confirmar_modal_e_retornar_sistema: {e}")
         import traceback
-        log(doc, f"   Traceback: {traceback.format_exc()}")
+        _log(f"   Traceback: {traceback.format_exc()}")
         return False
 
 
+def clicar_ok_e_verificar_modal_confirmacao(
+    max_tentativas: int = 5,
+    timeout_click: int = 10,
+    timeout_confirmacao: int = 5,
+    scroll: bool = True,
+    indice_ok: int = None  # 👈 novo parâmetro opcional
+):
+    """
+    Se 'indice_ok' for informado, clica apenas nesse botão.
+    Caso contrário, tenta todos até achar o modal de confirmação.
+    """
+    def acao():
+        locator_ok_base = "//a[@class='btModel btGray btok' and normalize-space()='Ok']"
+        locator_modal_root = "//div[contains(@class,'modal') and contains(@class,'overflow')]"
+        locator_btn_sim = f"{locator_modal_root}//a[(@id='BtYes' or contains(@class,'btyes')) and normalize-space()='Sim']"
+
+        botoes = driver.find_elements(By.XPATH, locator_ok_base)
+        if not botoes:
+            raise Exception("Nenhum botão 'Ok' encontrado no DOM.")
+
+        total_botoes = len(botoes)
+
+        # 🔹 Se índice for especificado, clica somente nele
+        indices = [indice_ok - 1] if indice_ok is not None else range(total_botoes)
+
+        for idx in indices:
+            log(doc, f"🎯 Tentando botão Ok #{idx + 1} de {total_botoes}...")
+            locator_ok = f"({locator_ok_base})[{idx + 1}]"
+            elemento = driver.find_element(By.XPATH, locator_ok)
+
+            # Estratégias iguais às suas
+            estrategias_ok = [
+                lambda el: (WebDriverWait(driver, timeout_click).until(EC.element_to_be_clickable((By.XPATH, locator_ok))), el.click()),
+                lambda el: (driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el), el.click()),
+                lambda el: driver.execute_script("arguments[0].click();", el),
+                lambda el: ActionChains(driver).move_to_element(el).pause(0.1).click().perform()
+            ]
+
+            for i, estrategia in enumerate(estrategias_ok, 1):
+                try:
+                    log(doc, f"   ▶️ Estratégia {i}/4 de clique...")
+                    estrategia(elemento)
+                    log(doc, f"✅ Clique executado (estratégia {i}).")
+                    break
+                except Exception as e:
+                    log(doc, f"⚠️ Estratégia {i} falhou: {e}")
+
+            # Após clicar, verifica o modal
+            try:
+                WebDriverWait(driver, timeout_confirmacao).until(
+                    EC.presence_of_element_located((By.XPATH, locator_btn_sim))
+                )
+                log(doc, "✅ Modal de confirmação detectado.")
+                return True
+            except TimeoutException:
+                log(doc, "ℹ️ Modal de confirmação não detectado.")
+
+        return False
+
+    return acao
 
 
 def selecionar_opcao_por_indice(
@@ -2794,23 +2793,41 @@ def executar_teste():
         
         safe_action(doc, "Selecionando Conta Bancária", 
     selecionar_opcao_por_indice(
-        indice_select=0,
+        indice_select=1,
         indice_opcao=1,
-        xpath_customizado="//div[@class='form-group']//select[@name='tipo']"
+        xpath_customizado="//select[@class='contaBancaria' and @style='width: 360px;' and @rev='10']"
     ))
 
-        safe_action(doc, "Selecionando Conta Bancária", lambda:
-            selecionar_opcao_select("//select[@class='contaBancaria' and @style='width: 360px;' and @rev='10']", "TESTE CONTA BANCÁRIA SELENIUM AUTOMATIZADO")
+        safe_action(doc, "Selecionando Instrução Alternativa", 
+    selecionar_opcao_por_indice(
+        indice_select=1,
+        indice_opcao=1,
+        xpath_customizado="//select[@class='instrucaoBoleto' and @style='width: 360px; padding-top: 10px;']"
+    ))
+
+
+        safe_action(
+            doc,
+            "Clicando em 'Ok' ",
+            clicar_ok_e_verificar_modal_confirmacao(indice_ok=5)
         )
 
-        safe_action(doc, "Selecionando Instrução Alternativa", lambda:
-            selecionar_opcao_select("//select[@class='contaBancaria' and @style='width: 360px;' and @rev='10']", "TESTE NOME SELENIUM AUTOMATIZADO")
+        time.sleep(5)
+
+        safe_action(
+            doc,
+            "Confirmando modal e voltando ao sistema",
+            lambda: confirmar_modal_e_retornar_sistema(
+                js_engine,
+                botao_xpath="//a[@class='btModel btGray btyes' and @id='BtYes' and normalize-space()='Sim']",
+                esperado_selector="#gsFinan",
+                timeout=12,
+                iframe_xpath=None,         # se estiver dentro de um iframe, passe aqui o xpath dele
+                remove_overlays=False,     # mantém sem remover overlays
+                doc=doc
+            ) or True
         )
 
-                # Uso específico para salvamento:
-        safe_action_enhanced(driver, doc, "Confirmando salvamento", lambda: 
-            confirmar_modal_e_retornar_sistema(js_engine)
-        )
 
         time.sleep(3)
         encontrar_mensagem_alerta()
