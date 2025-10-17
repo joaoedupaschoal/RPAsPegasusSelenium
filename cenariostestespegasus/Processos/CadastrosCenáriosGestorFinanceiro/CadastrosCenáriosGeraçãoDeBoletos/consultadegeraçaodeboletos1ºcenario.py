@@ -28,7 +28,7 @@ TIMEOUT_DEFAULT = 30
 TIMEOUT_CURTO = 10
 TIMEOUT_LONGO = 60
 CAMINHO_ARQUIVO_UPLOAD = "C:/Users/Gold System/Documents/teste.png"
-URL = "http://localhost:8080/gs/login.xhtml"
+URL = "https://andromeda.erp-pegasus.com.br/gs/login.xhtml"
 LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
 LOGIN_PASSWORD = "071999gs"
 
@@ -110,7 +110,194 @@ def take_screenshot(driver, doc, nome):
         except Exception as e:
             log(doc, f"⚠️ Erro ao tirar screenshot {nome}: {e}")
 
-# ==== NÚCLEO ROBUSTO: JAVASCRIPT FORÇADO ====
+
+
+
+
+
+def executar_fluxo_boletos(js_engine, doc,
+                           indice_ok=5,
+                           xpath_select_conta="//select[@class='contaBancaria' and @style='width: 360px;' and @rev='10']",
+                           xpath_select_instrucao="//select[@class='instrucaoBoleto' and @style='width: 360px; padding-top: 10px;']",
+                           idx_select_conta=1, idx_opcao_conta=1,
+                           idx_select_instr=1, idx_opcao_instr=1,
+                           screenshot_final=True):
+    """
+    Fluxo completo com tratamento do modal 'Existe(m) título(s) de Plano Empresa':
+      1) Valida tabela; se houver linhas, abre/printa/fecha Detalhes.
+      2) Clica em 'Boleto Pegasus'.
+         2.1) Se surgir o modal .telaModalTitulosPlanoEmpresa:
+              - Fecha SOMENTE esse modal (sem índice) e segue o fluxo.
+      3) Seleciona 'Carnê', Conta, Instrução, clica Ok, confirma e retorna.
+    Requisitos: safe_action, log, take_screenshot, validar_resultado_pesquisa,
+                selecionar_opcao_por_indice, clicar_ok_e_verificar_modal_confirmacao,
+                confirmar_modal_e_retornar_sistema, fechar_modal_com_retry.
+    """
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    import time
+
+    driver = js_engine.driver
+    wait = WebDriverWait(driver, 10)
+
+    log(doc, "🚀 Iniciando fluxo completo de geração de boletos...")
+
+    # ===== 1) VALIDAÇÃO DO RESULTADO =====
+    if not validar_resultado_pesquisa(js_engine):
+        log(doc, "⚠️ Nenhum resultado encontrado — encerrando o processo.")
+        return
+    log(doc, "✅ Prosseguindo com o fluxo — tabela carregada com sucesso.")
+
+    # Conta linhas
+    try:
+        linhas = driver.find_elements(
+            By.XPATH,
+            "//table[(contains(@class,'niceTable padding10') or contains(@id,'tabela') or contains(@class,'dataTable'))]"
+            "/tbody/tr[not(contains(@class,'empty')) and not(contains(@style,'display: none'))]"
+        )
+        qtd_linhas = len(linhas)
+        log(doc, f"📄 Total de títulos encontrados: {qtd_linhas}")
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao contar títulos: {e}")
+        qtd_linhas = 0
+
+    # Detalhes (opcional)
+    if qtd_linhas > 0:
+        log(doc, "🔍 Abrindo modal de detalhes do primeiro título...")
+        safe_action(doc, "Visualizando Detalhes", lambda: js_engine.force_click(
+            "//i[@class='sprites sp-dadosDinamicos' and @title='Visualizar Detalhes']",
+            by_xpath=True
+        ))
+        try:
+            wait.until(EC.presence_of_element_located((
+                By.XPATH,
+                "//div[contains(@class,'modal') or contains(@class,'detalhes') or contains(@class,'overflow')]"
+            )))
+            time.sleep(1.2)
+            take_screenshot(driver, doc, "Modal_Detalhes_Aberto")
+            log(doc, "📸 Screenshot capturado com o modal aberto.")
+        except Exception as e:
+            log(doc, f"⚠️ Não foi possível confirmar a abertura do modal de detalhes: {e}")
+        safe_action(doc, "Fechando modal de Detalhes", lambda: fechar_modal_com_retry(doc, js_engine, wait))
+    else:
+        log(doc, "⚠️ Nenhum título encontrado — prosseguindo sem abrir detalhes.")
+
+    # ===== 2) BOLETO PEGASUS + TRATAMENTO DO MODAL 'PLANO EMPRESA' =====
+    safe_action(doc, "Clicando em 'Boleto Pegasus'", lambda: js_engine.force_click(
+        "//a[@class='btModel btShort btLight boletoPegasus' and normalize-space(text())='Boleto Pegasus']"
+        "/i[@class='fa fa-barcode']/parent::a",
+        by_xpath=True
+    ))
+
+    time.sleep(0.6)
+
+    plano_empresa_modal = None
+    try:
+        plano_empresa_modal = WebDriverWait(driver, 2).until(
+            EC.presence_of_element_located((
+                By.XPATH,
+                "//div[contains(@class,'modal') and contains(@class,'overflow')][.//div[contains(@class,'telaModalTitulosPlanoEmpresa')]]"
+            ))
+        )
+    except Exception:
+        plano_empresa_modal = None
+
+    if plano_empresa_modal:
+        log(doc, "🧾 Detectado modal de 'Plano Empresa' após clicar em Boleto Pegasus. Fechando e seguindo o fluxo.")
+
+        fechou = False
+        try:
+            # 🔄 Substituído seletor do botão Fechar
+            btn_fechar = plano_empresa_modal.find_element(
+                By.XPATH,
+                ".//a[@class='btModel btGray' and normalize-space(text())='Fechar']"
+            )
+            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn_fechar)
+            try:
+                btn_fechar.click()
+                fechou = True
+            except Exception:
+                driver.execute_script("arguments[0].click();", btn_fechar)
+                fechou = True
+        except Exception:
+            pass
+
+        # se não conseguir, tenta o 'X' (fa fa-close)
+        if not fechou:
+            try:
+                x_close = plano_empresa_modal.find_element(By.XPATH, ".//a[@class='fa fa-close']")
+                driver.execute_script("arguments[0].scrollIntoView({block:'center'});", x_close)
+                try:
+                    x_close.click()
+                except Exception:
+                    driver.execute_script("arguments[0].click();", x_close)
+            except Exception as e:
+                log(doc, f"❌ Não foi possível fechar o modal de Plano Empresa: {e}")
+
+        try:
+            WebDriverWait(driver, 5).until_not(EC.presence_of_element_located((
+                By.XPATH,
+                "//div[contains(@class,'telaModalTitulosPlanoEmpresa')]"
+            )))
+        except Exception:
+            pass
+
+        log(doc, "ℹ️ Modal de Plano Empresa fechado. Prosseguindo com a geração.")
+
+    # ===== 3) FLUXO NORMAL DE GERAÇÃO DO BOLETO =====
+    safe_action(doc, "Selecionando a opção 'Carnê'", lambda: js_engine.force_click(
+        "//li[@tabindex='1' and @ref='carne' and @rel='undefined' and normalize-space(text())='Carne']",
+        by_xpath=True
+    ))
+
+    safe_action(doc, "Selecionando Conta Bancária",
+        selecionar_opcao_por_indice(
+            indice_select=idx_select_conta,
+            indice_opcao=idx_opcao_conta,
+            xpath_customizado=xpath_select_conta
+        )
+    )
+
+    safe_action(doc, "Selecionando Instrução Alternativa",
+        selecionar_opcao_por_indice(
+            indice_select=idx_select_instr,
+            indice_opcao=idx_opcao_instr,
+            xpath_customizado=xpath_select_instrucao
+        )
+    )
+
+    safe_action(doc, "Clicando em 'Ok'",
+        clicar_ok_e_verificar_modal_confirmacao(indice_ok=indice_ok)
+    )
+
+    time.sleep(10)
+
+
+    safe_action(doc, "Confirmar ou detectar relatório", lambda:
+        confirmar_ou_detectar_relatorio(js_engine, timeout_modal=6, timeout_aba=12)
+    )
+
+
+
+
+    indice = 1
+
+    safe_action(doc, f"Confirmando o envio de boletos por E-mail", lambda:
+        js_engine.force_click(
+            f"(//a[@class='btModel btGray btok' and normalize-space()='Ok'])[{indice}]",
+            by_xpath=True
+        )
+    )
+    time.sleep(2.5)
+    encontrar_mensagem_alerta()
+
+
+    if screenshot_final:
+        time.sleep(1.0)
+        take_screenshot(driver, doc, "Retorno_Tela_Sistema")
+
+    log(doc, "✅ Fluxo concluído com sucesso.")
 
 
 def abrir_modal_e_selecionar_js_puro(
@@ -1459,6 +1646,77 @@ def safe_action(doc, descricao, func, max_retries=3):
     
     return False
 
+def fechar_abas_boletos(js_engine, doc):
+    """
+    Fecha a aba de Geração de Boletos e o módulo Gestor Financeiro,
+    garantindo que o fechamento só ocorra se houver boletos gerados.
+    """
+    import time
+
+    driver = js_engine.driver
+    try:
+        # 🔹 Verifica se há algum boleto aberto (ou aba secundária)
+        handles = driver.window_handles
+        if len(handles) > 1:
+            log(doc, f"🔎 {len(handles) - 1} aba(s) nova(s) detectada(s). Tentando fechar após gerar boletos.")
+            for h in handles[1:]:
+                driver.switch_to.window(h)
+                try:
+                    safe_action(doc, "Fechando aba de Geração de Boletos", lambda:
+                        js_engine.force_click(
+                            "//a[@class='sprites sp-fecharGrande' and @title='Sair']",
+                            by_xpath=True
+                        )
+                    )
+                    time.sleep(1)
+                except Exception as e:
+                    log(doc, f"⚠️ Falha ao fechar aba de Geração de Boletos: {e}")
+                finally:
+                    try:
+                        driver.close()
+                    except:
+                        pass
+            driver.switch_to.window(handles[0])
+        else:
+            log(doc, "ℹ️ Nenhuma aba de boleto detectada. Ignorando fechamento.")
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao verificar/fechar abas de boletos: {e}")
+
+    # 🔹 Fecha o módulo Gestor Financeiro se ainda estiver aberto
+    try:
+        safe_action(doc, "Fechando Gestor Financeiro", lambda:
+            js_engine.force_click(
+                "#gsFinan > div.wdTop.ui-draggable-handle > div.wdClose > a"
+            )
+        )
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao fechar Gestor Financeiro: {e}")
+
+
+def fechar_abas_padrao(js_engine, doc):
+    """
+    Fecha apenas as abas principais (sem boletos gerados).
+    Utilizado quando não há geração de boletos ou relatórios.
+    """
+    import time
+
+    try:
+        safe_action(doc, "Fechando aba de Geração de Boletos", lambda:
+            js_engine.force_click(
+                "//a[@class='sprites sp-fecharGrande' and @title='Sair']",
+                by_xpath=True
+            )
+        )
+        time.sleep(1)
+
+        safe_action(doc, "Fechando Gestor Financeiro", lambda:
+            js_engine.force_click(
+                "#gsFinan > div.wdTop.ui-draggable-handle > div.wdClose > a"
+            )
+        )
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao fechar abas padrão: {e}")
+
 
 def inicializar_driver():
     """Inicializa WebDriver com configurações otimizadas"""
@@ -2087,23 +2345,165 @@ def encontrar_mensagem_alerta():
     log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
 
+# =========================
+# HELPERS DE FECHAMENTO/CLICK
+# =========================
+def fechar_modal_geracao_boletos(js_engine, doc):
+    """
+    Fecha o modal/aba de Geração de Boletos dentro do sistema (ícone 'Sair').
+    """
+    safe_action(doc, "Fechando modal de Geração de Boletos", lambda:
+        js_engine.force_click(
+            "//a[@class='sprites sp-fecharGrande' and @title='Sair']",
+            by_xpath=True
+        )
+    )
+
+def fechar_modal_gestor_financeiro(js_engine, doc):
+    """
+    Fecha o modal do Gestor Financeiro (botão X do cabeçalho da janela).
+    """
+    safe_action(doc, "Fechando Gestor Financeiro", lambda:
+        js_engine.force_click(
+            "#gsFinan > div.wdTop.ui-draggable-handle > div.wdClose > a"
+        )
+    )
+
+def clicar_cancelar_por_indice(js_engine, doc, indice: int = 1):
+    """
+    Clica no botão 'Cancelar' pelo índice (1-based) quando houver múltiplos.
+    """
+    from selenium.common.exceptions import WebDriverException
+    import time
+
+    xpath = f"(//a[contains(@class,'btModel') and contains(@class,'btGray') and contains(@class,'btcancel')])[{indice}]"
+    try:
+        safe_action(doc, f"Clicando em 'Cancelar' (índice {indice})", lambda:
+            js_engine.force_click(xpath, by_xpath=True)
+        )
+        time.sleep(0.8)
+    except WebDriverException as e:
+        try:
+            log(doc, f"⚠️ Falha ao clicar em Cancelar (índice {indice}): {e}")
+        except:
+            pass
+
+
+def confirmar_ou_detectar_relatorio(js_engine, timeout_modal=6, timeout_aba=10, fechar_modal_gestores=True):
+    """
+    1) Se o modal de confirmação existir, clica em 'Sim' e valida o fechamento.
+    2) Se o modal NÃO existir, valida se abriu uma nova aba/janela (relatório).
+    Retorna True nas duas situações de sucesso.
+    """
+    driver = js_engine.driver
+
+    # 0) Snapshot dos handles antes
+    handles_antes = driver.window_handles[:]
+
+    # 1) Tenta localizar rapidamente o modal de confirmação
+    try:
+        modal_existe = js_engine.execute_js("""
+            var modals = document.querySelectorAll('div.modal.overflow');
+            for (var i=0;i<modals.length;i++){
+                var m = modals[i];
+                var s = getComputedStyle(m);
+                var vis = (m.offsetParent!==null && s.display!=='none' && s.visibility!=='hidden' && parseFloat(s.opacity||1)>0.01);
+                if(!vis) continue;
+                var txt = (m.innerText||'').toLowerCase();
+                if (txt.indexOf('confirme a geração de títulos') !== -1
+                 || txt.indexOf('deseja prosseguir') !== -1
+                 || txt.indexOf('deseja continuar') !== -1) { 
+                    // marca o botão 'Sim' para clique
+                    var btn = m.querySelector('a.btModel.btGray.btyes') || m.querySelector('a.btyes');
+                    if(btn){ btn.setAttribute('data-aim','confirm-yes'); return true; }
+                }
+            }
+            return false;
+        """)
+    except Exception:
+        modal_existe = False
+
+    # 2) Se existe modal: confirma e valida que fechou
+    if modal_existe:
+        try:
+            js_engine.force_click("[data-aim='confirm-yes']", by_xpath=False)
+        except Exception:
+            js_engine.force_click("//a[contains(@class,'btyes') and normalize-space()='Sim']", by_xpath=True)
+
+        js_engine.wait_ajax_complete(8)
+
+        # aguarda sumir
+        fim = time.time() + timeout_modal
+        while time.time() < fim:
+            ainda_visivel = js_engine.execute_js("""
+                var m = document.querySelector("div.modal.overflow");
+                if(!m) return false;
+                var s = getComputedStyle(m);
+                return (m.offsetParent!==null && s.display!=='none' && s.visibility!=='hidden' && parseFloat(s.opacity||1)>0.01);
+            """)
+            if not ainda_visivel:
+                break
+            time.sleep(0.2)
+
+        # limpa atributo temporário
+        js_engine.execute_js("var b=document.querySelector('[data-aim=\"confirm-yes\"]'); if(b) b.removeAttribute('data-aim');")
+
+        return True  # ✅ confirmou modal
+
+    # 3) Se NÃO existe modal: aguarda abrir nova aba/janela (relatório)
+    fim = time.time() + timeout_aba
+    while time.time() < fim:
+        handles_depois = driver.window_handles[:]
+        if len(handles_depois) > len(handles_antes):
+            # opcional: focar no relatório e voltar
+            try:
+                nova = list(set(handles_depois) - set(handles_antes))[0]
+                driver.switch_to.window(nova)
+                # aqui você pode fazer um take_screenshot se quiser
+                # depois voltar para a aba original (opcional)
+                driver.switch_to.window(handles_antes[0])
+            except Exception:
+                pass
+            return True  # ✅ relatório abriu sem modal
+        time.sleep(0.3)
+
+    # 4) Nem modal nem aba nova? considera falha
+    return False
+
+
+# =========================
+# FLUXO PRINCIPAL COM DOIS CENÁRIOS
+# =========================
 def confirmar_modal_e_retornar_sistema(
     js_engine,
     botao_xpath: str = "//a[@id='BtYes' and contains(@class,'btyes') and normalize-space()='Sim']",
     esperado_selector: str = "#gsFinan",
     timeout: int = 12,
     iframe_xpath: str = None,
-    remove_overlays: bool = False,   # permanece desativado por padrão
-    doc=None
+    remove_overlays: bool = False,
+    doc=None,
+    verificar_nova_aba: bool = True,
+    tempo_espera_aba: int = 3,
+    indice_cancelar: int = 8  # usado no cenário SEM geração de boleto
 ):
     """
-    Confirma modal (se existir) e força retorno à tela do sistema.
-    CLICA via XPath no botão 'Sim' (#BtYes com class btyes e texto 'Sim').
+    Confirma modal (se existir) e processa 2 cenários:
+
+    1) GEROU boleto (nova aba detectada):
+       - Volta ao sistema
+       - encontrar_mensagem_alerta()
+       - Fecha modal de Geração de Boletos
+       - Fecha modal de Gestor Financeiro
+
+    2) NÃO GEROU:
+       - encontrar_mensagem_alerta()
+       - Clica em Cancelar por índice
+       - Fecha modal de Geração de Boletos
+       - Fecha modal de Gestor Financeiro
     """
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.common.by import By
-    from selenium.webdriver.common.keys import Keys
     from selenium.webdriver.common.action_chains import ActionChains
     from selenium.common.exceptions import TimeoutException, StaleElementReferenceException, ElementClickInterceptedException, JavascriptException
     import time
@@ -2118,10 +2518,10 @@ def confirmar_modal_e_retornar_sistema(
         except:
             pass
 
-    _log("🎯 Iniciando confirmação de modal e retorno ao sistema (XPath) ...")
+    _log("🎯 Iniciando confirmação de modal e verificação de nova aba...")
 
     try:
-        # FASE 1: PREPARAÇÃO
+        # FASE 1: PREPARAÇÃO / IFRAME
         try:
             driver.switch_to.default_content()
         except:
@@ -2134,44 +2534,37 @@ def confirmar_modal_e_retornar_sistema(
             except Exception as e:
                 _log(f"   ⚠️ Não foi possível entrar no iframe: {e}")
 
-        # FASE 2: DETECÇÃO E CLIQUE NO BOTÃO (XPATH)
+        # Snapshot de abas antes do clique
+        abas_iniciais = driver.window_handles
+        num_abas_iniciais = len(abas_iniciais)
+        _log(f"📊 Abas antes do clique: {num_abas_iniciais} | Handles: {abas_iniciais}")
+
+        # FASE 2: CLIQUE 'SIM'
+        clicked = False
         try:
-            _log(f"🔎 Aguardando presença do botão via XPath: {botao_xpath}")
+            _log(f"🔎 Aguardando botão via XPath: {botao_xpath}")
             btn = WebDriverWait(driver, 3).until(
                 EC.presence_of_element_located((By.XPATH, botao_xpath))
             )
             _log("   ✅ Botão localizado (presence). Tentando cliques agressivos...")
-        except TimeoutException:
-            _log(f"   ℹ️ Botão não encontrado por XPath. Pulando clique…")
-            btn = None
 
-        if btn is not None:
-            # Estratégias de clique (em ordem)
             estrategias = [
-                # 1) clickable + click nativo
                 lambda el: (WebDriverWait(driver, 3).until(EC.element_to_be_clickable((By.XPATH, botao_xpath))), el.click()),
-                # 2) scrollIntoView + click nativo
                 lambda el: (driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el), el.click()),
-                # 3) JS click direto no elemento
                 lambda el: driver.execute_script("arguments[0].click();", el),
-                # 4) Disparo de eventos + click()
-                lambda el: (
-                    driver.execute_script("""
+                lambda el: driver.execute_script("""
                         var e = arguments[0];
                         ['mouseover','mouseenter','mousedown','mouseup','click'].forEach(function(t){
                             e.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,view:window,detail:1}));
                         });
                         if(e.click) e.click();
-                    """, el)
-                ),
-                # 5) Actions
+                """, el),
                 lambda el: ActionChains(driver).move_to_element(el).pause(0.1).click().perform(),
             ]
 
-            clicked = False
             for i, estrategia in enumerate(estrategias, 1):
                 try:
-                    _log(f"   ▶️ Estratégia {i}/{len(estrategias)} de clique…")
+                    _log(f"   ▶️ Estratégia {i}/{len(estrategias)}")
                     estrategia(btn)
                     time.sleep(0.25)
                     _log(f"   ✅ Clique executado (estratégia {i})")
@@ -2180,113 +2573,152 @@ def confirmar_modal_e_retornar_sistema(
                 except (ElementClickInterceptedException, StaleElementReferenceException, JavascriptException, TimeoutException) as e:
                     _log(f"   ⚠️ Estratégia {i} falhou: {type(e).__name__}")
                     try:
-                        btn = driver.find_element(By.XPATH, botao_xpath)  # relocaliza
-                    except Exception:
+                        btn = driver.find_element(By.XPATH, botao_xpath)
+                    except:
                         pass
                 except Exception as e:
                     _log(f"   ⚠️ Erro inesperado na estratégia {i}: {e}")
                     try:
                         btn = driver.find_element(By.XPATH, botao_xpath)
-                    except Exception:
+                    except:
                         pass
 
             if not clicked:
-                _log("   ❌ Não foi possível clicar no botão 'Sim'. Continuando com fallbacks…")
+                _log("   ❌ Não foi possível clicar no 'Sim'. Continuando com fallbacks…")
 
-        # FASE 3: LIMPEZA DE OVERLAYS/MODAIS (OPCIONAL)
-        if remove_overlays:
-            _log("🧹 Removendo overlays e modais (opcional habilitado)…")
-            try:
-                driver.switch_to.default_content()
-            except:
-                pass
-            js_engine.execute_js("""
-                var selectores = [
-                    '.ui-widget-overlay', '.blockUI', '.modal-backdrop',
-                    '.blockScreen', '.overlay', '.loading', '.spinner',
-                    'div.modal.overflow', '.loadingContent'
-                ];
-                selectores.forEach(function(sel) {
-                    document.querySelectorAll(sel).forEach(function(el) {
-                        el.style.display = 'none';
-                        el.style.visibility = 'hidden';
-                        el.style.opacity = '0';
-                        el.style.pointerEvents = 'none';
-                    });
-                });
-                return true;
-            """)
-            _log("   ✅ Overlays/modais ocultados")
+        except TimeoutException:
+            _log("   ℹ️ Botão 'Sim' não encontrado. Prosseguindo (sem clique).")
 
-        # FASE 4: TENTAR FECHAR MÓDULO (wdClose)
-        try:
-            js_engine.force_click("#gsFinan > div.wdTop.ui-draggable-handle > div.wdClose > a", by_xpath=False, max_attempts=3)
-            _log("   ✅ Botão de fechar do módulo clicado")
-            time.sleep(0.5)
-        except Exception as e:
-            _log(f"   ℹ️ Botão de fechar não disponível: {e}")
+        # FASE 3: CENÁRIOS (com/sem nova aba)
+        if verificar_nova_aba and clicked:
+            _log(f"⏳ Aguardando {tempo_espera_aba}s para detectar nova aba...")
+            nova_aba_detectada, nova_handle = False, None
+            t0 = time.time()
 
-        # FASE 5: ESC
-        try:
-            ActionChains(driver).send_keys(Keys.ESCAPE).perform()
-            time.sleep(0.3)
-            _log("   ✅ ESC enviado como fallback")
-        except Exception as e:
-            _log(f"   ⚠️ Não foi possível enviar ESC: {e}")
+            while time.time() - t0 < tempo_espera_aba:
+                time.sleep(0.5)
+                abas_atuais = driver.window_handles
+                if len(abas_atuais) > num_abas_iniciais:
+                    nova_aba_detectada = True
+                    nova_handle = [h for h in abas_atuais if h not in abas_iniciais]
+                    _log(f"✅ Nova aba detectada! Handles atuais: {abas_atuais} | Nova: {nova_handle}")
+                    break
 
-        # FASE 6: VALIDAÇÃO IMEDIATA
-        _log(f"🔍 Validando presença da tela principal ({esperado_selector})…")
-        na_tela = js_engine.execute_js(f"""
-            var elemento = document.querySelector('{esperado_selector}');
-            if (!elemento) return false;
-            var s = getComputedStyle(elemento);
-            return (elemento.offsetParent !== null && s.display !== 'none' && s.visibility !== 'hidden' && parseFloat(s.opacity||1) > 0.01);
-        """)
-        if na_tela:
-            _log(f"✅ Tela principal ({esperado_selector}) confirmada IMEDIATAMENTE")
-            return True
+            if nova_aba_detectada:
+                # ========== CENÁRIO 1: GEROU BOLETO ==========
+                _log("🟢 Cenário GEROU boleto: voltar ao sistema, tratar alerta e fechar modais.")
+                try:
+                    driver.switch_to.window(abas_iniciais[0])  # volta p/ aba principal
+                except:
+                    pass
+                try:
+                    driver.switch_to.default_content()
+                except:
+                    pass
 
-        # FASE 7: ESPERA INTELIGENTE
-        _log(f"⏳ Aguardando tela principal aparecer (máx {timeout}s)…")
-        t0 = time.time()
-        while time.time() - t0 < timeout:
-            try:
-                element = driver.find_element(By.CSS_SELECTOR, esperado_selector)
-                visible = driver.execute_script("""
-                    var el = arguments[0];
-                    if(!el) return false;
-                    var s = window.getComputedStyle(el);
-                    return (s.display !== 'none' && s.visibility !== 'hidden' && parseFloat(s.opacity||1) > 0.01);
-                """, element)
-                if visible:
-                    _log(f"✅ Tela principal ({esperado_selector}) detectada")
-                    return True
-            except:
-                pass
-            time.sleep(0.5)
+                # 1) encontrar_mensagem_alerta()
+                try:
+                    encontrar_mensagem_alerta()  # assume que a função já existe no seu projeto
+                except Exception as e:
+                    _log(f"⚠️ encontrar_mensagem_alerta() falhou: {e}")
 
-        # FASE 8: ÚLTIMO RECURSO — REFRESH
-        _log("🔄 Último recurso: refresh (sem remover modais/overlays)")
-        try:
-            driver.refresh()
-            time.sleep(3)
-            try:
-                element = driver.find_element(By.CSS_SELECTOR, esperado_selector)
-                visible = driver.execute_script("""
-                    var el = arguments[0];
-                    if(!el) return false;
-                    var s = window.getComputedStyle(el);
-                    return (s.display !== 'none' && s.visibility !== 'hidden' && parseFloat(s.opacity||1) > 0.01);
-                """, element)
-                if visible:
-                    _log(f"✅ Tela principal encontrada após refresh ({esperado_selector})")
-                    return True
-            except:
-                pass
-        except Exception as e:
-            _log(f"⚠️ Falha ao recarregar página: {e}")
+                # 2) Fecha modal de geração de boletos
+                try:
+                    fechar_modal_geracao_boletos(js_engine, doc)
+                except Exception as e:
+                    _log(f"⚠️ Falha ao fechar modal de geração: {e}")
 
-        _log("❌ Não foi possível confirmar retorno à tela do sistema")
+                # 3) Fecha modal do gestor financeiro
+                try:
+                    fechar_modal_gestor_financeiro(js_engine, doc)
+                except Exception as e:
+                    _log(f"⚠️ Falha ao fechar Gestor Financeiro: {e}")
+
+                # limpeza opcional
+                if remove_overlays:
+                    try:
+                        driver.switch_to.default_content()
+                    except:
+                        pass
+                    try:
+                        js_engine.execute_js("""
+                            document.querySelectorAll('.ui-widget-overlay,.blockUI,.modal-backdrop,.blockScreen,.overlay,.loading,.spinner,div.modal.overflow,.loadingContent')
+                              .forEach(el=>{el.style.display='none';el.style.visibility='hidden';el.style.opacity='0';el.style.pointerEvents='none';});
+                            return true;
+                        """)
+                    except:
+                        pass
+
+                # valida retorno
+                try:
+                    ok = js_engine.execute_js(f"""
+                        var el = document.querySelector('{esperado_selector}');
+                        if(!el) return false;
+                        var s = getComputedStyle(el);
+                        return (el.offsetParent!==null && s.display!=='none' && s.visibility!=='hidden' && parseFloat(s.opacity||1)>0.01);
+                    """)
+                    if ok:
+                        _log(f"✅ Retorno à tela principal detectado: {esperado_selector}")
+                        return True
+                except:
+                    pass
+
+                # espera extra
+                _log(f"⏳ Aguardando tela principal (máx {timeout}s)…")
+                t1 = time.time()
+                while time.time() - t1 < timeout:
+                    try:
+                        el = driver.find_element(By.CSS_SELECTOR, esperado_selector)
+                        vis = driver.execute_script("""
+                            var el=arguments[0],s=getComputedStyle(el);
+                            return (s.display!=='none' && s.visibility!=='hidden' && parseFloat(s.opacity||1)>0.01);
+                        """, el)
+                        if vis:
+                            _log("✅ Tela principal visível.")
+                            return True
+                    except:
+                        pass
+                    time.sleep(0.5)
+
+                _log("❌ Não foi possível confirmar retorno à tela após gerar boleto.")
+                return False
+
+            else:
+                # ========== CENÁRIO 2: NÃO GEROU ==========
+                _log("🟡 Cenário NÃO GEROU boleto: tratar alerta, cancelar por índice, fechar modais.")
+                try:
+                    driver.switch_to.default_content()
+                except:
+                    pass
+
+                # 1) encontrar_mensagem_alerta()
+                try:
+                    encontrar_mensagem_alerta()
+                except Exception as e:
+                    _log(f"⚠️ encontrar_mensagem_alerta() falhou: {e}")
+
+                # 2) Cancelar por índice
+                try:
+                    clicar_cancelar_por_indice(js_engine, doc, indice=indice_cancelar)
+                except Exception as e:
+                    _log(f"⚠️ Falha ao clicar em Cancelar por índice: {e}")
+
+                # 3) Fecha modais (geração → gestor)
+                try:
+                    fechar_modal_geracao_boletos(js_engine, doc)
+                except Exception as e:
+                    _log(f"⚠️ Falha ao fechar modal de geração: {e}")
+
+                try:
+                    fechar_modal_gestor_financeiro(js_engine, doc)
+                except Exception as e:
+                    _log(f"⚠️ Falha ao fechar Gestor Financeiro: {e}")
+
+                _log("❌ Fluxo cancelado: relatório/aba não foi gerado.")
+                return False
+
+        # (Se não pediu para verificar nova aba ou não clicou no 'Sim')
+        _log("ℹ️ Sem verificação de nova aba ou sem clique em 'Sim'. Nenhuma ação de cenário aplicada.")
         return False
 
     except Exception as e:
@@ -2294,7 +2726,6 @@ def confirmar_modal_e_retornar_sistema(
         import traceback
         _log(f"   Traceback: {traceback.format_exc()}")
         return False
-
 
 def clicar_ok_e_verificar_modal_confirmacao(
     max_tentativas: int = 5,
@@ -2627,8 +3058,8 @@ def executar_teste():
         safe_action(doc, "Selecionando Pessoa", lambda:
             lov_handler.open_and_select(
                 btn_index=0,
-                search_text="JOÃO EDUARDO JUSTINO PASCHOAL",
-                result_text="JOÃO EDUARDO JUSTINO PASCHOAL"
+                search_text="ESTER SARAH BRUNA GONÇALVES",
+                result_text="ESTER SARAH BRUNA GONÇALVES"
             )
         )
 
@@ -2646,33 +3077,8 @@ def executar_teste():
 
         time.sleep(20)
         
-       # ===== VALIDAÇÃO DO RESULTADO =====
-
-        # Chama a função para validar se a tabela apareceu
-        if validar_resultado_pesquisa(js_engine):
-            log(doc, "✅ Prosseguindo com o fluxo — tabela carregada com sucesso.")
-        else:
-            log(doc, "⚠️ Nenhum resultado encontrado — encerrando o processo.")
-            return  
-
-        safe_action(doc, "Visualizando Detalhes", lambda: (
-            js_engine.force_click(
-                "//i[@class='sprites sp-dadosDinamicos' and @title='Visualizar Detalhes']",
-                by_xpath=True
-            ),
-            # Aguarda carregamento visual da tela/modal após o clique
-            wait.until(EC.presence_of_element_located((
-                By.XPATH,
-                "//div[contains(@class,'modal') or contains(@class,'detalhes') or contains(@class,'overflow')]"
-            ))),
-            time.sleep(1.5),  # pequena pausa extra pra o print sair certinho
-            take_screenshot(driver, doc, "Modal_Detalhes_Aberto")
-        ))
-
-        safe_action(doc, "Fechando aba de Detalhes", lambda:
-            fechar_modal_com_retry(doc, js_engine, wait)
-        )
-
+        # ===== VALIDAÇÃO DO RESULTADO =====
+        executar_fluxo_boletos(js_engine, doc)
 
 
         safe_action(doc, "Selecionando Opção: 'Pagas'", lambda:
@@ -2695,36 +3101,9 @@ def executar_teste():
         )
 
         time.sleep(20)
-        
-       # ===== VALIDAÇÃO DO RESULTADO =====
 
-        # Chama a função para validar se a tabela apareceu
-        if validar_resultado_pesquisa(js_engine):
-            log(doc, "✅ Prosseguindo com o fluxo — tabela carregada com sucesso.")
-        else:
-            log(doc, "⚠️ Nenhum resultado encontrado — encerrando o processo.")
-            return  
-
-        safe_action(doc, "Visualizando Detalhes", lambda: (
-            js_engine.force_click(
-                "//i[@class='sprites sp-dadosDinamicos' and @title='Visualizar Detalhes']",
-                by_xpath=True
-            ),
-            # Aguarda carregamento visual da tela/modal após o clique
-            wait.until(EC.presence_of_element_located((
-                By.XPATH,
-                "//div[contains(@class,'modal') or contains(@class,'detalhes') or contains(@class,'overflow')]"
-            ))),
-            time.sleep(1.5),  # pequena pausa extra pra o print sair certinho
-            take_screenshot(driver, doc, "Modal_Detalhes_Aberto")
-        ))
-
-
-
-
-        safe_action(doc, "Fechando aba de Detalhes", lambda:
-            fechar_modal_com_retry(doc, js_engine, wait)
-        )
+        # ===== VALIDAÇÃO DO RESULTADO =====
+        executar_fluxo_boletos(js_engine, doc)
 
 
         safe_action(doc, "Selecionando Opção: 'Ambas'", lambda:
@@ -2745,112 +3124,10 @@ def executar_teste():
         )
 
         time.sleep(20)
-        
-       # ===== VALIDAÇÃO DO RESULTADO =====
+        # ===== VALIDAÇÃO DO RESULTADO =====
+        executar_fluxo_boletos(js_engine, doc)
 
-        # Chama a função para validar se a tabela apareceu
-        if validar_resultado_pesquisa(js_engine):
-            log(doc, "✅ Prosseguindo com o fluxo — tabela carregada com sucesso.")
-        else:
-            log(doc, "⚠️ Nenhum resultado encontrado — encerrando o processo.")
-            return  
-
-        safe_action(doc, "Visualizando Detalhes", lambda: (
-            js_engine.force_click(
-                "//i[@class='sprites sp-dadosDinamicos' and @title='Visualizar Detalhes']",
-                by_xpath=True
-            ),
-            # Aguarda carregamento visual da tela/modal após o clique
-            wait.until(EC.presence_of_element_located((
-                By.XPATH,
-                "//div[contains(@class,'modal') or contains(@class,'detalhes') or contains(@class,'overflow')]"
-            ))),
-            time.sleep(1.5),  # pequena pausa extra pra o print sair certinho
-            take_screenshot(driver, doc, "Modal_Detalhes_Aberto")
-        ))
-
-        safe_action(doc, "Fechando aba de Detalhes", lambda:
-            fechar_modal_com_retry(doc, js_engine, wait)
-        )
-
-
-
-
-
-        safe_action(doc, "Clicando em 'Boleto Pegasus'", lambda:
-            js_engine.force_click(
-                "//a[@class='btModel btShort btLight boletoPegasus' and normalize-space(text())='Boleto Pegasus']/i[@class='fa fa-barcode']/parent::a",
-                by_xpath=True
-            )
-        )
-
-        safe_action(doc, "Selecionando a opção 'Carnê'", lambda:
-            js_engine.force_click(
-                "//li[@tabindex='1' and @ref='carne' and @rel='undefined' and normalize-space(text())='Carne']",
-                by_xpath=True
-            )
-        )
-        
-        safe_action(doc, "Selecionando Conta Bancária", 
-    selecionar_opcao_por_indice(
-        indice_select=1,
-        indice_opcao=1,
-        xpath_customizado="//select[@class='contaBancaria' and @style='width: 360px;' and @rev='10']"
-    ))
-
-        safe_action(doc, "Selecionando Instrução Alternativa", 
-    selecionar_opcao_por_indice(
-        indice_select=1,
-        indice_opcao=1,
-        xpath_customizado="//select[@class='instrucaoBoleto' and @style='width: 360px; padding-top: 10px;']"
-    ))
-
-
-        safe_action(
-            doc,
-            "Clicando em 'Ok' ",
-            clicar_ok_e_verificar_modal_confirmacao(indice_ok=5)
-        )
-
-        time.sleep(5)
-
-        safe_action(
-            doc,
-            "Confirmando modal e voltando ao sistema",
-            lambda: confirmar_modal_e_retornar_sistema(
-                js_engine,
-                botao_xpath="//a[@class='btModel btGray btyes' and @id='BtYes' and normalize-space()='Sim']",
-                esperado_selector="#gsFinan",
-                timeout=12,
-                iframe_xpath=None,         # se estiver dentro de um iframe, passe aqui o xpath dele
-                remove_overlays=False,     # mantém sem remover overlays
-                doc=doc
-            ) or True
-        )
-
-
-        time.sleep(3)
-        encontrar_mensagem_alerta()
-
-
- 
-
-        # ===== FECHAR MODAIS =====
-
-        safe_action(doc, "Fechando aba de Geração de Boletos", lambda:
-            js_engine.force_click(
-                "//a[@class='sprites sp-fecharGrande' and @title='Sair']",
-                by_xpath=True
-            )
-        )
-        
-        time.sleep(1)
-    
-        safe_action(doc, "Fechando Gestor Financeiro", lambda:
-            js_engine.force_click(
-                "#gsFinan > div.wdTop.ui-draggable-handle > div.wdClose > a"
-            )
-        )
+        fechar_abas_boletos(js_engine, doc)
         
         log(doc, "🎉 Teste concluído com sucesso!")
         return True
