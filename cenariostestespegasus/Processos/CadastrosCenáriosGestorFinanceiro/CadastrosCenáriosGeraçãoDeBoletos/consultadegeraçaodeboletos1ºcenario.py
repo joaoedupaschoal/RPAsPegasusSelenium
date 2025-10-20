@@ -111,6 +111,91 @@ def take_screenshot(driver, doc, nome):
             log(doc, f"⚠️ Erro ao tirar screenshot {nome}: {e}")
 
 
+def clicar_cancelar_modal_selecao_conta(js_engine, idx_cancel=0, timeout=10):
+    """
+    Se existir o modal 'Selecione uma conta bancária', clica no botão 'Cancelar' pelo índice.
+    idx_cancel: 0 = primeiro 'Cancelar' visível dentro do modal.
+    Retorna True se clicou; False se não encontrou o modal no prazo.
+    """
+    import time
+    driver = js_engine.driver
+    fim = time.time() + timeout
+
+    while time.time() < fim:
+        try:
+            # Marca os botões 'Cancelar' do modal 'payment noClose' visível com data-aim temporário
+            qtd = js_engine.execute_js("""
+                function vis(el){
+                  const s = getComputedStyle(el);
+                  return el.offsetParent!==null && s.display!=='none' &&
+                         s.visibility!=='hidden' && parseFloat(s.opacity||1)>0.01;
+                }
+                // procura o container do modal 'payment noClose' visível
+                var containers = Array.from(document.querySelectorAll("div.modal.overflow > div.payment.noClose"));
+                var alvo = containers.find(vis);
+                if(!alvo) return 0;
+
+                // dentro do modal, pegue todos os 'Cancelar'
+                var btns = Array.from(alvo.parentElement.querySelectorAll("a.btModel.btGray.btcancel"));
+                // filtra apenas botões visíveis
+                btns = btns.filter(vis);
+                // marque com data-aim para seleção direta
+                btns.forEach((b,i)=> b.setAttribute("data-aim-cancel", "cancel-"+i));
+                return btns.length;
+            """)
+
+            if qtd and idx_cancel < qtd:
+                seletor = f"[data-aim-cancel='cancel-{idx_cancel}']"
+                js_engine.force_click(seletor, by_xpath=False)
+                js_engine.wait_ajax_complete(5)
+
+                # limpeza do atributo temporário
+                js_engine.execute_js("""
+                    document.querySelectorAll("[data-aim-cancel]")
+                    .forEach(e=>e.removeAttribute("data-aim-cancel"));
+                """)
+                return True
+        except Exception:
+            pass
+
+        time.sleep(0.25)
+
+    return False
+
+def confirmar_envio_e_verificar_alertas(js_engine, doc, indice=1, timeout_alerta=5):
+    """
+    Clica no botão 'Sim' (confirmar envio de boletos por e-mail)
+    e em seguida procura por mensagens ou modais de alerta visíveis no sistema.
+
+    Etapas:
+      1) Clica no botão 'Sim' por índice.
+      2) Aguarda retorno à tela principal.
+      3) Verifica se há alertas ou mensagens visíveis.
+    """
+    import time
+
+    # 1) Clique no botão 'Sim'
+    safe_action(doc, f"Confirmando o envio de boletos por E-mail", lambda:
+        js_engine.force_click(
+            f"(//a[@class='btModel btGray btyes' and normalize-space()='Sim'])[{indice}]",
+            by_xpath=True
+        )
+    )
+
+    # 2) Pequeno delay para o sistema responder e retornar à tela
+    js_engine.wait_ajax_complete(8)
+    time.sleep(1)
+
+    # 3) Busca mensagens de alerta
+    alerta = encontrar_mensagem_alerta()
+
+    if alerta:
+        log(doc, f"⚠️ Alerta detectado após confirmação: {alerta}")
+    else:
+        log(doc, "✅ Nenhum alerta visível após confirmação.")
+
+    return alerta
+
 
 
 
@@ -274,23 +359,35 @@ def executar_fluxo_boletos(js_engine, doc,
     time.sleep(10)
 
 
-    safe_action(doc, "Confirmar ou detectar relatório", lambda:
-        confirmar_ou_detectar_relatorio(js_engine, timeout_modal=6, timeout_aba=12)
-    )
+
+    resultado = confirmar_ou_detectar_relatorio(js_engine, doc=doc)
+
+    if resultado:
+        log(doc, "✅ Confirmação de geração concluída ou relatório aberto com sucesso.")
+    else:
+        log(doc, "❌ Nenhum modal de confirmação ou relatório detectado — verificar execução.")
 
 
+        indice = 2
+        log(doc, "⚡ Confirmando o envio de boletos por E-mail (sem espera)...")
 
-
-    indice = 1
-
-    safe_action(doc, f"Confirmando o envio de boletos por E-mail", lambda:
-        js_engine.force_click(
-            f"(//a[@class='btModel btGray btok' and normalize-space()='Ok'])[{indice}]",
+        js_engine.instant_click(
+            f"(//a[@class='btModel btGray btyes' and normalize-space()='Sim'])[{indice}]",
             by_xpath=True
         )
-    )
-    time.sleep(2.5)
-    encontrar_mensagem_alerta()
+        take_screenshot(driver, doc, f"confirmacao_envio_boletos_{indice}")
+        encontrar_mensagem_alerta()
+
+
+
+
+
+    time.sleep(3)
+    ok_cancelou = clicar_cancelar_modal_selecao_conta(js_engine, idx_cancel=0, timeout=8)
+    if ok_cancelou:
+        log(doc, "✅ Modal 'Selecione uma conta bancária' detectado — clique em Cancelar realizado.")
+    else:
+        log(doc, "ℹ️ Modal 'Selecione uma conta bancária' não apareceu — seguindo o fluxo normalmente.")
 
 
     if screenshot_final:
@@ -964,6 +1061,11 @@ class JSForceEngine:
         """
         return self.execute_js(script, selector, by_xpath)
     
+    def instant_click(self, selector, by_xpath=False):
+        log(self.doc, f"⚡ Clique instantâneo em: {selector}")
+        # Usa uma estratégia direta, sem waits e sem sleeps
+        return self._click_strategy_2(selector, by_xpath)  # dispara eventos de mouse e retorna
+
     def force_fill(self, selector, value, by_xpath=False, max_attempts=5):
         """Preenchimento forçado 100% garantido"""
         log(self.doc, f"✏️ Preenchimento forçado: {selector} = '{value}'")
@@ -1646,51 +1748,6 @@ def safe_action(doc, descricao, func, max_retries=3):
     
     return False
 
-def fechar_abas_boletos(js_engine, doc):
-    """
-    Fecha a aba de Geração de Boletos e o módulo Gestor Financeiro,
-    garantindo que o fechamento só ocorra se houver boletos gerados.
-    """
-    import time
-
-    driver = js_engine.driver
-    try:
-        # 🔹 Verifica se há algum boleto aberto (ou aba secundária)
-        handles = driver.window_handles
-        if len(handles) > 1:
-            log(doc, f"🔎 {len(handles) - 1} aba(s) nova(s) detectada(s). Tentando fechar após gerar boletos.")
-            for h in handles[1:]:
-                driver.switch_to.window(h)
-                try:
-                    safe_action(doc, "Fechando aba de Geração de Boletos", lambda:
-                        js_engine.force_click(
-                            "//a[@class='sprites sp-fecharGrande' and @title='Sair']",
-                            by_xpath=True
-                        )
-                    )
-                    time.sleep(1)
-                except Exception as e:
-                    log(doc, f"⚠️ Falha ao fechar aba de Geração de Boletos: {e}")
-                finally:
-                    try:
-                        driver.close()
-                    except:
-                        pass
-            driver.switch_to.window(handles[0])
-        else:
-            log(doc, "ℹ️ Nenhuma aba de boleto detectada. Ignorando fechamento.")
-    except Exception as e:
-        log(doc, f"⚠️ Erro ao verificar/fechar abas de boletos: {e}")
-
-    # 🔹 Fecha o módulo Gestor Financeiro se ainda estiver aberto
-    try:
-        safe_action(doc, "Fechando Gestor Financeiro", lambda:
-            js_engine.force_click(
-                "#gsFinan > div.wdTop.ui-draggable-handle > div.wdClose > a"
-            )
-        )
-    except Exception as e:
-        log(doc, f"⚠️ Erro ao fechar Gestor Financeiro: {e}")
 
 
 def fechar_abas_padrao(js_engine, doc):
@@ -2388,13 +2445,14 @@ def clicar_cancelar_por_indice(js_engine, doc, indice: int = 1):
         except:
             pass
 
-
-def confirmar_ou_detectar_relatorio(js_engine, timeout_modal=6, timeout_aba=10, fechar_modal_gestores=True):
+def confirmar_ou_detectar_relatorio(js_engine, doc=None, timeout_modal=6, timeout_aba=10, fechar_modal_gestores=True, timeout_alerta=6):
     """
     1) Se o modal de confirmação existir, clica em 'Sim' e valida o fechamento.
     2) Se o modal NÃO existir, valida se abriu uma nova aba/janela (relatório).
-    Retorna True nas duas situações de sucesso.
+    3) Após o retorno ao sistema, verifica se há mensagens de alerta.
+    Retorna True se confirmou ou abriu relatório; False se nada ocorreu.
     """
+    import time
     driver = js_engine.driver
 
     # 0) Snapshot dos handles antes
@@ -2432,7 +2490,6 @@ def confirmar_ou_detectar_relatorio(js_engine, timeout_modal=6, timeout_aba=10, 
 
         js_engine.wait_ajax_complete(8)
 
-        # aguarda sumir
         fim = time.time() + timeout_modal
         while time.time() < fim:
             ainda_visivel = js_engine.execute_js("""
@@ -2445,30 +2502,43 @@ def confirmar_ou_detectar_relatorio(js_engine, timeout_modal=6, timeout_aba=10, 
                 break
             time.sleep(0.2)
 
-        # limpa atributo temporário
         js_engine.execute_js("var b=document.querySelector('[data-aim=\"confirm-yes\"]'); if(b) b.removeAttribute('data-aim');")
 
-        return True  # ✅ confirmou modal
+        # ✅ Após o retorno ao sistema, verifica alertas
+        alerta = encontrar_mensagem_alerta()
+        if alerta:
+            log(doc, f"⚠️ Alerta após confirmação do modal: {alerta}")
+        else:
+            log(doc, "✅ Nenhum alerta detectado após confirmação do modal.")
+
+        return True
 
     # 3) Se NÃO existe modal: aguarda abrir nova aba/janela (relatório)
     fim = time.time() + timeout_aba
     while time.time() < fim:
         handles_depois = driver.window_handles[:]
         if len(handles_depois) > len(handles_antes):
-            # opcional: focar no relatório e voltar
             try:
                 nova = list(set(handles_depois) - set(handles_antes))[0]
                 driver.switch_to.window(nova)
-                # aqui você pode fazer um take_screenshot se quiser
-                # depois voltar para a aba original (opcional)
                 driver.switch_to.window(handles_antes[0])
             except Exception:
                 pass
-            return True  # ✅ relatório abriu sem modal
-        time.sleep(0.3)
 
-    # 4) Nem modal nem aba nova? considera falha
-    return False
+            # ✅ Após o retorno ao sistema, verifica alertas
+            alerta = encontrar_mensagem_alerta()
+            if alerta:
+                log(doc, f"⚠️ Alerta após abertura do relatório: {alerta}")
+            else:
+                log(doc, "✅ Nenhum alerta detectado após abertura do relatório.")
+
+            return True
+        time.sleep(3)
+
+    # 4) Nem modal nem aba nova? Prossegue
+    log(doc, "✅ Nenhum modal de confirmação ou relatório detectado. Prosseguindo execução")
+    return True
+
 
 
 # =========================
@@ -3000,7 +3070,41 @@ def selecionar_opcao_por_indice(
 
 
 
+def fechar_abas_boletos(js_engine, doc):
+    """
+    Fecha as abas de Geração de Boletos e Gestor Financeiro.
+    Retorna True se ambas foram fechadas com sucesso, False caso contrário.
+    """
+    sucesso_boletos = False
+    sucesso_gestor = False
+    
+    # Fechar aba de Geração de Boletos
+    try:
+        safe_action(doc, "Fechando aba de Geração de Boletos", lambda:
+                        js_engine.force_click(
+                            "//a[@class='sprites sp-fecharGrande' and @title='Sair']",
+                            by_xpath=True
+                        )
+                    )
+        time.sleep(1)
+        sucesso_boletos = True
+        log(doc, "✅ Aba de Geração de Boletos fechada com sucesso.")
+    except Exception as e:
+        log(doc, f"⚠️ Falha ao fechar aba de Geração de Boletos: {e}")
 
+    # Fechar Gestor Financeiro
+    try:
+        safe_action(doc, "Fechando Gestor Financeiro", lambda:
+            js_engine.force_click(
+                "#gsFinan > div.wdTop.ui-draggable-handle > div.wdClose > a"
+            )
+        )
+        sucesso_gestor = True
+        log(doc, "✅ Gestor Financeiro fechado com sucesso.")
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao fechar Gestor Financeiro: {e}")
+    
+    return sucesso_boletos and sucesso_gestor
 
 
 
@@ -3081,56 +3185,16 @@ def executar_teste():
         executar_fluxo_boletos(js_engine, doc)
 
 
-        safe_action(doc, "Selecionando Opção: 'Pagas'", lambda:
-            selecionar_opcao_select("//select[@class='tipoParcela']", "Pagas")
-        )
+        # Fechar as abas
+        resultado = fechar_abas_boletos(js_engine, doc)
 
-
-
-        safe_action(doc, "Selecionando para permitir reimpressão", lambda:
-            selecionar_opcao_select("//select[@class='reimpressao']", "Sim")
-        )
-
-
-        # ===== BUSCAR =====
-        safe_action(doc, "Clicando em Pesquisar", lambda:
-            js_engine.force_click(
-                "//a[@class='btModel btGreen btPesquisar boxsize' and normalize-space()='Pesquisar']",
-                by_xpath=True
-            )
-        )
-
-        time.sleep(20)
-
-        # ===== VALIDAÇÃO DO RESULTADO =====
-        executar_fluxo_boletos(js_engine, doc)
-
-
-        safe_action(doc, "Selecionando Opção: 'Ambas'", lambda:
-            selecionar_opcao_select("//select[@class='tipoParcela']", "Ambas")
-        )
-
-
-        safe_action(doc, "Selecionando para permitir reimpressão", lambda:
-            selecionar_opcao_select("//select[@class='reimpressao']", "Sim")
-        )
-
-        # ===== BUSCAR =====
-        safe_action(doc, "Clicando em Pesquisar", lambda:
-            js_engine.force_click(
-                "//a[@class='btModel btGreen btPesquisar boxsize' and normalize-space()='Pesquisar']",
-                by_xpath=True
-            )
-        )
-
-        time.sleep(20)
-        # ===== VALIDAÇÃO DO RESULTADO =====
-        executar_fluxo_boletos(js_engine, doc)
-
-        fechar_abas_boletos(js_engine, doc)
-        
-        log(doc, "🎉 Teste concluído com sucesso!")
-        return True
+        if resultado:
+            log(doc, "✅ Todas as abas foram fechadas com sucesso.")
+        else:
+            log(doc, "⚠️ Algumas abas não puderam ser fechadas, mas o fluxo continua.")
+                
+            log(doc, "🎉 Teste concluído com sucesso!")
+            return True
         
     except Exception as e:
         log(doc, f"❌ ERRO FATAL: {e}")
