@@ -550,7 +550,7 @@ def executar_fluxo_boletos(js_engine, doc,
 
     # ===== 3) FLUXO NORMAL DE GERAÇÃO DO BOLETO =====
     safe_action(doc, "Selecionando a opção 'Carnê'", lambda: js_engine.force_click(
-        "//li[@tabindex='2' and @ref='carne' and @rel='undefined' and normalize-space(text())='Carne']",
+        "//li[@tabindex='1' and @ref='carne' and @rel='undefined' and normalize-space(text())='Carne']",
         by_xpath=True
     ))
 
