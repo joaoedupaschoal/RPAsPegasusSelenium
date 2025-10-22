@@ -3760,8 +3760,8 @@ def executar_teste():
         safe_action(doc, "Selecionando Pessoa", lambda:
             lov_handler.open_and_select(
                 btn_index=0,
-                search_text="TESTE APROVACAO",
-                result_text="TESTE APROVACAO"
+                search_text="JOÃO EDUARDO JUSTINO PASCHOAL",
+                result_text="JOÃO EDUARDO JUSTINO PASCHOAL"
             )
         )
 
