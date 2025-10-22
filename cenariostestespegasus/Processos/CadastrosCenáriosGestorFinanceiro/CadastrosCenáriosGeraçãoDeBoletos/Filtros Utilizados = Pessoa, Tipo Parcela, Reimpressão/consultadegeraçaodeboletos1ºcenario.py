@@ -111,6 +111,65 @@ def take_screenshot(driver, doc, nome):
             log(doc, f"⚠️ Erro ao tirar screenshot {nome}: {e}")
 
 
+def clicar_todos_botoes_sim_visiveis(js_engine, doc, pausa_entre=0.0):
+    """
+    Clica em TODOS os botões 'Sim' visíveis (a.btModel.btGray.btyes)
+    de uma vez, disparando eventos completos. Retorna dict com contagem.
+    """
+    import time
+    js = r"""
+    (function(){
+      const isVisible = el => {
+        if (!el) return false;
+        const s = getComputedStyle(el);
+        const vis = el.offsetParent !== null && s.display !== 'none' &&
+                    s.visibility !== 'hidden' && parseFloat(s.opacity||1) > 0.01;
+        return vis;
+      };
+      const buttons = Array.from(document.querySelectorAll("a.btModel.btGray.btyes"))
+        .filter(isVisible)
+        .filter(b => (b.textContent||"").trim().toLowerCase() === "sim");
+
+      let clicked = 0;
+      buttons.forEach(b => {
+        try {
+          // garantir clicabilidade
+          b.style.pointerEvents = 'auto';
+          b.removeAttribute('disabled');
+          b.style.visibility = 'visible';
+          b.style.display = 'inline-block';
+          b.scrollIntoView({block:'center'});
+
+          // sequência completa de eventos
+          ['mouseover','mouseenter','mousemove','mousedown','mouseup','click'].forEach(t=>{
+            b.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,view:window,detail:1}));
+          });
+          if (typeof b.click === 'function') b.click();
+
+          // jQuery (se houver)
+          if (typeof window.jQuery !== 'undefined') {
+            window.jQuery(b).trigger('click');
+          }
+          clicked++;
+        } catch(e) {}
+      });
+
+      return { totalEncontrados: buttons.length, totalClicados: clicked };
+    })();
+    """
+    try:
+        res = js_engine.execute_js(js)
+        total = int(res.get("totalEncontrados", 0))
+        clic = int(res.get("totalClicados", 0))
+        log(doc, f"⚡ 'Sim' visíveis encontrados: {total} | clicados: {clic}")
+        if pausa_entre and clic > 0:
+            time.sleep(pausa_entre)
+        return res
+    except Exception as e:
+        log(doc, f"❌ Erro ao clicar em todos os 'Sim': {e}")
+        return {"totalEncontrados": 0, "totalClicados": 0, "erro": str(e)}
+
+
 def clicar_cancelar_modal_selecao_conta(js_engine, idx_cancel=0, timeout=10):
     """
     Se existir o modal 'Selecione uma conta bancária', clica no botão 'Cancelar' pelo índice.
@@ -570,16 +629,31 @@ def executar_fluxo_boletos(js_engine, doc,
         )
     )
 
-    safe_action(doc, "Clicando em 'Ok'",
-        clicar_ok_e_verificar_modal_confirmacao(indice_ok=indice_ok)
+    log(doc, "⚡ Clicando em 'Ok' e verificando alertas instantaneamente...")
+    
+    # Usa a função com verificação instantânea
+    resultado_ok = confirmar_envio_e_verificar_alertas(
+        js_engine, 
+        doc, 
+        indice=indice_ok  # índice do botão Ok (1-based)
     )
-
-    # 🔍 Verifica imediatamente se apareceu alerta "Não há títulos para imprimir"
-    if tratar_alerta_imediato_pos_ok(js_engine, doc, "Não há títulos para imprimir", idx_cancel=1):
-        return  # encerra o fluxo imediatamente
-
-    # Caso contrário, prossegue normalmente
-
+    
+    # Processa o resultado
+    if resultado_ok.get('found_alert'):
+        log(doc, f"⚠️ Alerta encontrado: {resultado_ok.get('alert_text', '')[:100]}")
+        
+        if resultado_ok.get('canceled'):
+            log(doc, f"✅ Cancelamento automático executado ({resultado_ok.get('cancel_clicks', 0)} cliques)")
+            # Encerra o fluxo aqui pois houve alerta
+            log(doc, "🛑 Encerrando fluxo devido ao alerta detectado")
+            return
+        else:
+            log(doc, "⚠️ Alerta detectado mas nenhum botão cancelar foi clicado")
+            # Decide se continua ou não
+            return
+    
+    # Se não houver alerta, continua o fluxo normal
+    log(doc, "✅ Nenhum alerta detectado, prosseguindo com confirmação...")
 
 
     resultado = confirmar_ou_detectar_relatorio(js_engine, doc=doc)
@@ -591,17 +665,32 @@ def executar_fluxo_boletos(js_engine, doc,
 
         time.sleep(2)
 
+    # clica em TODOS os "Sim" visíveis
+    resultado_sims = clicar_todos_botoes_sim_visiveis(js_engine, doc, pausa_entre=0.0)
 
-    indice = 2
-    log(doc, "⚡ Confirmando o envio de boletos por E-mail (sem espera)...")
+    total_encontrados = int(resultado_sims.get("totalEncontrados", 0))
+    total_clicados = int(resultado_sims.get("totalClicados", 0))
+    log(doc, f"✅ Confirmando envio de Boletos por e-mail")
 
-    js_engine.instant_click(
-        f"(//a[@class='btModel btGray btyes' and normalize-space()='Sim'])[{indice}]",
-        by_xpath=True
-    )
-    take_screenshot(driver, doc, f"confirmacao_envio_boletos_{indice}")
-    encontrar_mensagem_alerta()
+    # ALERTA IMEDIATO após o clique em massa
+    import time
+    time.sleep(0.5)
+    encontrar_mensagem_alerta()   # aqui roda sua detecção/cancelamento, se houver
+    time.sleep(0.5)
+    encontrar_mensagem_alerta()   # aqui roda sua detecção/cancelamento, se houver
+    
+    # fallback: se não clicou nenhum, tenta um por índice
+    if total_clicados == 0:
+        js_engine.force_click(
+            "(//a[@class='btModel btGray btyes' and normalize-space()='Sim'])[1]",
+            by_xpath=True
+        )
+        # ALERTA IMEDIATO após o fallback
+        time.sleep(0.5)
+        encontrar_mensagem_alerta()
 
+    # só depois tira o screenshot
+    take_screenshot(js_engine.driver, doc, "confirmacao_envio_boletos_all")
 
 
 
@@ -3021,66 +3110,351 @@ def confirmar_modal_e_retornar_sistema(
         _log(f"   Traceback: {traceback.format_exc()}")
         return False
 
-def clicar_ok_e_verificar_modal_confirmacao(
-    max_tentativas: int = 5,
-    timeout_click: int = 10,
-    timeout_confirmacao: int = 5,
-    scroll: bool = True,
-    indice_ok: int = None  # 👈 novo parâmetro opcional
-):
+def confirmar_envio_e_verificar_alertas(js_engine, doc, indice=1):
     """
-    Se 'indice_ok' for informado, clica apenas nesse botão.
-    Caso contrário, tenta todos até achar o modal de confirmação.
+    Clica no botão 'Ok' (confirmar envio de boletos por e-mail)
+    e após 0.5s procura por mensagens ou modais de alerta visíveis no sistema.
+    
+    ESPERA FIXA: 0.5 segundos após o clique.
+    
+    Locators:
+        - Modal root: //div[contains(@class,'modal') and contains(@class,'overflow')]
+        - Botão Ok: //a[@class='btModel btGray btok' and normalize-space()='Ok']
     """
-    def acao():
-        locator_ok_base = "//a[@class='btModel btGray btok' and normalize-space()='Ok']"
-        locator_modal_root = "//div[contains(@class,'modal') and contains(@class,'overflow')]"
-        locator_btn_sim = f"{locator_modal_root}//a[(@id='BtYes' or contains(@class,'btyes')) and normalize-space()='Sim']"
+    import time
+    
+    try:
+        log(doc, f"⚡ Confirmando envio de boletos (índice {indice}) - Verificação após 0.5s...")
+        
+        # PASSO 1: Clica no Ok
+        resultado_click = js_engine.execute_js("""
+            var indice = arguments[0];
+            var resultado = {
+                clicked: false,
+                error: null
+            };
+            
+            try {
+                var xpath = "(//a[@class='btModel btGray btok' and normalize-space()='Ok'])[" + indice + "]";
+                var xresult = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                var btnOk = xresult.singleNodeValue;
+                
+                if (!btnOk) {
+                    // Fallback: pega qualquer 'Ok' visível
+                    var xpathFallback = "//a[@class='btModel btGray btok' and normalize-space()='Ok']";
+                    var xresultAll = document.evaluate(xpathFallback, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                    
+                    var botoes = [];
+                    for (var i = 0; i < xresultAll.snapshotLength; i++) {
+                        var b = xresultAll.snapshotItem(i);
+                        var s = window.getComputedStyle(b);
+                        if (s.display !== 'none' && s.visibility !== 'hidden' && parseFloat(s.opacity || 1) > 0.01) {
+                            botoes.push(b);
+                        }
+                    }
+                    
+                    if (botoes.length >= indice) {
+                        btnOk = botoes[indice - 1];
+                    }
+                }
+                
+                if (btnOk) {
+                    // Remove obstáculos
+                    btnOk.style.pointerEvents = 'auto';
+                    btnOk.style.display = 'block';
+                    btnOk.style.visibility = 'visible';
+                    btnOk.removeAttribute('disabled');
+                    
+                    // Clique múltiplo
+                    btnOk.click();
+                    btnOk.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true, view: window}));
+                    btnOk.dispatchEvent(new MouseEvent('mousedown', {bubbles: true, cancelable: true}));
+                    btnOk.dispatchEvent(new MouseEvent('mouseup', {bubbles: true, cancelable: true}));
+                    
+                    if (typeof jQuery !== 'undefined') {
+                        jQuery(btnOk).trigger('click');
+                    }
+                    
+                    resultado.clicked = true;
+                } else {
+                    resultado.error = 'Botão Ok não encontrado (índice ' + indice + ')';
+                }
+                
+            } catch(err) {
+                resultado.error = err.toString();
+            }
+            
+            return resultado;
+        """, indice)
+        
+        if resultado_click.get('clicked'):
+            log(doc, "✅ Clique em 'Ok' executado")
+        else:
+            log(doc, f"⚠️ Não foi possível clicar em 'Ok': {resultado_click.get('error', 'Desconhecido')}")
+        
+        # PASSO 2: ESPERA EXATAMENTE 0.5 SEGUNDOS
+        time.sleep(0.5)
+        log(doc, "⏱️ Aguardou 0.5s - Verificando alertas agora...")
+        
+        # PASSO 3: Verifica alerta e cancela se necessário
+        resultado_alerta = js_engine.execute_js("""
+            var resultado = {
+                found_alert: false,
+                alert_text: '',
+                canceled: false,
+                cancel_clicks: 0,
+                error: null
+            };
+            
+            try {
+                // Verifica alertas
+                var alertas = document.querySelectorAll('.alerts.salvo, .alerts.alerta, .alerts.erro');
+                for (var i = 0; i < alertas.length; i++) {
+                    var al = alertas[i];
+                    var s = window.getComputedStyle(al);
+                    if (s.display !== 'none' && s.visibility !== 'hidden' && parseFloat(s.opacity || 1) > 0.01) {
+                        resultado.found_alert = true;
+                        resultado.alert_text = (al.textContent || '').trim();
+                        
+                        // Se tem alerta, cancela em todos os modais
+                        var xpathModals = "//div[contains(@class,'modal') and contains(@class,'overflow')]";
+                        var xresultModals = document.evaluate(xpathModals, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+                        
+                        var modaisVisiveis = [];
+                        for (var j = 0; j < xresultModals.snapshotLength; j++) {
+                            var m = xresultModals.snapshotItem(j);
+                            var sm = window.getComputedStyle(m);
+                            if (sm.display !== 'none' && sm.visibility !== 'hidden' && parseFloat(sm.opacity || 1) > 0.01) {
+                                modaisVisiveis.push(m);
+                            }
+                        }
+                        
+                        // Para cada modal visível, procura botão cancelar
+                        modaisVisiveis.forEach(function(modal) {
+                            var cancelBtns = [];
+                            
+                            // Estratégia 1: btcancel
+                            var btns1 = modal.querySelectorAll("a.btModel.btGray.btcancel");
+                            for (var k = 0; k < btns1.length; k++) {
+                                var sb = window.getComputedStyle(btns1[k]);
+                                if (sb.display !== 'none' && sb.visibility !== 'hidden') {
+                                    cancelBtns.push(btns1[k]);
+                                }
+                            }
+                            
+                            // Estratégia 2: btno
+                            if (cancelBtns.length === 0) {
+                                var btns2 = modal.querySelectorAll("a.btModel.btGray.btno");
+                                for (var k = 0; k < btns2.length; k++) {
+                                    var sb = window.getComputedStyle(btns2[k]);
+                                    if (sb.display !== 'none' && sb.visibility !== 'hidden') {
+                                        cancelBtns.push(btns2[k]);
+                                    }
+                                }
+                            }
+                            
+                            // Estratégia 3: texto "Cancelar"
+                            if (cancelBtns.length === 0) {
+                                var allLinks = modal.querySelectorAll("a.btModel.btGray");
+                                for (var k = 0; k < allLinks.length; k++) {
+                                    var link = allLinks[k];
+                                    var texto = (link.textContent || '').trim().toLowerCase();
+                                    var sb = window.getComputedStyle(link);
+                                    if ((texto === 'cancelar' || texto === 'não' || texto === 'nao') && 
+                                        sb.display !== 'none' && sb.visibility !== 'hidden') {
+                                        cancelBtns.push(link);
+                                    }
+                                }
+                            }
+                            
+                            // Clica no primeiro cancelar encontrado
+                            if (cancelBtns.length > 0) {
+                                var target = cancelBtns[0];
+                                try {
+                                    target.style.pointerEvents = 'auto';
+                                    target.style.display = 'block';
+                                    target.removeAttribute('disabled');
+                                    
+                                    target.click();
+                                    target.dispatchEvent(new MouseEvent('click', {bubbles:true, cancelable:true, view:window}));
+                                    
+                                    if (typeof jQuery !== 'undefined') {
+                                        jQuery(target).trigger('click');
+                                    }
+                                    
+                                    resultado.cancel_clicks++;
+                                } catch(e) {
+                                    // Ignora erro individual
+                                }
+                            }
+                        });
+                        
+                        resultado.canceled = resultado.cancel_clicks > 0;
+                        break;
+                    }
+                }
+                
+            } catch(err) {
+                resultado.error = err.toString();
+            }
+            
+            return resultado;
+        """)
+        
+        # Processa resultado da verificação
+        if resultado_alerta.get('found_alert'):
+            alert_text = resultado_alerta.get('alert_text', '').strip()
+            log(doc, f"⚠️ Alerta detectado após 0.5s: {alert_text[:150]}")
+            
+            if resultado_alerta.get('canceled'):
+                clicks = resultado_alerta.get('cancel_clicks', 0)
+                log(doc, f"🧹 Cancelamento automático executado: {clicks} clique(s) em botões cancelar")
+            else:
+                log(doc, "⚠️ Nenhum botão cancelar encontrado nos modais visíveis")
+        else:
+            log(doc, "✅ Nenhum alerta detectado após 0.5s")
+        
+        if resultado_alerta.get('error'):
+            log(doc, f"⚠️ Erro durante verificação: {resultado_alerta['error']}")
+        
+        # Retorna resultado combinado
+        return {
+            'clicked': resultado_click.get('clicked', False),
+            'found_alert': resultado_alerta.get('found_alert', False),
+            'alert_text': resultado_alerta.get('alert_text', ''),
+            'canceled': resultado_alerta.get('canceled', False),
+            'cancel_clicks': resultado_alerta.get('cancel_clicks', 0),
+            'error': resultado_click.get('error') or resultado_alerta.get('error')
+        }
+        
+    except Exception as e:
+        log(doc, f"❌ Erro crítico na confirmação: {str(e)[:150]}")
+        return {
+            'clicked': False,
+            'found_alert': False,
+            'alert_text': '',
+            'canceled': False,
+            'cancel_clicks': 0,
+            'error': str(e)
+        }
 
-        botoes = driver.find_elements(By.XPATH, locator_ok_base)
-        if not botoes:
-            raise Exception("Nenhum botão 'Ok' encontrado no DOM.")
+def clicar_cancelar_por_indice_em_todos_modais(js_engine, doc, indice=1):
+    """
+    VERSÃO INSTANTÂNEA - sem esperas.
+    Clica no botão Cancelar/Não pelo índice dentro de CADA modal visível.
+    
+    Locators:
+        - Modal root: //div[contains(@class,'modal') and contains(@class,'overflow')]
+        - Botões cancelar: a.btModel.btGray.btcancel, a.btModel.btGray.btno, ou texto "Cancelar"
+    """
+    
+    js = """
+(function(idx1){
+  try {
+    const idx = Math.max(0, (parseInt(idx1,10) || 1) - 1);
+    
+    // Função auxiliar de visibilidade
+    const isVisible = el => {
+      if (!el) return false;
+      try {
+        const s = window.getComputedStyle(el);
+        return s && s.display !== 'none' && s.visibility !== 'hidden' && parseFloat(s.opacity || 1) > 0.01;
+      } catch(e) {
+        return false;
+      }
+    };
 
-        total_botoes = len(botoes)
+    // Captura modais visíveis usando XPath exato
+    var xpathModals = "//div[contains(@class,'modal') and contains(@class,'overflow')]";
+    var xresult = document.evaluate(xpathModals, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+    
+    var modals = [];
+    for (var i = 0; i < xresult.snapshotLength; i++) {
+      var m = xresult.snapshotItem(i);
+      if (isVisible(m)) {
+        modals.push(m);
+      }
+    }
 
-        # 🔹 Se índice for especificado, clica somente nele
-        indices = [indice_ok - 1] if indice_ok is not None else range(total_botoes)
+    let clicked = 0;
+    let modalsWithTarget = 0;
 
-        for idx in indices:
-            log(doc, f"🎯 Tentando botão Ok #{idx + 1} de {total_botoes}...")
-            locator_ok = f"({locator_ok_base})[{idx + 1}]"
-            elemento = driver.find_element(By.XPATH, locator_ok)
+    modals.forEach(modal => {
+      let candidates = [];
+      
+      // Estratégia 1: a.btModel.btGray.btcancel
+      var btns1 = modal.querySelectorAll("a.btModel.btGray.btcancel");
+      for (var i = 0; i < btns1.length; i++) {
+        if (isVisible(btns1[i])) candidates.push(btns1[i]);
+      }
+      
+      // Estratégia 2: a.btModel.btGray.btno
+      if (candidates.length === 0) {
+        var btns2 = modal.querySelectorAll("a.btModel.btGray.btno");
+        for (var i = 0; i < btns2.length; i++) {
+          if (isVisible(btns2[i])) candidates.push(btns2[i]);
+        }
+      }
+      
+      // Estratégia 3: texto "Cancelar" ou "Não"
+      if (candidates.length === 0) {
+        var allLinks = modal.querySelectorAll("a.btModel.btGray");
+        for (var i = 0; i < allLinks.length; i++) {
+          var link = allLinks[i];
+          var texto = (link.textContent || '').trim().toLowerCase();
+          if ((texto === 'cancelar' || texto === 'não' || texto === 'nao') && isVisible(link)) {
+            candidates.push(link);
+          }
+        }
+      }
 
-            # Estratégias iguais às suas
-            estrategias_ok = [
-                lambda el: (WebDriverWait(driver, timeout_click).until(EC.element_to_be_clickable((By.XPATH, locator_ok))), el.click()),
-                lambda el: (driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el), el.click()),
-                lambda el: driver.execute_script("arguments[0].click();", el),
-                lambda el: ActionChains(driver).move_to_element(el).pause(0.1).click().perform()
-            ]
+      if (candidates.length > 0) {
+        modalsWithTarget++;
+        const target = candidates[idx] || candidates[candidates.length - 1];
+        try {
+          target.style.pointerEvents = 'auto';
+          target.style.display = 'block';
+          target.removeAttribute('disabled');
+          
+          // Clique instantâneo
+          target.click();
+          target.dispatchEvent(new MouseEvent('click', {bubbles:true, cancelable:true, view:window}));
+          
+          if (typeof jQuery !== 'undefined') {
+            jQuery(target).trigger('click');
+          }
+          
+          clicked++;
+        } catch(e) {
+          // Ignora erros silenciosamente
+        }
+      }
+    });
 
-            for i, estrategia in enumerate(estrategias_ok, 1):
-                try:
-                    log(doc, f"   ▶️ Estratégia {i}/4 de clique...")
-                    estrategia(elemento)
-                    log(doc, f"✅ Clique executado (estratégia {i}).")
-                    break
-                except Exception as e:
-                    log(doc, f"⚠️ Estratégia {i} falhou: {e}")
-
-            # Após clicar, verifica o modal
-            try:
-                WebDriverWait(driver, timeout_confirmacao).until(
-                    EC.presence_of_element_located((By.XPATH, locator_btn_sim))
-                )
-                log(doc, "✅ Modal de confirmação detectado.")
-                return True
-            except TimeoutException:
-                log(doc, "ℹ️ Modal de confirmação não detectado.")
-
-        return False
-
-    return acao
+    return { 
+      clicked: clicked, 
+      modalsWithTarget: modalsWithTarget, 
+      modalsFound: modals.length 
+    };
+    
+  } catch(err) {
+    return { 
+      clicked: 0, 
+      modalsWithTarget: 0, 
+      modalsFound: 0, 
+      error: err.toString() 
+    };
+  }
+})(arguments[0]);
+    """
+    
+    try:
+        result = js_engine.execute_js(js, int(indice))
+        log(doc, f"🧹 Cancelar instantâneo → modais: {result.get('modalsFound', 0)}, com alvo: {result.get('modalsWithTarget', 0)}, cliques: {result.get('clicked', 0)}")
+        return result
+    except Exception as e:
+        log(doc, f"❌ Erro ao cancelar: {e}")
+        return {"clicked": 0, "modalsWithTarget": 0, "modalsFound": 0, "error": str(e)}
 
 
 def selecionar_opcao_por_indice(
@@ -3386,8 +3760,8 @@ def executar_teste():
         safe_action(doc, "Selecionando Pessoa", lambda:
             lov_handler.open_and_select(
                 btn_index=0,
-                search_text="NOVO TITULAR TESTE GOLDPAG",
-                result_text="NOVO TITULAR TESTE GOLDPAG"
+                search_text="TESTE APROVACAO",
+                result_text="TESTE APROVACAO"
             )
         )
 
