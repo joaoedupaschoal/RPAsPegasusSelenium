@@ -35,7 +35,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Geração de Boletos - Gestor Financeiro – Cenário 1: Rotina completa de Geração de Boletos - Tipo de Boleto: Carnê")
+doc.add_paragraph("Geração de Boletos - Gestor Financeiro – Cenário 4: Rotina completa de Geração de Boletos - Tipo de Boleto: Rateio")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -524,7 +524,7 @@ def executar_fluxo_boletos(js_engine, doc,
       2) Clica em 'Boleto Pegasus'.
          2.1) Se surgir o modal .telaModalTitulosPlanoEmpresa:
               - Fecha SOMENTE esse modal (sem índice) e segue o fluxo.
-      3) Seleciona 'Carnê', Conta, Instrução, clica Ok, confirma e retorna.
+      3) Seleciona 'Rateio', Conta, Instrução, clica Ok, confirma e retorna.
     Requisitos: safe_action, log, take_screenshot, validar_resultado_pesquisa,
                 selecionar_opcao_por_indice, clicar_ok_e_verificar_modal_confirmacao,
                 confirmar_modal_e_retornar_sistema, fechar_modal_com_retry.
@@ -608,8 +608,8 @@ def executar_fluxo_boletos(js_engine, doc,
 
 
     # ===== 3) FLUXO NORMAL DE GERAÇÃO DO BOLETO =====
-    safe_action(doc, "Selecionando a opção 'Carnê'", lambda: js_engine.force_click(
-        "//li[@tabindex='1' and @ref='carne' and @rel='undefined' and normalize-space(text())='Carne']",
+    safe_action(doc, "Selecionando a opção 'Rateio'", lambda: js_engine.force_click(
+        "//li[@tabindex='4']",
         by_xpath=True
     ))
 
@@ -678,7 +678,6 @@ def executar_fluxo_boletos(js_engine, doc,
     encontrar_mensagem_alerta()   # aqui roda sua detecção/cancelamento, se houver
     time.sleep(0.5)
     encontrar_mensagem_alerta()   # aqui roda sua detecção/cancelamento, se houver
-    
     # fallback: se não clicou nenhum, tenta um por índice
     if total_clicados == 0:
         js_engine.force_click(
@@ -2124,7 +2123,7 @@ def finalizar_relatorio():
     """Salva relatório e fecha driver"""
     global driver, doc
     
-    nome_arquivo = f"relatorio_geracao_boletos_carne_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_geracao_boletos_rateio_cenario_4_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     
     try:
         doc.save(nome_arquivo)
@@ -3760,8 +3759,8 @@ def executar_teste():
         safe_action(doc, "Selecionando Pessoa", lambda:
             lov_handler.open_and_select(
                 btn_index=0,
-                search_text="JOÃO EDUARDO JUSTINO PASCHOAL",
-                result_text="JOÃO EDUARDO JUSTINO PASCHOAL"
+                search_text="TESTE APROVACAO",
+                result_text="TESTE APROVACAO"
             )
         )
 
