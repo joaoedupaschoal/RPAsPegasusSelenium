@@ -21,7 +21,7 @@ import subprocess
 import os
 import random
 import re
-import pyautogui
+from functools import wraps
 
 # ==== CONFIGURAÇÕES GLOBAIS ====
 TIMEOUT_DEFAULT = 30
@@ -35,7 +35,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Controle de Caixa - Caixa – Cenário 1: Rotina completa de Geração de Título Único")
+doc.add_paragraph("Controle de Caixa - Caixa – Cenário 1: Rotina parcial de Fluxo de Caixa")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -110,411 +110,156 @@ def take_screenshot(driver, doc, nome):
         except Exception as e:
             log(doc, f"⚠️ Erro ao tirar screenshot {nome}: {e}")
 
-# ==== NÚCLEO ROBUSTO: JAVASCRIPT FORÇADO ====
+# ==== SISTEMA ANTI-TIMEOUT JAVASCRIPT ====
+class JSTimeoutHandler:
+    """Sistema robusto para lidar com timeouts JavaScript no Selenium"""
+    
+    def __init__(self, driver, doc, timeout_padrao=10, max_retries=3):
+        self.driver = driver
+        self.doc = doc
+        self.timeout_padrao = timeout_padrao
+        self.max_retries = max_retries
+        self.last_error = None
+        
+    def log_timeout(self, msg, level="INFO"):
+        """Log com timestamp"""
 
-
-def abrir_modal_e_selecionar_js_puro(
-    btn_xpath=None,
-    pesquisa_xpath=None,
-    termo_pesquisa=None,
-    btn_pesquisar_xpath=None,
-    resultado_xpath=None,
-    timeout=15,
-    max_tentativas=3,
-    iframe_xpath=None,
-    indice_lov=None
-):
-    """
-    Abre modal LOV usando JavaScript puro para TODAS operaÃ§Ãµes.
-    Elimina problemas de interceptaÃ§ão, visibilidade e timing do Selenium.
-    
-    Args:
-        btn_xpath: XPath do botão LOV (ignorado se indice_lov fornecido)
-        pesquisa_xpath: XPath do campo de pesquisa
-        termo_pesquisa: Termo a ser pesquisado
-        btn_pesquisar_xpath: XPath do botão Pesquisar
-        resultado_xpath: XPath do resultado a clicar
-        timeout: Tempo mÃ¡ximo de espera
-        max_tentativas: NÃºmero de tentativas
-        iframe_xpath: XPath do iframe (se aplicÃ¡vel)
-        indice_lov: Ãndice do botão LOV na pÃ¡gina (alternativa ao btn_xpath)
-    """
-    
-    def _executar_js(script, *args):
-        """Executa JavaScript e retorna resultado"""
-        try:
-            return driver.execute_script(script, *args)
-        except Exception as e:
-            log(doc, f"  ❌ Erro JS: {str(e)[:100]}")
-            raise
-    
-    def _aguardar_ajax_js(timeout_ajax=10):
-        """Aguarda AJAX usando JavaScript"""
-        inicio = time.time()
-        while time.time() - inicio < timeout_ajax:
-            completo = _executar_js("""
-                // Verifica jQuery
-                var jQueryOk = typeof jQuery === 'undefined' || jQuery.active === 0;
-                
-                // Verifica fetch/XMLHttpRequest pendentes
-                var fetchOk = !window.__pendingRequests || window.__pendingRequests === 0;
-                
-                // Verifica overlays
-                var overlays = document.querySelectorAll(
-                    '.blockScreen, .blockUI, .loading, .overlay, [class*="loading"], [class*="spinner"]'
-                );
-                var overlayOk = true;
-                for (var i = 0; i < overlays.length; i++) {
-                    var style = window.getComputedStyle(overlays[i]);
-                    if (style.display !== 'none' && 
-                        style.visibility !== 'hidden' && 
-                        parseFloat(style.opacity || 1) > 0.01) {
-                        overlayOk = false;
-                        break;
-                    }
-                }
-                
-                return jQueryOk && fetchOk && overlayOk;
-            """)
-            
-            if completo:
-                return True
-            time.sleep(0.2)
-        return True
-    
-    def _clicar_js(xpath_ou_elemento, descricao="elemento"):
-        """Clica usando JavaScript puro"""
-        script = """
-            var elemento = arguments[0];
-            
-            // Se recebeu XPath, resolve
-            if (typeof elemento === 'string') {
-                var resultado = document.evaluate(
-                    elemento, 
-                    document, 
-                    null, 
-                    XPathResult.FIRST_ORDERED_NODE_TYPE, 
-                    null
-                );
-                elemento = resultado.singleNodeValue;
-            }
-            
-            if (!elemento) {
-                throw new Error('Elemento não encontrado: ' + arguments[0]);
-            }
-            
-            // ForÃ§a visibilidade
-            elemento.style.display = 'block';
-            elemento.style.visibility = 'visible';
-            elemento.style.opacity = '1';
-            
-            // Remove atributos que impedem clique
-            elemento.removeAttribute('disabled');
-            elemento.removeAttribute('readonly');
-            
-            // Scroll suave até o elemento
-            elemento.scrollIntoView({behavior: 'smooth', block: 'center'});
-            
-            // Dispara eventos completos
-            ['mouseover', 'mousedown', 'mouseup', 'click'].forEach(function(eventType) {
-                var evt = new MouseEvent(eventType, {
-                    bubbles: true,
-                    cancelable: true,
-                    view: window,
-                    detail: 1,
-                    clientX: 0,
-                    clientY: 0
-                });
-                elemento.dispatchEvent(evt);
-            });
-            
-            // Também tenta click direto
-            if (elemento.click) {
-                elemento.click();
-            }
-            
-            return true;
-        """
+        prefix = {
+            "INFO": "ℹ️ ",
+            "WARN": "⚠️ ",
+            "ERROR": "❌ ",
+            "SUCCESS": "✅ "
+        }.get(level, "📝 ")
         
-        try:
-            _executar_js(script, xpath_ou_elemento)
-            log(doc, f"   🔄 Clique JS em {descricao}")
-            return True
-        except Exception as e:
-            raise Exception(f"Falha ao clicar em {descricao}: {e}")
+        print(f" {prefix} {msg}")
+        if hasattr(self.doc, 'add_paragraph'):
+            self.doc.add_paragraph(f"{msg}")
     
-    def _preencher_campo_js(xpath_campo, valor):
-        """Preenche campo usando JavaScript puro"""
-        script = """
-            var xpath = arguments[0];
-            var valor = arguments[1];
-            
-            // Localiza elemento
-            var resultado = document.evaluate(
-                xpath, 
-                document, 
-                null, 
-                XPathResult.FIRST_ORDERED_NODE_TYPE, 
-                null
-            );
-            var campo = resultado.singleNodeValue;
-            
-            if (!campo) {
-                throw new Error('Campo não encontrado: ' + xpath);
-            }
-            
-            // Força campo editável
-            campo.removeAttribute('disabled');
-            campo.removeAttribute('readonly');
-            campo.style.display = 'block';
-            campo.style.visibility = 'visible';
-            
-            // Limpa valor anterior
-            campo.value = '';
-            
-            // Focus no campo
-            campo.focus();
-            
-            // Dispara eventos de input
-            ['focus', 'click'].forEach(function(evt) {
-                campo.dispatchEvent(new Event(evt, {bubbles: true}));
-            });
-            
-            // Define valor
-            campo.value = valor;
-            
-            // Dispara eventos de mudança
-            ['input', 'change', 'blur'].forEach(function(evt) {
-                campo.dispatchEvent(new Event(evt, {bubbles: true}));
-            });
-            
-            // Triggers adicionais para frameworks
-            if (typeof campo.onchange === 'function') {
-                campo.onchange();
-            }
-            
-            // Trigger jQuery se existir
-            if (typeof jQuery !== 'undefined') {
-                jQuery(campo).trigger('change');
-            }
-            
-            return campo.value;
-        """
+    def execute_js_safe(self, script, *args, timeout=None, fallback_result=None):
+        """Executa JavaScript com proteção contra timeouts"""
+        timeout = timeout or self.timeout_padrao
         
-        valor_final = _executar_js(script, xpath_campo, valor)
-        log(doc, f"   ✅ Campo preenchido: '{valor_final}'")
-        return valor_final
-    
-    def _aguardar_elemento_js(xpath, timeout_espera=10, deve_estar_visivel=True):
-        """Aguarda elemento usando JavaScript"""
-        inicio = time.time()
-        while time.time() - inicio < timeout_espera:
-            existe = _executar_js("""
-                var xpath = arguments[0];
-                var deveEstarVisivel = arguments[1];
-                
-                var resultado = document.evaluate(
-                    xpath, 
-                    document, 
-                    null, 
-                    XPathResult.FIRST_ORDERED_NODE_TYPE, 
-                    null
-                );
-                var elemento = resultado.singleNodeValue;
-                
-                if (!elemento) return false;
-                
-                if (!deveEstarVisivel) return true;
-                
-                // Verifica visibilidade real
-                var style = window.getComputedStyle(elemento);
-                return style.display !== 'none' && 
-                       style.visibility !== 'hidden' && 
-                       parseFloat(style.opacity || 1) > 0.01 &&
-                       elemento.offsetParent !== null;
-            """, xpath, deve_estar_visivel)
-            
-            if existe:
-                return True
-            time.sleep(0.2)
+        original_timeout = self.driver.timeouts.script
+        self.driver.set_script_timeout(timeout)
         
-        raise Exception(f"Elemento não encontrado após {timeout_espera}s: {xpath}")
-    
-    def _localizar_botao_lov_js():
-        """Localiza botão LOV por Í­ndice ou XPath usando JS"""
-        if indice_lov is not None:
-            log(doc, f"   🔄  Localizando botão LOV por í­ndice: {indice_lov}")
-            
-            # Conta quantos botÃµes existem
-            total = _executar_js("""
-                var botoes = document.querySelectorAll("a.sprites.sp-openLov");
-                return botoes.length;
-            """)
-            
-            if indice_lov >= total:
-                raise Exception(f"Índice {indice_lov} inválido. Encontrados {total} botões LOV")
-            
-            xpath_resultado = f"(//a[@class='sprites sp-openLov'])[{indice_lov + 1}]"
-            log(doc, f"   ✅ Botão LOV #{indice_lov} localizado")
-            return xpath_resultado
-            
-        else:
-            if not btn_xpath:
-                raise ValueError("btn_xpath ou indice_lov deve ser fornecido")
-            log(doc, f" 🔄 Usando XPath fornecido para botão LOV")
-            return btn_xpath
-    
-    def _trocar_iframe_js(iframe_xpath):
-        """Troca para iframe usando Selenium (necessÃ¡rio)"""
-        try:
-            WebDriverWait(driver, timeout).until(
-                EC.frame_to_be_available_and_switch_to_it((By.XPATH, iframe_xpath))
-            )
-            log(doc, "   ✅ Iframe carregado")
-            return True
-        except Exception as e:
-            raise Exception(f"Falha ao trocar para iframe: {e}")
-    
-    def acao():
-        for tentativa in range(1, max_tentativas + 1):
+        for tentativa in range(1, self.max_retries + 1):
             try:
-                log(doc, f"🔄 Tentativa {tentativa}/{max_tentativas} - Modal LOV (JS Puro)")
+                if tentativa > 1:
+                    self.log_timeout(f"Tentativa {tentativa}/{self.max_retries}", "INFO")
                 
-                # Volta para conteÃºdo principal
-                try:
-                    driver.switch_to.default_content()
-                except:
-                    pass
+                result = self.driver.execute_script(script, *args)
+                self.driver.set_script_timeout(original_timeout)
                 
-                # PASSO 1: Localizar e clicar no botão LOV
-                xpath_botao = _localizar_botao_lov_js()
-                _aguardar_elemento_js(xpath_botao, timeout, deve_estar_visivel=True)
-                _clicar_js(xpath_botao, "botão LOV")
-                time.sleep(1.5)
+                if tentativa > 1:
+                    self.log_timeout("JavaScript executado com sucesso", "SUCCESS")
+                return result
                 
-                # PASSO 2: Trocar para iframe (se necessÃ¡rio)
-                if iframe_xpath:
-                    log(doc, " 🔄 Trocando para iframe do modal")
-                    _trocar_iframe_js(iframe_xpath)
-                    time.sleep(0.5)
+            except JavascriptException as e:
+                self.last_error = e
+                self.log_timeout(f"Erro JavaScript: {str(e)[:150]}", "ERROR")
+                self._limpar_estado_js()
                 
-                # PASSO 3: Aguardar modal abrir
-                log(doc, " 🔄 Aguardando modal carregar...")
-                _aguardar_ajax_js(timeout_ajax=10)
+                if tentativa < self.max_retries:
+                    time.sleep(1 + tentativa * 0.5)
+                    continue
+                    
+            except TimeoutException as e:
+                self.last_error = e
+                self.log_timeout(f"Timeout JavaScript ({timeout}s)", "ERROR")
+                self._forcar_parada_js()
                 
-                # PASSO 4: Aguardar e preencher campo de pesquisa
-                log(doc, f" 🔄 Aguardando campo de pesquisa")
-                _aguardar_elemento_js(pesquisa_xpath, timeout, deve_estar_visivel=True)
-                time.sleep(0.5)
+                if tentativa < self.max_retries:
+                    time.sleep(2 + tentativa)
+                    continue
+                    
+            except WebDriverException as e:
+                self.last_error = e
+                self.log_timeout(f"Erro WebDriver: {str(e)[:150]}", "ERROR")
                 
-                log(doc, f" 🔄 Preenchendo: '{termo_pesquisa}'")
-                _preencher_campo_js(pesquisa_xpath, termo_pesquisa)
-                time.sleep(0.5)
-                
-                # PASSO 5: Clicar em Pesquisar
-                log(doc, "   🔄 Clicando em Pesquisar")
-                _aguardar_elemento_js(btn_pesquisar_xpath, timeout, deve_estar_visivel=True)
-                _clicar_js(btn_pesquisar_xpath, "botão Pesquisar")
-                
-                # PASSO 6: Aguardar resultados
-                log(doc, "   🔄 Aguardando resultados...")
-                _aguardar_ajax_js(timeout_ajax=15)
-                time.sleep(2)
-                
-                # PASSO 7: Clicar no resultado
-                log(doc, "   🔄 Clicando no resultado")
-                _aguardar_elemento_js(resultado_xpath, timeout, deve_estar_visivel=True)
-                _clicar_js(resultado_xpath, "resultado da pesquisa")
-                time.sleep(1)
-                
-                # PASSO 8: Voltar para conteÃºdo principal
-                if iframe_xpath:
-                    try:
-                        driver.switch_to.default_content()
-                        log(doc, "   âœ… Voltou para conteÃºdo principal")
-                    except:
-                        pass
-                
-                # PASSO 9: Aguardar modal fechar
-                time.sleep(1)
-                _aguardar_ajax_js()
-                
-                log(doc, f" ✅ Modal LOV processado (tentativa {tentativa}) - JS Puro")
-                return True
-                
+                if tentativa < self.max_retries:
+                    time.sleep(1.5)
+                    continue
+                    
             except Exception as e:
-                log(doc, f"❌ Tentativa {tentativa} falhou: {str(e)[:200]}")
-                
-                # Cleanup em caso de erro
-                try:
-                    driver.switch_to.default_content()
-                except:
-                    pass
-                
-                # Tenta fechar modal via JS
-                try:
-                    _executar_js("""
-                        var botoes = document.querySelectorAll(
-                            '.ui-dialog-titlebar-close, .close, [class*="close"]'
-                        );
-                        botoes.forEach(function(btn) {
-                            if (btn.offsetParent !== null) {
-                                btn.click();
-                            }
-                        });
-                    """)
-                    time.sleep(0.5)
-                except:
-                    pass
-                
-                if tentativa < max_tentativas:
-                    tempo_espera = 2 + (tentativa * 0.5)
-                    log(doc, f" 🔄 Aguardando {tempo_espera}s antes de retentar...")
-                    time.sleep(tempo_espera)
-                else:
-                    raise Exception(
-                        f"Falha após {max_tentativas} tentativas (JS Puro). "
-                        f"Último erro: {e}"
-                    )
+                self.last_error = e
+                self.log_timeout(f"Erro inesperado: {str(e)[:150]}", "ERROR")
+                break
         
-        return False
+        try:
+            self.driver.set_script_timeout(original_timeout)
+        except:
+            pass
+            
+        if fallback_result is not None:
+            self.log_timeout(f"Usando valor fallback: {fallback_result}", "WARN")
+        return fallback_result
     
-    return acao
+    def _limpar_estado_js(self):
+        """Limpa estado JavaScript do browser"""
+        try:
+            cleanup_script = """
+                if (window.__cleanupTimers) {
+                    window.__cleanupTimers.forEach(clearTimeout);
+                    window.__cleanupTimers.forEach(clearInterval);
+                }
+                if (typeof jQuery !== 'undefined') {
+                    jQuery.active = 0;
+                }
+                window.__pendingRequests = 0;
+                return true;
+            """
+            self.driver.execute_script(cleanup_script)
+            time.sleep(0.5)
+        except Exception:
+            pass
+    
+    def _forcar_parada_js(self):
+        """Força parada de JavaScript travado"""
+        try:
+            self.driver.execute_script("window.stop();")
+            time.sleep(0.3)
+        except Exception:
+            pass
 
+# ==== JS FORCE ENGINE COM PROTEÇÃO ANTI-TIMEOUT ====
 class JSForceEngine:
-    """Motor de execução JavaScript forçado - 100% à prova de falhas"""
+    """Motor de execução JavaScript forçado com proteção contra timeouts"""
     
-    def __init__(self, driver, wait, doc):
+    def __init__(self, driver, wait, doc, timeout_padrao=10, max_retries=3):
         self.driver = driver
         self.wait = wait
         self.doc = doc
+        self.timeout_handler = JSTimeoutHandler(driver, doc, timeout_padrao, max_retries)
     
-    def execute_js(self, script, *args):
-        """Executa JavaScript com tratamento de erros"""
-        try:
-            return self.driver.execute_script(script, *args)
-        except Exception as e:
-            log(self.doc, f"⚠️ Erro JS: {str(e)[:150]}")
-            raise
+    def execute_js(self, script, *args, timeout=None, fallback_result=None):
+        """Executa JavaScript com proteção contra timeout"""
+        return self.timeout_handler.execute_js_safe(
+            script, *args, timeout=timeout, fallback_result=fallback_result
+        )
     
     def wait_ajax_complete(self, timeout=15):
-        """Versão síncrona — sem Promise"""
+        """Aguarda AJAX completar com proteção contra timeout"""
+        script = """
+            var jQueryOk = (typeof jQuery==='undefined') || (jQuery.active===0);
+            var fetchOk = !window.__pendingRequests || window.__pendingRequests===0;
+            var overlays = document.querySelectorAll(
+                '.blockScreen, .blockUI, .loading, .overlay, [class*="loading"], [class*="spinner"]'
+            );
+            var overlayOk = true;
+            for (var i=0; i<overlays.length; i++){
+                var s=window.getComputedStyle(overlays[i]);
+                if(s.display!=='none' && s.visibility!=='hidden' && parseFloat(s.opacity||1)>0.01){
+                    overlayOk=false;
+                    break;
+                }
+            }
+            return jQueryOk && fetchOk && overlayOk;
+        """
+        
         end = time.time() + timeout
         while time.time() < end:
             try:
-                done = self.driver.execute_script("""
-                    var jQueryOk = (typeof jQuery==='undefined') || (jQuery.active===0);
-                    var fetchOk = !window.__pendingRequests || window.__pendingRequests===0;
-                    var overlays = document.querySelectorAll(
-                      '.blockScreen, .blockUI, .loading, .overlay, [class*="loading"], [class*="spinner"], [class*="wait"]'
-                    );
-                    var overlayOk = true;
-                    for (var i=0;i<overlays.length;i++){
-                      var s=window.getComputedStyle(overlays[i]);
-                      if(s.display!=='none' && s.visibility!=='hidden' && parseFloat(s.opacity||1)>0.01){ overlayOk=false; break; }
-                    }
-                    return jQueryOk && fetchOk && overlayOk;
-                """)
+                done = self.execute_js(script, timeout=5, fallback_result=True)
                 if done:
                     return True
             except:
@@ -523,32 +268,43 @@ class JSForceEngine:
         return True
     
     def force_click(self, selector, by_xpath=False, max_attempts=5):
-        """Clique forçado 100% garantido usando JavaScript"""
+        """Clique forçado com proteção contra timeout"""
         log(self.doc, f"🎯 Clique forçado em: {selector}")
         
         for attempt in range(max_attempts):
             try:
-                # Estratégia progressiva de clique
                 strategies = [
-                    self._click_strategy_2,  # Eventos MouseEvent completos (melhor compatibilidade)
-                    self._click_strategy_1,  # Clique nativo otimizado
-                    self._click_strategy_3,  # Dispatch direto
-                    self._click_strategy_4,  # Força bruta total
-                    self._click_strategy_5,  # Último recurso
+                    self._click_strategy_2,
+                    self._click_strategy_1,
+                    self._click_strategy_3,
+                    self._click_strategy_4,
+                    self._click_strategy_5,
                 ]
-
                 
                 for i, strategy in enumerate(strategies, 1):
                     try:
-                        log(self.doc, f"   Tentativa {attempt + 1}.{i}...")
-                        result = strategy(selector, by_xpath)
+                        if attempt > 0 or i > 1:
+                            log(self.doc, f"   Tentativa {attempt + 1}.{i}...")
+                        
+                        result = self.execute_js(
+                            self._get_strategy_script(strategy, selector, by_xpath),
+                            selector,
+                            by_xpath,
+                            timeout=5,
+                            fallback_result=False
+                        )
+                        
                         if result:
                             log(self.doc, f"✅ Clique bem-sucedido (estratégia {i})")
                             time.sleep(0.5)
                             self.wait_ajax_complete(10)
                             return True
+                            
                     except Exception as e:
-                        log(self.doc, f"   Estratégia {i} falhou: {str(e)[:80]}")
+                        if i == 1 and attempt == 0:
+                            pass  # Silencia primeiro erro
+                        else:
+                            log(self.doc, f"   Estratégia {i} falhou: {str(e)[:80]}")
                         continue
                 
                 if attempt < max_attempts - 1:
@@ -561,248 +317,165 @@ class JSForceEngine:
         
         raise Exception(f"Falha ao clicar após {max_attempts} tentativas: {selector}")
     
-    def _click_strategy_1(self, selector, by_xpath):
-        """Estratégia 1: Clique nativo otimizado"""
-        script = """
-        var selector = arguments[0];
-        var byXPath = arguments[1];
-        
-        var element;
-        if (byXPath) {
-            var result = document.evaluate(selector, document, null, 
-                XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            element = result.singleNodeValue;
-        } else {
-            element = document.querySelector(selector);
-        }
-        
-        if (!element) throw new Error('Elemento não encontrado');
-        
-        // Remove obstáculos
-        element.style.pointerEvents = 'auto';
-        element.style.display = 'block';
-        element.style.visibility = 'visible';
-        element.style.opacity = '1';
-        element.removeAttribute('disabled');
-        
-        // Scroll suave
-        element.scrollIntoView({behavior: 'smooth', block: 'center'});
-        
-        // Aguarda scroll
-        return new Promise(function(resolve) {
-            setTimeout(function() {
-                element.click();
-                resolve(true);
-            }, 300);
-        });
+    def _get_strategy_script(self, strategy_func, selector, by_xpath):
+        """Retorna o script JavaScript para cada estratégia"""
+        base_locator = """
+            var selector = arguments[0];
+            var byXPath = arguments[1];
+            var element;
+            
+            if (byXPath) {
+                var result = document.evaluate(selector, document, null, 
+                    XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                element = result.singleNodeValue;
+            } else {
+                element = document.querySelector(selector);
+            }
+            
+            if (!element) throw new Error('Elemento não encontrado');
         """
-        return self.execute_js(script, selector, by_xpath)
+        
+        if strategy_func == self._click_strategy_1:
+            return base_locator + """
+                element.style.pointerEvents = 'auto';
+                element.style.display = 'block';
+                element.style.visibility = 'visible';
+                element.style.opacity = '1';
+                element.removeAttribute('disabled');
+                element.scrollIntoView({behavior: 'smooth', block: 'center'});
+                setTimeout(function() { element.click(); }, 300);
+                return true;
+            """
+        elif strategy_func == self._click_strategy_2:
+            return base_locator + """
+                element.style.pointerEvents = 'auto';
+                element.removeAttribute('disabled');
+                element.scrollIntoView({block: 'center'});
+                
+                var events = ['mouseover', 'mouseenter', 'mousemove', 'mousedown', 'mouseup', 'click'];
+                events.forEach(function(eventType) {
+                    var evt = new MouseEvent(eventType, {
+                        bubbles: true, cancelable: true, view: window, detail: 1,
+                        clientX: element.getBoundingClientRect().left + 5,
+                        clientY: element.getBoundingClientRect().top + 5
+                    });
+                    element.dispatchEvent(evt);
+                });
+                
+                if (typeof element.click === 'function') element.click();
+                return true;
+            """
+        elif strategy_func == self._click_strategy_3:
+            return base_locator + """
+                element.style.display = 'block';
+                element.style.visibility = 'visible';
+                element.style.opacity = '1';
+                element.style.pointerEvents = 'auto';
+                element.focus();
+                element.click();
+                element.dispatchEvent(new Event('click', {bubbles: true, cancelable: true}));
+                return true;
+            """
+        elif strategy_func == self._click_strategy_4:
+            return base_locator + """
+                element.removeAttribute('disabled');
+                element.removeAttribute('readonly');
+                element.style.pointerEvents = 'auto !important';
+                element.style.display = 'block !important';
+                element.style.visibility = 'visible !important';
+                element.style.opacity = '1 !important';
+                
+                var overlays = document.querySelectorAll('.modal, .overlay, .blockUI, [role="dialog"]');
+                overlays.forEach(function(overlay) {
+                    overlay.style.display = 'none';
+                    overlay.style.visibility = 'hidden';
+                });
+                
+                element.focus();
+                element.click();
+                
+                var clickEvent = new MouseEvent('click', {
+                    view: window, bubbles: true, cancelable: true
+                });
+                element.dispatchEvent(clickEvent);
+                
+                if (typeof jQuery !== 'undefined') jQuery(element).trigger('click');
+                return true;
+            """
+        else:  # strategy_5
+            return base_locator + """
+                var rect = element.getBoundingClientRect();
+                var x = rect.left + rect.width / 2;
+                var y = rect.top + rect.height / 2;
+                
+                var evt = document.createEvent('MouseEvents');
+                evt.initMouseEvent('click', true, true, window, 1, x, y, x, y, false, false, false, false, 0, null);
+                element.dispatchEvent(evt);
+                
+                if (element.onclick) element.onclick();
+                
+                var parent = element.parentElement;
+                while (parent && parent !== document.body) {
+                    if (parent.onclick) {
+                        parent.onclick();
+                        break;
+                    }
+                    parent = parent.parentElement;
+                }
+                return true;
+            """
+    
+    def _click_strategy_1(self, selector, by_xpath):
+        pass  # Implementado via _get_strategy_script
     
     def _click_strategy_2(self, selector, by_xpath):
-        """Estratégia 2: Eventos MouseEvent completos"""
-        script = """
-        var selector = arguments[0];
-        var byXPath = arguments[1];
-        
-        var element;
-        if (byXPath) {
-            var result = document.evaluate(selector, document, null, 
-                XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            element = result.singleNodeValue;
-        } else {
-            element = document.querySelector(selector);
-        }
-        
-        if (!element) throw new Error('Elemento não encontrado');
-        
-        // Prepara elemento
-        element.style.pointerEvents = 'auto';
-        element.removeAttribute('disabled');
-        element.scrollIntoView({block: 'center'});
-        
-        // Sequência completa de eventos
-        var events = ['mouseover', 'mouseenter', 'mousemove', 'mousedown', 'mouseup', 'click'];
-        events.forEach(function(eventType) {
-            var evt = new MouseEvent(eventType, {
-                bubbles: true,
-                cancelable: true,
-                view: window,
-                detail: 1,
-                clientX: element.getBoundingClientRect().left + 5,
-                clientY: element.getBoundingClientRect().top + 5
-            });
-            element.dispatchEvent(evt);
-        });
-        
-        // Clique adicional
-        if (typeof element.click === 'function') {
-            element.click();
-        }
-        
-        return true;
-        """
-        return self.execute_js(script, selector, by_xpath)
+        pass
     
     def _click_strategy_3(self, selector, by_xpath):
-        """Estratégia 3: Dispatch direto com focus"""
-        script = """
-        var selector = arguments[0];
-        var byXPath = arguments[1];
-        
-        var element;
-        if (byXPath) {
-            var result = document.evaluate(selector, document, null, 
-                XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            element = result.singleNodeValue;
-        } else {
-            element = document.querySelector(selector);
-        }
-        
-        if (!element) throw new Error('Elemento não encontrado');
-        
-        // Força visibilidade total
-        element.style.display = 'block';
-        element.style.visibility = 'visible';
-        element.style.opacity = '1';
-        element.style.pointerEvents = 'auto';
-        
-        // Focus
-        element.focus();
-        
-        // Clique direto
-        element.click();
-        
-        // Dispatch adicional
-        element.dispatchEvent(new Event('click', {bubbles: true, cancelable: true}));
-        
-        return true;
-        """
-        return self.execute_js(script, selector, by_xpath)
+        pass
     
     def _click_strategy_4(self, selector, by_xpath):
-        """Estratégia 4: Força bruta total"""
-        script = """
-        var selector = arguments[0];
-        var byXPath = arguments[1];
-        
-        var element;
-        if (byXPath) {
-            var result = document.evaluate(selector, document, null, 
-                XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            element = result.singleNodeValue;
-        } else {
-            element = document.querySelector(selector);
-        }
-        
-        if (!element) throw new Error('Elemento não encontrado');
-        
-        // Remove TODOS os bloqueios possíveis
-        element.removeAttribute('disabled');
-        element.removeAttribute('readonly');
-        element.style.pointerEvents = 'auto !important';
-        element.style.display = 'block !important';
-        element.style.visibility = 'visible !important';
-        element.style.opacity = '1 !important';
-        
-        // Remove overlays globais
-        var overlays = document.querySelectorAll('.modal, .overlay, .blockUI, [role="dialog"]');
-        overlays.forEach(function(overlay) {
-            overlay.style.display = 'none';
-            overlay.style.visibility = 'hidden';
-        });
-        
-        // Múltiplos métodos de clique
-        element.focus();
-        element.click();
-        
-        var clickEvent = new MouseEvent('click', {
-            view: window,
-            bubbles: true,
-            cancelable: true
-        });
-        element.dispatchEvent(clickEvent);
-        
-        // Trigger jQuery se existir
-        if (typeof jQuery !== 'undefined') {
-            jQuery(element).trigger('click');
-        }
-        
-        return true;
-        """
-        return self.execute_js(script, selector, by_xpath)
+        pass
     
     def _click_strategy_5(self, selector, by_xpath):
-        """Estratégia 5: Último recurso - simula clique no ponto exato"""
-        script = """
-        var selector = arguments[0];
-        var byXPath = arguments[1];
-        
-        var element;
-        if (byXPath) {
-            var result = document.evaluate(selector, document, null, 
-                XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            element = result.singleNodeValue;
-        } else {
-            element = document.querySelector(selector);
-        }
-        
-        if (!element) throw new Error('Elemento não encontrado');
-        
-        // Pega coordenadas
-        var rect = element.getBoundingClientRect();
-        var x = rect.left + rect.width / 2;
-        var y = rect.top + rect.height / 2;
-        
-        // Cria evento no ponto exato
-        var evt = document.createEvent('MouseEvents');
-        evt.initMouseEvent('click', true, true, window, 1, x, y, x, y, false, false, false, false, 0, null);
-        element.dispatchEvent(evt);
-        
-        // Fallback: procura por onclick
-        if (element.onclick) {
-            element.onclick();
-        }
-        
-        // Procura handlers no parent
-        var parent = element.parentElement;
-        while (parent && parent !== document.body) {
-            if (parent.onclick) {
-                parent.onclick();
-                break;
-            }
-            parent = parent.parentElement;
-        }
-        
-        return true;
-        """
-        return self.execute_js(script, selector, by_xpath)
+        pass
     
     def force_fill(self, selector, value, by_xpath=False, max_attempts=5):
-        """Preenchimento forçado 100% garantido"""
+        """Preenchimento forçado com proteção contra timeout"""
         log(self.doc, f"✏️ Preenchimento forçado: {selector} = '{value}'")
         
         for attempt in range(max_attempts):
             try:
                 strategies = [
-                    self._fill_strategy_1,  # Native + Events
-                    self._fill_strategy_2,  # React/Angular compatible
-                    self._fill_strategy_3,  # jQuery trigger
-                    self._fill_strategy_4,  # Força bruta
-                    self._fill_strategy_5,  # Último recurso
+                    self._fill_strategy_1,
+                    self._fill_strategy_2,
+                    self._fill_strategy_3,
+                    self._fill_strategy_4,
                 ]
                 
                 for i, strategy in enumerate(strategies, 1):
                     try:
-                        log(self.doc, f"   Tentativa {attempt + 1}.{i}...")
-                        result = strategy(selector, value, by_xpath)
+                        if attempt > 0 or i > 1:
+                            log(self.doc, f"   Tentativa {attempt + 1}.{i}...")
                         
-                        # Valida preenchimento
+                        result = self.execute_js(
+                            self._get_fill_script(strategy, selector, value, by_xpath),
+                            selector,
+                            value,
+                            by_xpath,
+                            timeout=5,
+                            fallback_result=None
+                        )
+                        
                         time.sleep(0.3)
                         if self._validate_fill(selector, value, by_xpath):
                             log(self.doc, f"✅ Campo preenchido (estratégia {i})")
                             return True
                     except Exception as e:
-                        log(self.doc, f"   Estratégia {i} falhou: {str(e)[:80]}")
+                        if i == 1 and attempt == 0:
+                            pass
+                        else:
+                            log(self.doc, f"   Estratégia {i} falhou: {str(e)[:80]}")
                         continue
                 
                 if attempt < max_attempts - 1:
@@ -813,491 +486,132 @@ class JSForceEngine:
         
         raise Exception(f"Falha ao preencher após {max_attempts} tentativas: {selector}")
     
-    def _fill_strategy_1(self, selector, value, by_xpath):
-        """Estratégia 1: Native com eventos"""
-        script = """
-        var selector = arguments[0];
-        var value = arguments[1];
-        var byXPath = arguments[2];
-        
-        var element;
-        if (byXPath) {
-            var result = document.evaluate(selector, document, null, 
-                XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            element = result.singleNodeValue;
-        } else {
-            element = document.querySelector(selector);
-        }
-        
-        if (!element) throw new Error('Campo não encontrado');
-        
-        // Prepara campo
-        element.removeAttribute('disabled');
-        element.removeAttribute('readonly');
-        element.style.display = 'block';
-        element.style.visibility = 'visible';
-        
-        // Scroll
-        element.scrollIntoView({block: 'center'});
-        
-        // Focus
-        element.focus();
-        element.dispatchEvent(new Event('focus', {bubbles: true}));
-        
-        // Limpa
-        element.value = '';
-        
-        // Preenche
-        element.value = value;
-        
-        // Eventos
-        ['input', 'change', 'blur', 'keyup'].forEach(function(evt) {
-            element.dispatchEvent(new Event(evt, {bubbles: true}));
-        });
-        
-        return element.value;
-        """
-        return self.execute_js(script, selector, value, by_xpath)
-    
-    def _fill_strategy_2(self, selector, value, by_xpath):
-        """Estratégia 2: Compatível com React/Angular"""
-        script = """
-        var selector = arguments[0];
-        var value = arguments[1];
-        var byXPath = arguments[2];
-        
-        var element;
-        if (byXPath) {
-            var result = document.evaluate(selector, document, null, 
-                XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            element = result.singleNodeValue;
-        } else {
-            element = document.querySelector(selector);
-        }
-        
-        if (!element) throw new Error('Campo não encontrado');
-        
-        // Setter nativo (React)
-        var nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-            window.HTMLInputElement.prototype, 'value'
-        ).set;
-        
-        if (nativeInputValueSetter) {
-            nativeInputValueSetter.call(element, value);
-        } else {
-            element.value = value;
-        }
-        
-        // Eventos React
-        element.dispatchEvent(new Event('input', {bubbles: true}));
-        element.dispatchEvent(new Event('change', {bubbles: true}));
-        
-        // Eventos adicionais
-        element.dispatchEvent(new KeyboardEvent('keydown', {bubbles: true}));
-        element.dispatchEvent(new KeyboardEvent('keyup', {bubbles: true}));
-        element.dispatchEvent(new Event('blur', {bubbles: true}));
-        
-        return element.value;
-        """
-        return self.execute_js(script, selector, value, by_xpath)
-    
-    def _fill_strategy_3(self, selector, value, by_xpath):
-        """Estratégia 3: jQuery trigger"""
-        script = """
-        var selector = arguments[0];
-        var value = arguments[1];
-        var byXPath = arguments[2];
-        
-        var element;
-        if (byXPath) {
-            var result = document.evaluate(selector, document, null, 
-                XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            element = result.singleNodeValue;
-        } else {
-            element = document.querySelector(selector);
-        }
-        
-        if (!element) throw new Error('Campo não encontrado');
-        
-        element.value = value;
-        
-        // Trigger jQuery se disponível
-        if (typeof jQuery !== 'undefined') {
-            jQuery(element).val(value).trigger('input').trigger('change').trigger('blur');
-        }
-        
-        // Eventos nativos como fallback
-        ['focus', 'input', 'change', 'blur'].forEach(function(evt) {
-            element.dispatchEvent(new Event(evt, {bubbles: true}));
-        });
-        
-        return element.value;
-        """
-        return self.execute_js(script, selector, value, by_xpath)
-    
-    def _fill_strategy_4(self, selector, value, by_xpath):
-        """Estratégia 4: Força bruta"""
-        script = """
-        var selector = arguments[0];
-        var value = arguments[1];
-        var byXPath = arguments[2];
-        
-        var element;
-        if (byXPath) {
-            var result = document.evaluate(selector, document, null, 
-                XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            element = result.singleNodeValue;
-        } else {
-            element = document.querySelector(selector);
-        }
-        
-        if (!element) throw new Error('Campo não encontrado');
-        
-        // Remove TODOS bloqueios
-        element.removeAttribute('disabled');
-        element.removeAttribute('readonly');
-        element.removeAttribute('maxlength');
-        
-        // Define valor múltiplas vezes
-        element.value = '';
-        element.setAttribute('value', value);
-        element.value = value;
-        
-        // Força atualização visual
-        element.style.color = element.style.color;
-        
-        // TODOS os eventos possíveis
-        var events = ['focus', 'click', 'input', 'change', 'keydown', 'keypress', 
-                      'keyup', 'blur', 'paste', 'textInput'];
-        events.forEach(function(evt) {
-            try {
-                element.dispatchEvent(new Event(evt, {bubbles: true, cancelable: true}));
-            } catch(e) {}
-        });
-        
-        // Handlers diretos
-        if (element.oninput) element.oninput();
-        if (element.onchange) element.onchange();
-        
-        return element.value;
-        """
-        return self.execute_js(script, selector, value, by_xpath)
-    
-    def _fill_strategy_5(self, selector, value, by_xpath):
-        """Estratégia 5: Último recurso - simula digitação"""
-        script = """
-        var selector = arguments[0];
-        var value = arguments[1];
-        var byXPath = arguments[2];
-        
-        var element;
-        if (byXPath) {
-            var result = document.evaluate(selector, document, null, 
-                XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            element = result.singleNodeValue;
-        } else {
-            element = document.querySelector(selector);
-        }
-        
-        if (!element) throw new Error('Campo não encontrado');
-        
-        element.focus();
-        element.value = '';
-        
-        // Simula digitação caractere por caractere
-        for (var i = 0; i < value.length; i++) {
-            element.value += value[i];
+    def _get_fill_script(self, strategy_func, selector, value, by_xpath):
+        """Retorna o script de preenchimento"""
+        base_locator = """
+            var selector = arguments[0];
+            var value = arguments[1];
+            var byXPath = arguments[2];
+            var element;
             
-            // Evento para cada caractere
-            var evt = new KeyboardEvent('keydown', {
-                key: value[i],
-                code: 'Key' + value[i].toUpperCase(),
-                bubbles: true
-            });
-            element.dispatchEvent(evt);
+            if (byXPath) {
+                var result = document.evaluate(selector, document, null, 
+                    XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                element = result.singleNodeValue;
+            } else {
+                element = document.querySelector(selector);
+            }
             
-            element.dispatchEvent(new Event('input', {bubbles: true}));
-        }
-        
-        element.dispatchEvent(new Event('change', {bubbles: true}));
-        element.dispatchEvent(new Event('blur', {bubbles: true}));
-        
-        return element.value;
+            if (!element) throw new Error('Campo não encontrado');
         """
-        return self.execute_js(script, selector, value, by_xpath)
-    
-    def _validate_fill(self, selector, expected_value, by_xpath):
-        """Valida se o campo foi preenchido corretamente"""
-        script = """
-        var selector = arguments[0];
-        var expected = arguments[1];
-        var byXPath = arguments[2];
         
-        var element;
-        if (byXPath) {
-            var result = document.evaluate(selector, document, null, 
-                XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-            element = result.singleNodeValue;
-        } else {
-            element = document.querySelector(selector);
-        }
-        
-        if (!element) return false;
-        
-        var actual = element.value || '';
-        return actual.trim() === expected.trim() || actual.includes(expected);
-        """
-        try:
-            return self.execute_js(script, selector, expected_value, by_xpath)
-        except:
-            return False
-    
-    def force_select(self, selector, text, by_xpath=False, max_attempts=5):
-        """Seleção forçada em dropdown/select"""
-        log(self.doc, f"🔽 Seleção forçada: {selector} = '{text}'")
-        
-        for attempt in range(max_attempts):
-            try:
-                script = """
-                var selector = arguments[0];
-                var text = arguments[1];
-                var byXPath = arguments[2];
-                
-                var element;
-                if (byXPath) {
-                    var result = document.evaluate(selector, document, null, 
-                        XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-                    element = result.singleNodeValue;
-                } else {
-                    element = document.querySelector(selector);
-                }
-                
-                if (!element) throw new Error('Select não encontrado');
-                
-                // Tenta por texto visível
-                for (var i = 0; i < element.options.length; i++) {
-                    if (element.options[i].text.trim() === text.trim()) {
-                        element.selectedIndex = i;
-                        element.value = element.options[i].value;
-                        element.dispatchEvent(new Event('change', {bubbles: true}));
-                        return true;
-                    }
-                }
-                
-                // Tenta por value
-                element.value = text;
-                element.dispatchEvent(new Event('change', {bubbles: true}));
-                
-                return element.value !== '';
-                """
-                
-                result = self.execute_js(script, selector, text, by_xpath)
-                if result:
-                    log(self.doc, f"✅ Opção selecionada: '{text}'")
-                    return True
-                    
-                if attempt < max_attempts - 1:
-                    time.sleep(1)
-                    
-            except Exception as e:
-                log(self.doc, f"⚠️ Tentativa {attempt + 1} falhou: {e}")
-                if attempt < max_attempts - 1:
-                    time.sleep(1)
-        
-        raise Exception(f"Falha ao selecionar opção após {max_attempts} tentativas")
-    
-    def force_datepicker(self, selector, date_value, by_xpath=False, max_attempts=5):
-        """Preenchimento forçado de datepicker"""
-        log(self.doc, f"📅 Datepicker forçado: {selector} = '{date_value}'")
-        
-        for attempt in range(max_attempts):
-            try:
-                script = """
-                var selector = arguments[0];
-                var dateValue = arguments[1];
-                var byXPath = arguments[2];
-                
-                var element;
-                if (byXPath) {
-                    var result = document.evaluate(selector, document, null, 
-                        XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-                    element = result.singleNodeValue;
-                } else {
-                    element = document.querySelector(selector);
-                }
-                
-                if (!element) throw new Error('Datepicker não encontrado');
-                
-                // Remove readonly/disabled
-                element.removeAttribute('readonly');
+        if strategy_func == self._fill_strategy_1:
+            return base_locator + """
                 element.removeAttribute('disabled');
-                
-                // jQuery datepicker
-                if (typeof jQuery !== 'undefined' && jQuery(element).datepicker) {
-                    try {
-                        jQuery(element).datepicker('setDate', dateValue);
-                        jQuery(element).trigger('change');
-                        return element.value;
-                    } catch(e) {}
-                }
-                
-                // Native
+                element.removeAttribute('readonly');
+                element.style.display = 'block';
+                element.style.visibility = 'visible';
+                element.scrollIntoView({block: 'center'});
+                element.focus();
+                element.dispatchEvent(new Event('focus', {bubbles: true}));
                 element.value = '';
-                element.value = dateValue;
-                
-                // Eventos completos
-                ['focus', 'input', 'change', 'blur', 'keyup'].forEach(function(evt) {
+                element.value = value;
+                ['input', 'change', 'blur', 'keyup'].forEach(function(evt) {
                     element.dispatchEvent(new Event(evt, {bubbles: true}));
                 });
-                
                 return element.value;
-                """
-                
-                result = self.execute_js(script, selector, date_value, by_xpath)
-                
-                # Valida
-                time.sleep(0.3)
-                if self._validate_fill(selector, date_value, by_xpath):
-                    log(self.doc, f"✅ Datepicker preenchido: '{date_value}'")
-                    return True
-                
-                if attempt < max_attempts - 1:
-                    time.sleep(1)
-                    
-            except Exception as e:
-                log(self.doc, f"⚠️ Tentativa {attempt + 1} falhou: {e}")
-                if attempt < max_attempts - 1:
-                    time.sleep(1)
-        
-        raise Exception(f"Falha ao preencher datepicker após {max_attempts} tentativas")
-    
-    def force_modal_open(self, btn_selector, modal_selector, by_xpath=False, max_attempts=5):
-        """Abre modal forçadamente e aguarda aparecer"""
-        log(self.doc, f"🔓 Abrindo modal: {btn_selector}")
-        
-        for attempt in range(max_attempts):
-            try:
-                # Clica no botão
-                self.force_click(btn_selector, by_xpath)
-                
-                # Aguarda modal aparecer
-                time.sleep(1)
-                
-                script = """
-                var selector = arguments[0];
-                var byXPath = arguments[1];
-                
-                var element;
-                if (byXPath) {
-                    var result = document.evaluate(selector, document, null, 
-                        XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-                    element = result.singleNodeValue;
+            """
+        elif strategy_func == self._fill_strategy_2:
+            return base_locator + """
+                var nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                    window.HTMLInputElement.prototype, 'value'
+                ).set;
+                if (nativeInputValueSetter) {
+                    nativeInputValueSetter.call(element, value);
                 } else {
-                    element = document.querySelector(selector);
+                    element.value = value;
                 }
-                
-                if (!element) return false;
-                
-                var style = window.getComputedStyle(element);
-                return style.display !== 'none' && 
-                       style.visibility !== 'hidden' && 
-                       parseFloat(style.opacity || 1) > 0.01;
-                """
-                
-                modal_visible = self.execute_js(script, modal_selector, by_xpath)
-                
-                if modal_visible:
-                    log(self.doc, "✅ Modal aberto com sucesso")
-                    self.wait_ajax_complete(5)
-                    return True
-                
-                if attempt < max_attempts - 1:
-                    log(self.doc, f"   Modal não apareceu, tentando novamente...")
-                    time.sleep(1.5)
-                    
-            except Exception as e:
-                log(self.doc, f"⚠️ Tentativa {attempt + 1} falhou: {e}")
-                if attempt < max_attempts - 1:
-                    time.sleep(1.5)
-        
-        raise Exception(f"Falha ao abrir modal após {max_attempts} tentativas")
-    
-    def force_modal_close(self, close_selector=None, by_xpath=False, max_attempts=3):
-        """Fecha modal forçadamente"""
-        log(self.doc, "🔒 Fechando modal...")
-        
-        for attempt in range(max_attempts):
-            try:
-                script = """
-                var closeSelector = arguments[0];
-                var byXPath = arguments[1];
-                
-                // Tenta seletor específico
-                if (closeSelector) {
-                    var element;
-                    if (byXPath) {
-                        var result = document.evaluate(closeSelector, document, null, 
-                            XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-                        element = result.singleNodeValue;
-                    } else {
-                        element = document.querySelector(closeSelector);
-                    }
-                    
-                    if (element) {
-                        element.click();
-                        return true;
-                    }
+                element.dispatchEvent(new Event('input', {bubbles: true}));
+                element.dispatchEvent(new Event('change', {bubbles: true}));
+                element.dispatchEvent(new KeyboardEvent('keydown', {bubbles: true}));
+                element.dispatchEvent(new KeyboardEvent('keyup', {bubbles: true}));
+                element.dispatchEvent(new Event('blur', {bubbles: true}));
+                return element.value;
+            """
+        elif strategy_func == self._fill_strategy_3:
+            return base_locator + """
+                element.value = value;
+                if (typeof jQuery !== 'undefined') {
+                    jQuery(element).val(value).trigger('input').trigger('change').trigger('blur');
                 }
+                ['focus', 'input', 'change', 'blur'].forEach(function(evt) {
+                    element.dispatchEvent(new Event(evt, {bubbles: true}));
+                });
+                return element.value;
+            """
+        else:  # strategy_4
+            return base_locator + """
+                element.removeAttribute('disabled');
+                element.removeAttribute('readonly');
+                element.removeAttribute('maxlength');
+                element.value = '';
+                element.setAttribute('value', value);
+                element.value = value;
+                element.style.color = element.style.color;
                 
-                // Busca botões de fechar comuns
-                var selectors = [
-                    '.ui-dialog-titlebar-close',
-                    '.close',
-                    '[data-dismiss="modal"]',
-                    '.modal-close',
-                    'button[aria-label="Close"]',
-                    '.wdClose a'
-                ];
-                
-                for (var i = 0; i < selectors.length; i++) {
-                    var btn = document.querySelector(selectors[i]);
-                    if (btn && btn.offsetParent !== null) {
-                        btn.click();
-                        return true;
-                    }
-                }
-                
-                // Remove modais diretamente
-                var modals = document.querySelectorAll('.modal, .ui-dialog, [role="dialog"]');
-                modals.forEach(function(modal) {
-                    modal.style.display = 'none';
-                    modal.remove();
+                var events = ['focus', 'click', 'input', 'change', 'keydown', 'keypress', 
+                              'keyup', 'blur', 'paste', 'textInput'];
+                events.forEach(function(evt) {
+                    try {
+                        element.dispatchEvent(new Event(evt, {bubbles: true, cancelable: true}));
+                    } catch(e) {}
                 });
                 
-                return modals.length > 0;
-                """
-                
-                result = self.execute_js(script, close_selector, by_xpath)
-                
-                if result:
-                    log(self.doc, "✅ Modal fechado")
-                    time.sleep(0.5)
-                    return True
-                
-                if attempt < max_attempts - 1:
-                    time.sleep(1)
-                    
-            except Exception as e:
-                log(self.doc, f"⚠️ Tentativa {attempt + 1} falhou: {e}")
-                if attempt < max_attempts - 1:
-                    time.sleep(1)
-        
-        log(self.doc, "⚠️ Não foi possível fechar modal, continuando...")
-        return False
+                if (element.oninput) element.oninput();
+                if (element.onchange) element.onchange();
+                return element.value;
+            """
+    
+    def _fill_strategy_1(self, selector, value, by_xpath):
+        pass
+    
+    def _fill_strategy_2(self, selector, value, by_xpath):
+        pass
+    
+    def _fill_strategy_3(self, selector, value, by_xpath):
+        pass
+    
+    def _fill_strategy_4(self, selector, value, by_xpath):
+        pass
+    
+    def _validate_fill(self, selector, expected_value, by_xpath):
+        """Valida preenchimento"""
+        script = """
+            var selector = arguments[0];
+            var expected = arguments[1];
+            var byXPath = arguments[2];
+            var element;
+            
+            if (byXPath) {
+                var result = document.evaluate(selector, document, null, 
+                    XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                element = result.singleNodeValue;
+            } else {
+                element = document.querySelector(selector);
+            }
+            
+            if (!element) return false;
+            var actual = element.value || '';
+            return actual.trim() === expected.trim() || actual.includes(expected);
+        """
+        try:
+            return self.execute_js(script, selector, expected_value, by_xpath, timeout=3, fallback_result=False)
+        except:
+            return False
 
-
+# ==== LOV HANDLER ====
 class LOVHandler:
-    """Handler especializado para modais LOV (List of Values)"""
+    """Handler especializado para modais LOV"""
     
     def __init__(self, js_engine):
         self.js = js_engine
@@ -1305,15 +619,21 @@ class LOVHandler:
     
     def open_and_select(self, btn_index=None, btn_xpath=None, search_text="", 
                        result_text="", iframe_xpath=None, max_attempts=5):
-        """Abre LOV, pesquisa e seleciona resultado usando JS forçado"""
-        
+        """Abre LOV, pesquisa e seleciona resultado"""
         log(self.doc, f"🔍 Processando LOV: '{search_text}' → '{result_text}'")
         
         for attempt in range(max_attempts):
             try:
-                log(self.doc, f"   Tentativa {attempt + 1}/{max_attempts}")
+                if attempt > 0:
+                    log(self.doc, f"   Tentativa {attempt + 1}/{max_attempts}")
                 
-                # PASSO 1: Clica no botão LOV
+                # Volta para conteúdo principal
+                try:
+                    self.js.driver.switch_to.default_content()
+                except:
+                    pass
+                
+                # Clica no botão LOV
                 if btn_index is not None:
                     btn_selector = f"(//a[@class='sprites sp-openLov'])[{btn_index + 1}]"
                     by_xpath = True
@@ -1327,7 +647,7 @@ class LOVHandler:
                 self.js.force_click(btn_selector, by_xpath=by_xpath)
                 time.sleep(1.5)
                 
-                # PASSO 2: Troca para iframe se necessário
+                # Troca para iframe se necessário
                 if iframe_xpath:
                     log(self.doc, "   🔄 Entrando no iframe...")
                     try:
@@ -1338,13 +658,12 @@ class LOVHandler:
                     except:
                         log(self.doc, "   ⚠️ Iframe não encontrado, continuando...")
                 
-                # PASSO 3: Aguarda modal carregar
+                # Aguarda modal carregar
                 self.js.wait_ajax_complete(10)
                 time.sleep(1)
                 
-                # PASSO 4: Preenche campo de pesquisa
+                # Preenche campo de pesquisa
                 log(self.doc, f"   ✏️ Pesquisando: '{search_text}'")
-                
                 search_selectors = [
                     "//input[@id='txtPesquisa']",
                     "//input[@class='nomePesquisa']",
@@ -1364,9 +683,8 @@ class LOVHandler:
                 
                 time.sleep(0.5)
                 
-                # PASSO 5: Clica em Pesquisar
+                # Clica em Pesquisar
                 log(self.doc, "   🔎 Executando pesquisa...")
-                
                 search_btn_selectors = [
                     "//a[contains(@class,'lpFind') and contains(normalize-space(.),'Pesquisar')]",
                     "//button[contains(normalize-space(.),'Pesquisar')]",
@@ -1385,19 +703,18 @@ class LOVHandler:
                 if not search_clicked:
                     raise Exception("Botão de pesquisa não encontrado")
                 
-                # PASSO 6: Aguarda resultados
+                # Aguarda resultados
                 time.sleep(2)
                 self.js.wait_ajax_complete(15)
                 
-                # PASSO 7: Clica no resultado
+                # Clica no resultado
                 log(self.doc, f"   🎯 Selecionando: '{result_text}'")
-                
                 result_xpath = f"//tr[td[contains(normalize-space(.), '{result_text}')]]"
                 self.js.force_click(result_xpath, by_xpath=True)
                 
                 time.sleep(1)
                 
-                # PASSO 8: Volta para conteúdo principal
+                # Volta para conteúdo principal
                 if iframe_xpath:
                     try:
                         self.js.driver.switch_to.default_content()
@@ -1405,7 +722,7 @@ class LOVHandler:
                     except:
                         pass
                 
-                # PASSO 9: Aguarda modal fechar
+                # Aguarda modal fechar
                 time.sleep(1)
                 self.js.wait_ajax_complete(10)
                 
@@ -1415,14 +732,8 @@ class LOVHandler:
             except Exception as e:
                 log(self.doc, f"⚠️ Tentativa {attempt + 1} falhou: {str(e)[:150]}")
                 
-                # Cleanup
                 try:
                     self.js.driver.switch_to.default_content()
-                except:
-                    pass
-                
-                try:
-                    self.js.force_modal_close()
                 except:
                     pass
                 
@@ -1433,11 +744,7 @@ class LOVHandler:
         
         return False
 
-
-# ==== WRAPPERS DE ALTO NÍVEL ====
-
-
-
+# ==== FUNÇÕES AUXILIARES ====
 def encontrar_mensagem_alerta():
     seletores = [
         (".alerts.salvo", "✅ Mensagem de Sucesso"),
@@ -1480,7 +787,6 @@ def safe_action(doc, descricao, func, max_retries=3):
     
     return False
 
-
 def inicializar_driver():
     """Inicializa WebDriver com configurações otimizadas"""
     global driver, wait
@@ -1503,6 +809,10 @@ def inicializar_driver():
             "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
         )
         
+        # Configura timeouts globais
+        driver.set_script_timeout(30)
+        driver.implicitly_wait(10)
+        
         wait = WebDriverWait(driver, TIMEOUT_DEFAULT)
         
         log(doc, "✅ Driver inicializado com sucesso")
@@ -1512,12 +822,11 @@ def inicializar_driver():
         log(doc, f"❌ Erro ao inicializar driver: {e}")
         return False
 
-
 def finalizar_relatorio():
     """Salva relatório e fecha driver"""
     global driver, doc
     
-    nome_arquivo = f"relatorio_geracao_titulos_unicos_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_caixa_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     
     try:
         doc.save(nome_arquivo)
@@ -1538,18 +847,8 @@ def finalizar_relatorio():
         except:
             pass
 
-
 def clicar_lov_por_indice(indice_lov: int, max_tentativas: int = 5, timeout: int = 10, scroll: bool = True):
-    """
-    Clica no ícone de LOV <a class="sprites sp-openLov"> pelo índice (ordem no DOM).
-    Retorna uma função 'acao' para ser usada com safe_action(..., lambda: ...).
-
-    Estratégias de clique:
-      1) Espera 'clickable' + click nativo
-      2) ScrollIntoView + click nativo
-      3) JavaScript click
-      4) ActionChains move_to_element + click
-    """
+    """Clica no ícone de LOV pelo índice"""
     def acao():
         if not isinstance(indice_lov, int) or indice_lov < 0:
             raise ValueError(f"Índice inválido: {indice_lov}")
@@ -1558,44 +857,36 @@ def clicar_lov_por_indice(indice_lov: int, max_tentativas: int = 5, timeout: int
         while tentativa < max_tentativas:
             tentativa += 1
             try:
-                log(doc, f"🔎 Tentativa {tentativa}: Localizando ícones LOV ('sp-openLov')...")
-                # Coleta atual dos elementos
+                log(doc, f"🔎 Tentativa {tentativa}: Localizando ícones LOV...")
                 elementos = driver.find_elements(By.CSS_SELECTOR, "a.sprites.sp-openLov")
 
                 if not elementos:
                     if tentativa < max_tentativas:
-                        log(doc, f"⚠️ Nenhum ícone LOV encontrado (tentativa {tentativa}/{max_tentativas}). Reintentando...", "WARN")
+                        log(doc, f"⚠️ Nenhum ícone LOV encontrado (tentativa {tentativa}/{max_tentativas})")
                         time.sleep(1.2)
                         continue
-                    raise Exception("Nenhum ícone LOV ('a.sprites.sp-openLov') foi encontrado na página.")
+                    raise Exception("Nenhum ícone LOV encontrado.")
 
                 if indice_lov >= len(elementos):
                     raise Exception(f"Índice {indice_lov} inválido. Encontrados {len(elementos)} ícones LOV.")
 
-                # Mantém um localizador estável por índice para waits/refresh
                 locator_xpath = f"(//a[contains(@class,'sp-openLov')])[{indice_lov + 1}]"
-
-                # Reaponta o elemento pelo locator (evita stale)
                 elemento = driver.find_element(By.XPATH, locator_xpath)
 
-                log(doc, f"🎯 Preparando clique no LOV de índice {indice_lov} (total: {len(elementos)}).")
+                log(doc, f"🎯 Preparando clique no LOV de índice {indice_lov}")
 
                 def _wait_clickable():
                     wait.until(EC.element_to_be_clickable((By.XPATH, locator_xpath)))
 
                 estrategias = [
-                    # 1) Espera 'clickable' + click nativo
                     lambda: (_wait_clickable(), elemento.click()),
-                    # 2) ScrollIntoView + click nativo
                     lambda: (
-                        driver.execute_script("arguments[0].scrollIntoView({block:'center', inline:'nearest'});", elemento) if scroll else None,
+                        driver.execute_script("arguments[0].scrollIntoView({block:'center'});", elemento) if scroll else None,
                         time.sleep(0.2),
                         elemento.click()
                     ),
-                    # 3) JavaScript click
                     lambda: driver.execute_script("arguments[0].click();", elemento),
-                    # 4) ActionChains
-                    lambda: (ActionChains(driver).move_to_element(elemento).pause(0.1).click().perform())
+                    lambda: ActionChains(driver).move_to_element(elemento).pause(0.1).click().perform()
                 ]
 
                 for i, estrategia in enumerate(estrategias, 1):
@@ -1603,26 +894,25 @@ def clicar_lov_por_indice(indice_lov: int, max_tentativas: int = 5, timeout: int
                         log(doc, f"   ▶️ Estratégia {i} de clique no LOV...")
                         estrategia()
                         time.sleep(0.3)
-                        log(doc, f"✅ Clique no LOV (índice {indice_lov}) realizado com sucesso (estratégia {i}).")
+                        log(doc, f"✅ Clique no LOV (índice {indice_lov}) realizado (estratégia {i})")
                         return True
                     except (ElementClickInterceptedException, StaleElementReferenceException, JavascriptException, TimeoutException) as e:
-                        log(doc, f"⚠️ Estratégia {i} falhou: {e}", "WARN")
-                        # Tenta re-obter o elemento em caso de stale/interceptação
+                        log(doc, f"⚠️ Estratégia {i} falhou: {e}")
                         try:
-                            _ = driver.find_elements(By.CSS_SELECTOR, "a.sprites.sp-openLov")
+                            elementos = driver.find_elements(By.CSS_SELECTOR, "a.sprites.sp-openLov")
                             elemento = driver.find_element(By.XPATH, locator_xpath)
-                        except Exception:
+                        except:
                             pass
                         continue
 
                 if tentativa < max_tentativas:
-                    log(doc, f"⚠️ Tentativa {tentativa} não conseguiu clicar no LOV. Reintentando em 1.2s…", "WARN")
+                    log(doc, f"⚠️ Tentativa {tentativa} não conseguiu clicar no LOV. Reintentando...")
                     time.sleep(1.2)
                     continue
 
             except Exception as e:
                 if tentativa < max_tentativas:
-                    log(doc, f"⚠️ Erro na tentativa {tentativa}: {e}. Reintentando em 1.2s…", "WARN")
+                    log(doc, f"⚠️ Erro na tentativa {tentativa}: {e}. Reintentando...")
                     time.sleep(1.2)
                     continue
                 raise
@@ -1631,327 +921,87 @@ def clicar_lov_por_indice(indice_lov: int, max_tentativas: int = 5, timeout: int
 
     return acao
 
-
-
-def abrir_modal_e_selecionar_robusto_xpath(
-    btn_xpath,
-    pesquisa_xpath,
-    termo_pesquisa,
-    btn_pesquisar_xpath,
-    resultado_xpath,
-    timeout=12,
-    max_tentativas=3,
-    iframe_xpath=None,
-    indice_lov=None,
-    **_ignorar_kwargs
-):
-    """
-    Abre o modal (LOV), pesquisa pelo termo e clica no resultado.
-    - Usa clicar_lov_por_indice se o índice for informado
-    - Usa retries, fallback JS e limpeza resistente do input
-    - Pode lidar com iframe do modal
-    """
-
-    def _js_click(el):
-        driver.execute_script("arguments[0].click();", el)
-
-    def _clear_resistente(el):
-        try:
-            el.clear()
-            el.send_keys(Keys.CONTROL, "a")
-            el.send_keys(Keys.DELETE)
-        except Exception:
-            driver.execute_script("arguments[0].value='';", el)
-
-    def _aguardar_ajax_overlay():
-        t0 = time.time()
-        while time.time() - t0 < 8:
-            try:
-                ready = driver.execute_script("return document.readyState")
-                ajax_ok = driver.execute_script("return window.jQuery ? jQuery.active === 0 : true")
-                if ready == "complete" and ajax_ok:
-                    break
-            except Exception:
-                pass
-            time.sleep(0.2)
-
-    def acao():
-        for tentativa in range(1, max_tentativas + 1):
-            try:
-                log(doc, f"🔄 Tentativa {tentativa}/{max_tentativas} - Abrindo LOV robusto")
-
-                driver.switch_to.default_content()
-                if indice_lov is not None:
-                    log(doc, f"📌 Clicando no LOV de índice {indice_lov}")
-                    clicar_lov_por_indice(indice_lov, max_tentativas=3, timeout=timeout)()
-                else:
-                    log(doc, "📌 Clicando no botão LOV pelo XPath")
-                    botao = WebDriverWait(driver, timeout).until(
-                        EC.element_to_be_clickable((By.XPATH, btn_xpath))
-                    )
-                    try:
-                        botao.click()
-                    except:
-                        _js_click(botao)
-
-                # Troca para iframe, se houver
-                if iframe_xpath:
-                    WebDriverWait(driver, timeout).until(
-                        EC.frame_to_be_available_and_switch_to_it((By.XPATH, iframe_xpath))
-                    )
-
-                _aguardar_ajax_overlay()
-
-                # Campo de pesquisa
-                campo = WebDriverWait(driver, timeout).until(
-                    EC.visibility_of_element_located((By.XPATH, pesquisa_xpath))
-                )
-                _clear_resistente(campo)
-                campo.send_keys(termo_pesquisa)
-
-                # Botão pesquisar
-                btn_pesq = WebDriverWait(driver, timeout).until(
-                    EC.element_to_be_clickable((By.XPATH, btn_pesquisar_xpath))
-                )
-                try:
-                    btn_pesq.click()
-                except:
-                    _js_click(btn_pesq)
-
-                _aguardar_ajax_overlay()
-                time.sleep(1)
-
-                # Resultado
-                resultado = WebDriverWait(driver, timeout).until(
-                    EC.element_to_be_clickable((By.XPATH, resultado_xpath))
-                )
-                driver.execute_script("arguments[0].scrollIntoView({block:'center'});", resultado)
-                try:
-                    resultado.click()
-                except:
-                    _js_click(resultado)
-
-                driver.switch_to.default_content()
-                log(doc, "✅ Modal LOV processado com sucesso!")
-                return True
-
-            except Exception as e:
-                log(doc, f"⚠️ Falha na tentativa {tentativa}: {e}")
-                driver.switch_to.default_content()
-                if tentativa < max_tentativas:
-                    time.sleep(2)
-                else:
-                    raise
-
-    return acao
-
-def validar_resultado_pesquisa(js_engine):
-    """Valida se há títulos encontrados e seleciona o primeiro"""
+def encontrar_campos_textarea(timeout=10):
+    """Retorna lista de textareas visíveis e interativas"""
+    elementos = []
     try:
-        log(doc, "🔍 Validando resultado da pesquisa...")
-        time.sleep(2)
-        
-        script = """
-        // Tenta clicar no checkbox principal "chkAll" se existir
-        var chkAll = document.querySelector("#chkAll");
-        if (chkAll && !chkAll.disabled) {
-            chkAll.scrollIntoView({block: 'center'});
-            chkAll.click();
-            console.log("✔ chkAll clicado");
-        } else {
-            console.log("ℹ chkAll não encontrado ou desabilitado");
-        }
+        wait.until(lambda d: len(d.find_elements(By.TAG_NAME, "textarea")) >= 0)
+        textareas = driver.find_elements(By.TAG_NAME, "textarea")
+    except:
+        textareas = []
 
-        // Procura checkboxes na tabela de resultados
-        var checkboxes = document.querySelectorAll(
-            "table tbody tr input[class='sorting_1'], " +
-            "input[class='sorting_1'], " +
-            "table tbody tr input[type='checkbox']"
-        );
-        
-        // Filtra visíveis e habilitados
-        var visible = [];
-        for (var i = 0; i < checkboxes.length; i++) {
-            var cb = checkboxes[i];
-            var style = window.getComputedStyle(cb);
-            if (style.display !== 'none' && 
-                style.visibility !== 'hidden' && 
-                cb.offsetParent !== null &&
-                !cb.disabled) {
-                visible.push(cb);
-            }
-        }
-        
-        if (visible.length === 0) return null;
-        
-        // Clica no primeiro
-        var first = visible[0];
-        first.scrollIntoView({block: 'center'});
-        first.click();
-        
-        return visible.length;
-        """
-        
-        result = js_engine.execute_js(script)
-        
-        if result is None or result == 0:
-            log(doc, "❌ Nenhum título encontrado")
-            return False
-        
-        log(doc, f"✅ {result} título(s) encontrado(s), primeiro selecionado")
-        return True
-        
-    except Exception as e:
-        log(doc, f"❌ Erro ao validar resultado: {e}")
-        return False
-
-def forcar_retorno_tela_sistema(js_engine, esperado_selector="#gsFinan", timeout=12):
-    """
-    Força o retorno para a tela do sistema após confirmação de modal.
-    - js_engine: instância de JSForceEngine (tem driver, execute_js, force_click, etc.)
-    - esperado_selector: seletor que indica que a tela principal está visível (ajuste conforme sua UI)
-    """
-    driver = js_engine.driver
-    wait = WebDriverWait(driver, 3)
-    log(doc, "🔁 Forçando retorno para tela do sistema...")
-
-    try:
-        # 1) Volta para o conteúdo principal
+    for el in textareas:
         try:
-            driver.switch_to.default_content()
+            if not el.is_displayed() or not el.is_enabled():
+                continue
+            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+            elementos.append({
+                "elemento": el,
+                "id": el.get_attribute("id"),
+                "name": el.get_attribute("name"),
+            })
         except:
-            pass
+            continue
 
-        # 2) Remove overlays/modais via JS (limpeza agressiva)
-        try:
-            js_engine.execute_js("""
-                document.querySelectorAll('.ui-widget-overlay, .blockUI, .modal-backdrop, .blockScreen, .overlay').forEach(function(o){
-                    o.style.display='none'; o.style.visibility='hidden'; o.style.opacity='0';
-                });
-                // Remove modais persistentes do DOM se existirem
-                document.querySelectorAll('.modal, .ui-dialog, [role=\"dialog\"]').forEach(function(m){
-                    try { m.remove(); } catch(e) {}
-                });
-                return true;
-            """)
-            log(doc, "   ✅ Overlays/modais escondidos/removidos (JS)")
-        except Exception as e:
-            log(doc, f"   ⚠️ Não foi possível limpar overlays via JS: {e}")
+    return elementos
 
-        # 3) Tentar clicar no botão de fechar do módulo (ex.: wdClose)
-        try:
-            js_engine.force_click("#gsFinan > div.wdTop.ui-draggable-handle > div.wdClose > a", by_xpath=False, max_attempts=3)
-            log(doc, "   ✅ Botão de fechar do módulo clicado")
-        except Exception as e:
-            log(doc, f"   ⚠️ Botão de fechar do módulo não clicado: {e}")
+def normalizar_texto(txt):
+    if txt is None:
+        return ""
+    return txt.replace("\r\n", "\n").replace("\r", "\n").strip()
 
-        # 4) Enviar ESC como fallback (fecha modais que respondem a ESC)
-        try:
-            ActionChains(driver).send_keys(Keys.ESCAPE).perform()
-            time.sleep(0.5)
-            log(doc, "   ✅ ESC enviado")
-        except Exception as e:
-            log(doc, f"   ⚠️ Falha ao enviar ESC: {e}")
-
-        # 5) Espera seletor da tela principal ficar presente/visível
-        t0 = time.time()
-        while time.time() - t0 < timeout:
-            try:
-                # Ajuste: se a sua tela principal tiver um elemento específico substitua o selector
-                element = driver.find_element(By.CSS_SELECTOR, esperado_selector)
-                # Checa visibilidade via JS para evitar false positives
-                visible = js_engine.execute_js("""
-                    var el = arguments[0];
-                    if(!el) return false;
-                    var s = window.getComputedStyle(el);
-                    return (s.display !== 'none' && s.visibility !== 'hidden' && parseFloat(s.opacity||1) > 0.01);
-                """, element)
-                if visible:
-                    log(doc, f"✅ Tela principal detectada ({esperado_selector})")
-                    return True
-            except Exception:
-                pass
-            time.sleep(0.5)
-
-        # 6) Último recurso: refresh da página para garantir estado limpo
-        try:
-            log(doc, "🔄 Último recurso: recarregando a página")
-            driver.refresh()
-            time.sleep(3)
-            # checa novamente
-            try:
-                driver.find_element(By.CSS_SELECTOR, esperado_selector)
-                log(doc, f"✅ Tela principal encontrada após refresh ({esperado_selector})")
-                return True
-            except:
-                pass
-        except Exception as e:
-            log(doc, f"⚠️ Falha ao recarregar página: {e}")
-
-        log(doc, "⚠️ Não foi possível garantir retorno total à tela do sistema")
+def validar_textarea_preenchida(elemento, texto_esperado):
+    """Confere se o valor atual da textarea bate com o esperado"""
+    try:
+        atual = elemento.get_attribute("value")
+        if atual is None or atual == "":
+            atual = (elemento.text or "")
+        return normalizar_texto(atual) == normalizar_texto(texto_esperado)
+    except StaleElementReferenceException:
         return False
-
-    except Exception as e:
-        log(doc, f"❌ Erro em forcar_retorno_tela_sistema: {e}")
-        return False
-    
 
 def _prepare_focus_and_clear(elemento, limpar_primeiro=True):
-    # Garante visibilidade e foco
     driver.execute_script("arguments[0].scrollIntoView({block:'center'});", elemento)
     try:
         elemento.click()
-    except Exception:
+    except:
         driver.execute_script("arguments[0].focus();", elemento)
 
     if limpar_primeiro:
         try:
             elemento.clear()
-        except Exception:
-            # Fallback de limpeza por teclas
+        except:
             ActionChains(driver)\
                 .move_to_element(elemento).click()\
                 .key_down(Keys.CONTROL).send_keys("a").key_up(Keys.CONTROL)\
                 .send_keys(Keys.DELETE).perform()
 
-
-
-
-
 def _textarea_tradicional(elemento, texto, limpar_primeiro=True):
     _prepare_focus_and_clear(elemento, limpar_primeiro)
     elemento.send_keys(texto)
-    # Dispara blur para muitos bindings reativos
     elemento.send_keys(Keys.TAB)
-
 
 def _textarea_actionchains(elemento, texto, limpar_primeiro=True):
     _prepare_focus_and_clear(elemento, limpar_primeiro)
     ac = ActionChains(driver)
     ac.move_to_element(elemento).click().perform()
-    # Quebra o texto em partes para evitar engasgos em campos longos
     for chunk_start in range(0, len(texto), 400):
         ac.send_keys(texto[chunk_start:chunk_start+400]).perform()
         time.sleep(0.05)
     ac.send_keys(Keys.TAB).perform()
 
-
 def _textarea_js_setvalue(elemento, texto):
-    # Seta .value e dispara eventos clássicos
     driver.execute_script("""
         const el = arguments[0];
         const val = arguments[1];
         el.value = val;
-        // Dispara eventos comuns que form libs escutam
         el.dispatchEvent(new Event('input',  {bubbles:true}));
         el.dispatchEvent(new Event('change', {bubbles:true}));
         el.dispatchEvent(new KeyboardEvent('keyup', {bubbles:true}));
         el.dispatchEvent(new Event('blur',   {bubbles:true}));
     """, elemento, texto)
 
-
 def _textarea_js_react_input(elemento, texto):
-    # Compat extra p/ React (setando o setter do prototype) + eventos
     driver.execute_script("""
         const el = arguments[0];
         const val = arguments[1];
@@ -1963,15 +1013,13 @@ def _textarea_js_react_input(elemento, texto):
             el.value = val;
         }
 
-        // React/Vue/Svelte geralmente escutam 'input'
         el.dispatchEvent(new Event('input', {bubbles: true}));
         el.dispatchEvent(new Event('change', {bubbles: true}));
         el.dispatchEvent(new Event('blur', {bubbles: true}));
     """, elemento, texto)
 
-
 def preencher_textarea_por_indice(indice_campo, texto, max_tentativas=5, limpar_primeiro=True):
-    """Preenche um <textarea> pelo índice (ordem no DOM) usando estratégias múltiplas"""
+    """Preenche textarea pelo índice usando estratégias múltiplas"""
     def acao():
         if not isinstance(indice_campo, int) or indice_campo < 0:
             raise ValueError(f"Índice inválido: {indice_campo}")
@@ -1985,27 +1033,24 @@ def preencher_textarea_por_indice(indice_campo, texto, max_tentativas=5, limpar_
                 campos = encontrar_campos_textarea()
                 if not campos:
                     if tentativa < max_tentativas:
-                        log(doc, f"⚠️ Nenhuma <textarea> encontrada (tentativa {tentativa}/{max_tentativas})", "WARN")
+                        log(doc, f"⚠️ Nenhuma <textarea> encontrada (tentativa {tentativa}/{max_tentativas})")
                         time.sleep(1.5)
                         continue
-                    raise Exception("Nenhuma <textarea> foi encontrada na página.")
+                    raise Exception("Nenhuma <textarea> foi encontrada.")
 
                 if indice_campo >= len(campos):
                     raise Exception(f"Índice {indice_campo} inválido. Encontradas {len(campos)} textareas.")
 
                 campo_info = campos[indice_campo]
-                elemento   = campo_info["elemento"]
-                campo_id   = campo_info.get("id") or "(sem id)"
-                campo_name = campo_info.get("name") or "(sem name)"
+                elemento = campo_info["elemento"]
+                campo_id = campo_info.get("id") or "(sem id)"
 
-                log(doc, f"🎯 Tentativa {tentativa}: Preenchendo textarea {indice_campo} (ID: {campo_id}, name: {campo_name}) com {len(texto)} caracteres")
+                log(doc, f"🎯 Tentativa {tentativa}: Preenchendo textarea {indice_campo} (ID: {campo_id})")
 
-                # Se já estiver preenchido corretamente, encerra
                 if validar_textarea_preenchida(elemento, texto):
                     log(doc, f"✅ Textarea {indice_campo} já está com o valor desejado.")
                     return True
 
-                # Estratégias em ordem de 'menos invasiva' para 'mais invasiva'
                 estrategias = [
                     lambda: _textarea_tradicional(elemento, texto, limpar_primeiro),
                     lambda: _textarea_actionchains(elemento, texto, limpar_primeiro),
@@ -2019,31 +1064,28 @@ def preencher_textarea_por_indice(indice_campo, texto, max_tentativas=5, limpar_
                         estrategia()
                         time.sleep(0.8)
 
-                        # Revalida após a estratégia
                         if validar_textarea_preenchida(elemento, texto):
                             val = (elemento.get_attribute("value") or "").strip()
-                            log(doc, f"✅ Preenchido com sucesso pela estratégia {i}: '{val[:60]}{'…' if len(val) > 60 else ''}'")
+                            log(doc, f"✅ Preenchido com sucesso pela estratégia {i}")
                             return True
                         else:
-                            log(doc, f"⚠️ Estratégia {i} não refletiu o valor esperado.", "WARN")
+                            log(doc, f"⚠️ Estratégia {i} não refletiu o valor esperado.")
                     except (StaleElementReferenceException, JavascriptException, TimeoutException) as e:
-                        log(doc, f"⚠️ Estratégia {i} falhou: {e}", "WARN")
-                        # Reobter o elemento se necessário
+                        log(doc, f"⚠️ Estratégia {i} falhou: {e}")
                         try:
                             campos = encontrar_campos_textarea()
                             elemento = campos[indice_campo]["elemento"]
-                        except Exception:
+                        except:
                             pass
                         continue
 
-                # Se chegou aqui, nenhuma estratégia funcionou nesta tentativa
                 if tentativa < max_tentativas:
-                    log(doc, f"⚠️ Tentativa {tentativa} falhou; reintentando em 1.5s…", "WARN")
+                    log(doc, f"⚠️ Tentativa {tentativa} falhou; reintentando em 1.5s…")
                     time.sleep(1.5)
                     continue
             except Exception as e:
                 if tentativa < max_tentativas:
-                    log(doc, f"⚠️ Erro na tentativa {tentativa}: {e}. Retentando…", "WARN")
+                    log(doc, f"⚠️ Erro na tentativa {tentativa}: {e}. Retentando…")
                     time.sleep(1.5)
                     continue
                 else:
@@ -2053,267 +1095,49 @@ def preencher_textarea_por_indice(indice_campo, texto, max_tentativas=5, limpar_
     return acao
 
 
-# =========================
-# Helpers usados pela função
-# =========================
-
-def encontrar_campos_textarea(timeout=10):
-    """
-    Retorna uma lista de dicts com metadados de cada <textarea> visível e interativa.
-    Ex.: [{'elemento': WebElement, 'id': '...', 'name': '...'}]
-    """
-    elementos = []
+def fechar_abas_extras(driver, doc, aba_principal_index=0):
+    """Fecha todas as abas extras (como popups de impressão) mantendo apenas a aba principal"""
     try:
-        # Espera haver pelo menos 1 textarea no DOM (se existir)
-        wait.until(lambda d: len(d.find_elements(By.TAG_NAME, "textarea")) >= 0)
-        textareas = driver.find_elements(By.TAG_NAME, "textarea")
-    except Exception:
-        textareas = []
-
-    for el in textareas:
-        try:
-            if not el.is_displayed() or not el.is_enabled():
-                continue
-            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
-            elementos.append({
-                "elemento": el,
-                "id": el.get_attribute("id"),
-                "name": el.get_attribute("name"),
-            })
-        except Exception:
-            continue
-
-    return elementos
-
-
-def normalizar_texto(txt):
-    if txt is None:
-        return ""
-    # Normaliza quebras de linha e espaços
-    return txt.replace("\r\n", "\n").replace("\r", "\n").strip()
-
-
-def validar_textarea_preenchida(elemento, texto_esperado):
-    """Confere se o valor atual da textarea bate com o texto esperado (normalizado)."""
-    try:
-        atual = elemento.get_attribute("value")
-        # Alguns frameworks populam via textContent em textareas (raro, mas possível)
-        if atual is None or atual == "":
-            atual = (elemento.text or "")
-        return normalizar_texto(atual) == normalizar_texto(texto_esperado)
-    except StaleElementReferenceException:
-        return False
-
-
-
-
-
-def confirmar_modal_geracao_titulos(js_engine, timeout=12, iframe_xpath=None):
-    """
-    Clica no 'Sim' (id=BtYes) da modal de geração de boletos únicos e RETORNA IMEDIATAMENTE à tela principal.
-    Estratégia: clique agressivo + remoção forçada de overlays + validação instantânea do retorno.
-    """
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
-    from selenium.webdriver.common.by import By
-    import time
-
-    driver = js_engine.driver
-    wait = WebDriverWait(driver, timeout)
-
-    # Sempre volta pro conteúdo principal
-    try:
-        driver.switch_to.default_content()
-    except:
-        pass
-
-    # Entra no iframe, se informado
-    if iframe_xpath:
-        try:
-            wait.until(EC.frame_to_be_available_and_switch_to_it((By.XPATH, iframe_xpath)))
-        except:
-            pass
-
-    log(doc, "🎯 Localizando botão 'Sim' e executando clique imediato...")
-
-    # CLIQUE AGRESSIVO E IMEDIATO NO BOTÃO SIM
-    clicado = js_engine.execute_js("""
-        // Localiza o botão #BtYes visível
-        var botoes = document.querySelectorAll('#BtYes, a[id="BtYes"], button[id="BtYes"]');
-        var btn = null;
-        
-        for (var i = 0; i < botoes.length; i++) {
-            var b = botoes[i];
-            var s = getComputedStyle(b);
-            if (b.offsetParent !== null && 
-                s.display !== 'none' && 
-                s.visibility !== 'hidden' && 
-                parseFloat(s.opacity || 1) > 0.01 &&
-                !b.disabled) {
-                btn = b;
-                break;
-            }
-        }
-        
-        if (!btn) return false;
-        
-        // CLIQUE MÚLTIPLO INSTANTÂNEO (garante que foi registrado)
-        btn.scrollIntoView({block: 'center'});
-        btn.focus();
-        
-        // Sequência de eventos em rapid-fire
-        ['mouseover', 'mouseenter', 'mousedown', 'mouseup', 'click'].forEach(function(tipo) {
-            var evt = new MouseEvent(tipo, {
-                bubbles: true,
-                cancelable: true,
-                view: window,
-                detail: 1
-            });
-            btn.dispatchEvent(evt);
-        });
-        
-        // Click nativo adicional
-        if (btn.click) btn.click();
-        
-        // REMOÇÃO IMEDIATA DE TODOS OVERLAYS/MODAIS (não espera AJAX)
-        var overlays = document.querySelectorAll(
-            '.ui-widget-overlay, .blockUI, .modal-backdrop, .blockScreen, ' +
-            '.overlay, [class*="overlay"], div.modal.overflow'
-        );
-        
-        overlays.forEach(function(o) {
-            o.style.display = 'none !important';
-            o.style.visibility = 'hidden !important';
-            o.style.opacity = '0 !important';
-            o.style.pointerEvents = 'none !important';
-            try { o.remove(); } catch(e) {}
-        });
-        
-        return true;
-    """)
-    
-    if not clicado:
-        raise Exception("Botão 'Sim' (#BtYes) não encontrado ou não clicável")
-    
-    log(doc, "✅ Clique executado + overlays removidos instantaneamente")
-    
-    # Volta para conteúdo principal imediatamente
-    try:
-        driver.switch_to.default_content()
-    except:
-        pass
-    
-    # VALIDAÇÃO IMEDIATA: verifica se #gsFinan está visível (sem loops de espera)
-    log(doc, "🔍 Validando retorno imediato à tela principal...")
-    
-    na_tela_principal = js_engine.execute_js("""
-        var gsFinan = document.querySelector('#gsFinan');
-        if (!gsFinan) return false;
-        
-        var s = getComputedStyle(gsFinan);
-        var visivel = (
-            gsFinan.offsetParent !== null &&
-            s.display !== 'none' &&
-            s.visibility !== 'hidden' &&
-            parseFloat(s.opacity || 1) > 0.01
-        );
-        
-        // Remove qualquer overlay residual
-        document.querySelectorAll('.ui-widget-overlay, .blockUI, .modal-backdrop, [class*="overlay"]').forEach(function(o) {
-            o.style.display = 'none';
-            o.style.visibility = 'hidden';
-            try { o.remove(); } catch(e) {}
-        });
-        
-        return visivel;
-    """)
-    
-    if na_tela_principal:
-        log(doc, "✅ Tela principal (#gsFinan) confirmada IMEDIATAMENTE")
-        return True
-    
-    # Se não detectou imediatamente, aguarda até 3 segundos máximo
-    log(doc, "⏳ Aguardando confirmação da tela principal (máx 3s)...")
-    for _ in range(6):  # 6 x 0.5s = 3s máximo
-        na_tela = js_engine.execute_js("""
-            var gsFinan = document.querySelector('#gsFinan');
-            if (!gsFinan) return false;
-            var s = getComputedStyle(gsFinan);
-            return (gsFinan.offsetParent !== null && 
-                    s.display !== 'none' && 
-                    s.visibility !== 'hidden' && 
-                    parseFloat(s.opacity || 1) > 0.01);
-        """)
-        
-        if na_tela:
-            log(doc, "✅ Tela principal confirmada")
+        handles = driver.window_handles
+        if len(handles) <= 1:
+            log(doc, "ℹ️ Apenas uma aba aberta - nada a fechar.")
             return True
         
-        time.sleep(0.5)
-    
-    # Último recurso: força remoção agressiva de tudo que pode estar bloqueando
-    log(doc, "🔧 Último recurso: limpeza agressiva total...")
-    js_engine.execute_js("""
-        // Remove TUDO que pode estar bloqueando a visualização
-        var selectores = [
-            '.ui-widget-overlay', '.blockUI', '.modal-backdrop', '.blockScreen',
-            '.overlay', '.loading', '.spinner', 'div.modal.overflow',
-            '[class*="overlay"]', '[class*="modal"]', '[class*="loading"]'
-        ];
+        # Guarda o handle da aba principal
+        aba_principal = handles[aba_principal_index]
         
-        selectores.forEach(function(sel) {
-            document.querySelectorAll(sel).forEach(function(el) {
-                el.style.display = 'none !important';
-                el.style.visibility = 'hidden !important';
-                el.style.opacity = '0 !important';
-                try { el.remove(); } catch(e) {}
-            });
-        });
+        # Fecha todas as outras abas
+        abas_fechadas = 0
+        for handle in handles:
+            if handle != aba_principal:
+                try:
+                    driver.switch_to.window(handle)
+                    driver.close()
+                    abas_fechadas += 1
+                    log(doc, f"🗑️ Aba extra fechada ({abas_fechadas})")
+                except Exception as e:
+                    log(doc, f"⚠️ Erro ao fechar aba: {e}")
         
-        // Força visibilidade do #gsFinan
-        var gsFinan = document.querySelector('#gsFinan');
-        if (gsFinan) {
-            gsFinan.style.display = 'block';
-            gsFinan.style.visibility = 'visible';
-            gsFinan.style.opacity = '1';
-        }
+        # Retorna para a aba principal
+        driver.switch_to.window(aba_principal)
+        time.sleep(0.3)
         
-        return true;
-    """)
-    
-    # Validação final
-    na_tela = js_engine.execute_js("""
-        var gsFinan = document.querySelector('#gsFinan');
-        if (!gsFinan) return false;
-        var s = getComputedStyle(gsFinan);
-        return (gsFinan.offsetParent !== null && 
-                s.display !== 'none' && 
-                s.visibility !== 'hidden' && 
-                parseFloat(s.opacity || 1) > 0.01);
-    """)
-    
-    if not na_tela:
-        raise Exception("Não foi possível confirmar retorno à tela principal após clique")
-    
-    log(doc, "✅ Retorno à tela principal garantido")
-    return True
+        log(doc, f"✅ {abas_fechadas} aba(s) extra(s) fechada(s). Foco na aba principal.")
+        return True
+        
+    except Exception as e:
+        log(doc, f"❌ Erro ao fechar abas extras: {e}")
+        return False
 
 def focar_sistema_completo(js_engine, doc):
-    """
-    Garante o foco completo na aba principal do sistema, combinando switch_to.window e window.focus().
-    """
+    """Garante o foco completo na aba principal do sistema e fecha abas extras"""
     driver = js_engine.driver
     try:
-        # 1️⃣ Garante estar na primeira aba
-        if len(driver.window_handles) > 1:
-            driver.switch_to.window(driver.window_handles[0])
-            log(doc, "🪟 Retornado para a aba principal (handle 0).")
+        # Primeiro fecha abas extras (como impressão)
+        fechar_abas_extras(driver, doc)
 
-        # 2️⃣ Volta pro conteúdo principal
         driver.switch_to.default_content()
-
-        # 3️⃣ Foca via JavaScript
-        js_engine.execute_js("if (window.focus) window.focus();")
+        js_engine.execute_js("if (window.focus) window.focus();", timeout=3, fallback_result=None)
         time.sleep(0.3)
 
         log(doc, "✅ Foco garantido na aba do sistema.")
@@ -2323,6 +1147,113 @@ def focar_sistema_completo(js_engine, doc):
         log(doc, f"⚠️ Falha ao focar aba do sistema: {e}")
         return False
 
+def clicar_todos_botoes_sim_visiveis(js_engine, doc, pausa_entre=0.0):
+    """Clica em TODOS os botões 'Sim' visíveis de uma vez"""
+    js = r"""
+    (function(){
+      const isVisible = el => {
+        if (!el) return false;
+        const s = getComputedStyle(el);
+        return el.offsetParent !== null && s.display !== 'none' &&
+               s.visibility !== 'hidden' && parseFloat(s.opacity||1) > 0.01;
+      };
+      const buttons = Array.from(document.querySelectorAll("a.btModel.btGray.btyes"))
+        .filter(isVisible)
+        .filter(b => (b.textContent||"").trim().toLowerCase() === "sim");
+
+      let clicked = 0;
+      buttons.forEach(b => {
+        try {
+          b.style.pointerEvents = 'auto';
+          b.removeAttribute('disabled');
+          b.style.visibility = 'visible';
+          b.style.display = 'inline-block';
+          b.scrollIntoView({block:'center'});
+
+          ['mouseover','mouseenter','mousemove','mousedown','mouseup','click'].forEach(t=>{
+            b.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,view:window,detail:1}));
+          });
+          if (typeof b.click === 'function') b.click();
+
+          if (typeof window.jQuery !== 'undefined') {
+            window.jQuery(b).trigger('click');
+          }
+          clicked++;
+        } catch(e) {}
+      });
+
+      return { totalEncontrados: buttons.length, totalClicados: clicked };
+    })();
+    """
+    try:
+        res = js_engine.execute_js(js, timeout=5, fallback_result={"totalEncontrados": 0, "totalClicados": 0})
+        total = int(res.get("totalEncontrados", 0))
+        clic = int(res.get("totalClicados", 0))
+        log(doc, f"⚡ 'Sim' visíveis encontrados: {total} | clicados: {clic}")
+        if pausa_entre and clic > 0:
+            time.sleep(pausa_entre)
+        return res
+    except Exception as e:
+        log(doc, f"❌ Erro ao clicar em todos os 'Sim': {e}")
+        return {"totalEncontrados": 0, "totalClicados": 0, "erro": str(e)}
+
+
+        
+def clicar_sim_com_retry(doc, js_engine, wait, max_tentativas=5, pausa=1.5):
+    """Clica em 'Sim' até o modal de confirmação desaparecer"""
+    xpath_modal = "//div[contains(@class,'modal') and contains(@style,'z-index')]"
+    xpath_sim = "(//div[contains(@class,'modal') and not(contains(@style,'display: none'))]//a[@class='btModel btGray btyes'])[last()]"
+
+    tentativa = 0
+    while tentativa < max_tentativas:
+        tentativa += 1
+        log(doc, f"🧩 Tentativa {tentativa} de fechar modal...")
+
+        try:
+            js_engine.force_click(xpath_sim, by_xpath=True)
+            time.sleep(pausa)
+
+            modais_visiveis = driver.find_elements(By.XPATH, xpath_modal)
+            modais_ativos = [m for m in modais_visiveis if "display: none" not in m.get_attribute("style")]
+
+            if not modais_ativos:
+                log(doc, "✅ Botão 'Sim' clicado com sucesso.")
+                return True
+
+        except Exception as e:
+            log(doc, f"⚠️ Tentativa {tentativa} falhou: {e}")
+
+    log(doc, "❌ Botão 'Sim' não foi clicado após todas as tentativas.")
+    return False
+
+def clicar_primeiro_sp_add(js_engine, doc=None, timeout=5):
+    """Localiza e clica no primeiro elemento <a class="sprites sp-add">"""
+    driver = js_engine.driver
+    xpath_btn = "(//a[contains(@class,'sprites') and contains(@class,'sp-add')])[1]"
+
+    log(doc, "🧩 Procurando o botão 'sp-add'...")
+
+    try:
+        el = driver.find_element(By.XPATH, xpath_btn)
+        log(doc, "🎯 Botão encontrado! Tentando clicar...")
+
+        try:
+            el.click()
+            log(doc, "✅ Clique padrão realizado com sucesso.")
+        except (ElementClickInterceptedException, StaleElementReferenceException):
+            driver.execute_script("arguments[0].click();", el)
+            log(doc, "⚡ Clique forçado via JavaScript realizado.")
+
+        time.sleep(0.5)
+        return True
+
+    except NoSuchElementException:
+        log(doc, "⚠️ Nenhum botão 'sp-add' encontrado.")
+        return False
+
+    except Exception as e:
+        log(doc, f"❌ Erro ao clicar no botão 'sp-add': {e}")
+        return False
 
 def verificar_e_abrir_caixa(js_engine, doc, timeout=10):
     """
@@ -2373,18 +1304,21 @@ def verificar_e_abrir_caixa(js_engine, doc, timeout=10):
             safe_action(doc, "Confirmando Abertura", lambda:
                 js_engine.force_click("//a[@class='btModel btGray btyes' and normalize-space()='Abrir']", by_xpath=True)
             )
-            time.sleep(2)
             encontrar_mensagem_alerta()
 
             safe_action(doc, "Autenticando Abertura", lambda:
                 js_engine.force_click("//a[@class='btModel btGray btyes' and @id='BtYes' and normalize-space()='Autenticar' and span[@class='sprites sp-salvar']]", by_xpath=True)
             )
             time.sleep(4)
-
-            safe_action(doc, "Focando na aba principal", lambda: focar_sistema_completo(js_engine, doc))
-
-
+            safe_action(doc, "Fechando abas extras (impressão)", 
+                    lambda: fechar_abas_extras(driver, doc)
+                            )
+            encontrar_mensagem_alerta()
+            safe_action(doc, "Fechando modal autenticação", lambda:
+                js_engine.force_click("//a[@id='BtNo' and @class='btModel btGray btno' and normalize-space()='Fechar']", by_xpath=True)
+            )
         elif fechar_existe:
+
             log(doc, "✅ Caixa já está aberto — prosseguindo com o fluxo normalmente.")
         else:
             log(doc, "⚠️ Nenhum botão de 'Abrir' ou 'Fechar caixa' foi encontrado — prosseguindo com cautela.")
@@ -2392,21 +1326,50 @@ def verificar_e_abrir_caixa(js_engine, doc, timeout=10):
     except Exception as e:
         log(doc, f"❌ Erro ao verificar/abrir caixa: {e}")
         take_screenshot(driver, doc, "erro_verificar_caixa")
+def clicar_pesquisar_por_indice(js_engine, doc, indice=1, timeout=5):
+    """
+    Clica no botão 'Pesquisar' pelo índice informado (1-based).
+    Conta e exibe quantos botões existem antes do clique.
+    Usa js_engine.force_click() e registra log.
+    """
+    xpath_base = "//a[contains(@class,'btPesquisar') and contains(normalize-space(.),'Pesquisar')]"
+    xpath_indexado = f"({xpath_base})[{indice}]"
+
+    try:
+        # Conta quantos botões existem
+        elementos = js_engine.driver.find_elements("xpath", xpath_base)
+        total = len(elementos)
+        log(doc, f"🔍 Foram encontrados {total} botão(ões) 'Pesquisar' na tela.")
+
+        if total == 0:
+            log(doc, "⚠️ Nenhum botão 'Pesquisar' foi encontrado.")
+            return False
+        if indice > total:
+            log(doc, f"⚠️ Índice {indice} inválido — só existem {total} botão(ões).")
+            return False
+
+        log(doc, f"🎯 Clicando no botão 'Pesquisar' (índice {indice})...")
+        js_engine.force_click(xpath_indexado, by_xpath=True)
+        js_engine.wait_ajax_complete(timeout)
+        log(doc, f"✅ Clique no botão 'Pesquisar' (índice {indice}) realizado com sucesso.")
+        return True
+
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao clicar no botão 'Pesquisar' (índice {indice}): {e}")
+        return False
 
 
 # ==== EXECUÇÃO DO TESTE ====
-
 def executar_teste():
-    """Execução principal do teste com JS forçado"""
+    """Execução principal do teste com JS forçado e proteção anti-timeout"""
     global driver, wait, doc
     
     try:
-        # Inicializa driver
         if not inicializar_driver():
             return False
         
-        # Cria engine JS forçado
-        js_engine = JSForceEngine(driver, wait, doc)
+        # Cria engine JS forçado COM PROTEÇÃO ANTI-TIMEOUT
+        js_engine = JSForceEngine(driver, wait, doc, timeout_padrao=10, max_retries=3)
         lov_handler = LOVHandler(js_engine)
         
         # ===== LOGIN =====
@@ -2442,93 +1405,119 @@ def executar_teste():
         
         time.sleep(5)
 
-
-        safe_action(doc, "Clicando em 'Abrir Caixa'", lambda:
-            js_engine.force_click(
-                "//a[@class='btAzulDegrade btAbrirCaixa' and normalize-space()='Abrir caixa' and span[@class='sprites sp-abrirCaixa']]",
-                by_xpath=True
-            )
-        )
-        time.sleep(2)
-
-
-        safe_action(doc, "Verificando e abrindo caixa se necessário", 
+        safe_action(doc, "Verificando e abrindo caixa", 
             lambda: verificar_e_abrir_caixa(js_engine, doc)
         )
 
+        safe_action(doc, "Clicando em 'Adicionar Produtos'", lambda:
+            js_engine.force_click(
+                "(//a[@class='btAddProd' and contains(normalize-space(.), 'Adicionar produtos')])[1]",
+                by_xpath=True
+            )
+        )
+
+        safe_action(doc, "Preenchendo Nome do Produto", lambda:
+            js_engine.force_fill("//input[@class='nomeProd']", "PRUDUTO", by_xpath=True)
+        )
+        time.sleep(2)
+        safe_action(doc, "Clicando em Pesquisar", lambda:
+            clicar_pesquisar_por_indice(js_engine, doc, indice=3)
+        )
 
 
 
+        time.sleep(20)
 
-        # ===== CONTRATANTE/TITULAR =====
+        safe_action(doc, "Adicionando primeiro produto", lambda: clicar_primeiro_sp_add(js_engine, doc))
+        time.sleep(1)
+        safe_action(doc, "Voltando à aba principal", lambda:
+            js_engine.force_click("(//a[@class='sprites sp-voltarGrande' and @title='Voltar (ESC)'])[1]", by_xpath=True)
+        )
+        time.sleep(1)
+
+        safe_action(doc, "Clicando em 'Adicionar Títulos'", lambda:
+            js_engine.force_click(
+                "(//a[@class='btAddTit' and contains(normalize-space(.), 'Adicionar títulos')])[1]",
+                by_xpath=True
+            )
+        )
+        time.sleep(1)
+
+
+        # ===== LOV COM PROTEÇÃO =====
         safe_action(doc, "Selecionando Pessoa", lambda:
             lov_handler.open_and_select(
-                btn_index=2,
+                btn_index=0,
                 search_text="JOÃO EDUARDO JUSTINO PASCHOAL",
                 result_text="JOÃO EDUARDO JUSTINO PASCHOAL"
             )
         )
         
-        # ===== BUSCAR =====
-        safe_action(doc, "Clicando em Buscar", lambda:
+        safe_action(doc, "Clicando em Pesquisar", lambda:
             js_engine.force_click(
-                "//a[@class='btModel btGray btPesquisarTitulos' and normalize-space()='Pesquisar']",
+                "(//a[@class='btPesquisar btAzulDegrade' and contains(normalize-space(.), 'Pesquisar')])[1]",
                 by_xpath=True
             )
         )
-        time.sleep(10)
-        
-        
-       # ===== VALIDAÇÃO DO RESULTADO =====
-        resultado_ok = safe_action(
-            doc, 
-            "Validando e selecionando título", 
-            lambda: validar_resultado_pesquisa(js_engine)
+
+        time.sleep(20)
+
+        safe_action(doc, "Adicionando primeiro título", lambda: clicar_primeiro_sp_add(js_engine, doc))
+        time.sleep(1)
+
+        safe_action(doc, "Voltando à aba principal", lambda:
+            js_engine.force_click("(//a[@class='sprites sp-voltarGrande'])[1]", by_xpath=True)
         )
-        
-        if not resultado_ok:
-            log(doc, "❌ Teste interrompido: nenhum título encontrado")
-            return False
-        
-        log(doc, "➡️ Título selecionado, prosseguindo...")
-        
-        # ===== PREENCHIMENTO DOS CAMPOS =====
-        
-        # Data Inicial
-        safe_action(doc, "Preenchendo Vencimento", lambda:
-            js_engine.force_datepicker(
-                "(//input[contains(@class, 'hasDatepicker')])[3]",
-                "09/03/2026",
+
+        safe_action(doc, "Prosseguindo com o Pagamento", lambda:
+            js_engine.force_click("//a[@class='btVenda' and normalize-space()='Prosseguir com pagamento (F5)']", by_xpath=True)
+        )
+        time.sleep(3)
+
+        safe_action(doc, "Preenchendo CNPJ do Cliente", lambda:
+            js_engine.force_fill("//input[@maxlength='14']", str(fake.cnpj()), by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Nº NFe", lambda:
+            js_engine.force_fill("//input[@maxlength='20']", "55.001.12345", by_xpath=True)
+        )
+
+        # Formas de pagamento
+        formas_pagamento = [
+            ("Dinheiro", "//input[@class='valor vDinheiro']", "100,00"),
+            ("Cartão de Débito", "//input[@class='valor vDebito']", "100,00"),
+            ("Cartão de Crédito", "//input[@class='valor vCredito']", "100,00"),
+            ("Depósito", "//input[@class='valor vDeposito']", "100,00"),
+            ("Boleto", "//input[@class='valor vBoleto']", "100,00"),
+            ("Cheque", "//input[@class='valor vCheque']", "100,00"),
+            ("Transferência", "//input[@class='valor vTransferencia']", "100,00"),
+        ]
+
+        for nome, xpath, valor in formas_pagamento:
+            safe_action(doc, f"Preenchendo Forma de Pagamento: {nome}", lambda x=xpath, v=valor:
+                js_engine.force_fill(x, v, by_xpath=True)
+            )
+
+        safe_action(doc, "Clicando em Finalizar", lambda:
+            js_engine.force_click(
+                "//a[@class='btModel btGray btyes' and normalize-space()='Finalizar']",
                 by_xpath=True
             )
         )
-        
-        # ===== GERAR =====
-        safe_action(doc, "Clicando em Gerar", lambda:
-            js_engine.force_click(
-                "//a[@class='btModel btGray btsave' and normalize-space()='Gerar']",
-                by_xpath=True
-            )
-        )
-        
-        time.sleep(5)
-        
-        # ===== CONFIRMAR  E RETORNAR AO SISTEMA =====
-        safe_action(doc, "Confirmando", lambda: confirmar_modal_geracao_titulos(js_engine))
 
-
-
-        # ===== FECHAR MODAL =====
-        safe_action(doc, "Fechando Gestor Financeiro", lambda:
-            js_engine.force_click(
-                "#gsFinan > div.wdTop.ui-draggable-handle > div.wdClose > a"
-            )
-        )
-
-        # ===== VERIFICAR MENSAGEM =====
         log(doc, "🔍 Verificando mensagens de alerta...")
-        
         encontrar_mensagem_alerta()
+
+        safe_action(doc, "Fechando modal do Controle de Caixa", lambda:
+            js_engine.force_click(
+                "//a[@class='sprites sp-fecharGrande' and @title='Sair']",
+                by_xpath=True
+            )
+        )
+
+        safe_action(doc, "Fechando modal do Caixa", lambda:
+            js_engine.force_click('#gsCaixa > div.wdTop.ui-draggable-handle > div > a')
+        )
 
         log(doc, "🎉 Teste concluído com sucesso!")
         return True
@@ -2538,16 +1527,15 @@ def executar_teste():
         take_screenshot(driver, doc, "erro_fatal")
         return False
 
-
 # ==== MAIN ====
-
 def main():
     """Ponto de entrada principal"""
     global doc
     
     try:
-        log(doc, "🚀 Iniciando teste de Geração de Títulos Únicos")
+        log(doc, "🚀 Iniciando teste de Fluxo de Caixa")
         log(doc, "=" * 70)
+
         
         sucesso = executar_teste()
         
@@ -2562,7 +1550,6 @@ def main():
         
     finally:
         finalizar_relatorio()
-
 
 if __name__ == "__main__":
     main()
