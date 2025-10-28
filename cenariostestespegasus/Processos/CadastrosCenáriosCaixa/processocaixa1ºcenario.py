@@ -1227,15 +1227,32 @@ def clicar_sim_com_retry(doc, js_engine, wait, max_tentativas=5, pausa=1.5):
     return False
 
 def clicar_primeiro_sp_add(js_engine, doc=None, timeout=5):
-    """Localiza e clica no primeiro elemento <a class="sprites sp-add">"""
-    driver = js_engine.driver
-    xpath_btn = "(//a[contains(@class,'sprites') and contains(@class,'sp-add')])[1]"
+    """
+    Localiza e clica no primeiro elemento <a class="sprites sp-add">, exatamente.
+    Ignora variantes como 'sp-addVerde'.
+    """
+    from selenium.common.exceptions import (
+        NoSuchElementException,
+        ElementClickInterceptedException,
+        StaleElementReferenceException,
+    )
+    from selenium.webdriver.common.by import By
+    import time
 
-    log(doc, "🧩 Procurando o botão 'sp-add'...")
+    driver = js_engine.driver
+
+    # XPath restrito: exige que as classes sejam EXATAMENTE 'sprites' e 'sp-add'
+    xpath_btn = (
+        "//a[contains(concat(' ', normalize-space(@class), ' '), ' sprites ') "
+        "and contains(concat(' ', normalize-space(@class), ' '), ' sp-add ') "
+        "and not(contains(@class, 'sp-addVerde'))][1]"
+    )
+
+    log(doc, "🧩 Procurando o botão '<a class=\"sprites sp-add\">' exato...")
 
     try:
         el = driver.find_element(By.XPATH, xpath_btn)
-        log(doc, "🎯 Botão encontrado! Tentando clicar...")
+        log(doc, "🎯 Botão exato encontrado! Tentando clicar...")
 
         try:
             el.click()
@@ -1248,12 +1265,35 @@ def clicar_primeiro_sp_add(js_engine, doc=None, timeout=5):
         return True
 
     except NoSuchElementException:
-        log(doc, "⚠️ Nenhum botão 'sp-add' encontrado.")
+        log(doc, "⚠️ Nenhum botão exato 'sp-add' encontrado.")
         return False
 
     except Exception as e:
         log(doc, f"❌ Erro ao clicar no botão 'sp-add': {e}")
         return False
+
+
+def fechar_abas_extras_e_verificar_alerta(driver, doc):
+    """
+    Fecha abas extras (como de impressão) e verifica imediatamente
+    se há alguma mensagem de alerta exibida após o fechamento.
+    """
+    try:
+        safe_action(doc, "Fechando abas extras (impressão)", lambda:
+            fechar_abas_extras(driver, doc)
+        )
+
+        alerta = encontrar_mensagem_alerta()
+        if alerta:
+            log(doc, f"⚠️ Alerta detectado após fechar abas extras: '{alerta.text.strip()}'")
+        else:
+            log(doc, "✅ Nenhum alerta detectado após fechar abas extras.")
+
+        return True
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao fechar abas extras e verificar alerta: {e}")
+        return False
+
 
 def verificar_e_abrir_caixa(js_engine, doc, timeout=10):
     """
@@ -1304,16 +1344,15 @@ def verificar_e_abrir_caixa(js_engine, doc, timeout=10):
             safe_action(doc, "Confirmando Abertura", lambda:
                 js_engine.force_click("//a[@class='btModel btGray btyes' and normalize-space()='Abrir']", by_xpath=True)
             )
+            time.sleep(0.3)
             encontrar_mensagem_alerta()
 
             safe_action(doc, "Autenticando Abertura", lambda:
                 js_engine.force_click("//a[@class='btModel btGray btyes' and @id='BtYes' and normalize-space()='Autenticar' and span[@class='sprites sp-salvar']]", by_xpath=True)
             )
             time.sleep(4)
-            safe_action(doc, "Fechando abas extras (impressão)", 
-                    lambda: fechar_abas_extras(driver, doc)
-                            )
-            encontrar_mensagem_alerta()
+            fechar_abas_extras_e_verificar_alerta(js_engine.driver, doc)
+
             safe_action(doc, "Fechando modal autenticação", lambda:
                 js_engine.force_click("//a[@id='BtNo' and @class='btModel btGray btno' and normalize-space()='Fechar']", by_xpath=True)
             )
@@ -1326,13 +1365,113 @@ def verificar_e_abrir_caixa(js_engine, doc, timeout=10):
     except Exception as e:
         log(doc, f"❌ Erro ao verificar/abrir caixa: {e}")
         take_screenshot(driver, doc, "erro_verificar_caixa")
+
+def clicar_todos_pesquisar(js_engine, doc, pausa_entre=0.5, timeout=5):
+    """
+    Procura todos os botões 'Pesquisar' visíveis e clica em cada um deles na ordem.
+    Conta e exibe quantos botões existem antes de clicar.
+    Usa js_engine.force_click() e registra log detalhado.
+    """
+
+    xpath_base = "//a[contains(@class,'btPesquisar btAzulDegrade') and contains(normalize-space(.),'Pesquisar')]"
+
+    try:
+        elementos = js_engine.driver.find_elements("xpath", xpath_base)
+        total = len(elementos)
+        log(doc, f"🔍 Foram encontrados {total} botão(ões) 'Pesquisar' na tela.")
+
+        if total == 0:
+            log(doc, "⚠️ Nenhum botão 'Pesquisar' foi encontrado.")
+            return {"total": 0, "clicados": 0}
+
+        total_clicados = 0
+        for i in range(1, total + 1):
+            xpath_indexado = f"({xpath_base})[{i}]"
+            try:
+                log(doc, f"🎯 Clicando no botão 'Pesquisar' (índice {i}/{total})...")
+                js_engine.force_click(xpath_indexado, by_xpath=True)
+                js_engine.wait_ajax_complete(timeout)
+                total_clicados += 1
+                log(doc, f"✅ Clique no botão 'Pesquisar' (índice {i}) realizado com sucesso.")
+                if pausa_entre > 0:
+                    import time
+                    time.sleep(pausa_entre)
+            except Exception as e:
+                log(doc, f"⚠️ Falha ao clicar no botão 'Pesquisar' (índice {i}): {e}")
+
+        log(doc, f"🧾 Resumo: {total_clicados}/{total} botões 'Pesquisar' clicados com sucesso.")
+        return {"total": total, "clicados": total_clicados}
+
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao procurar ou clicar nos botões 'Pesquisar': {e}")
+        return {"total": 0, "clicados": 0}
+
+
+def clicar_todos_salvar(js_engine, doc, pausa_entre=0.5, timeout=5):
+    """
+    Procura todos os botões 'Salvar' visíveis e clica em cada um deles na ordem.
+    Conta e exibe quantos botões existem antes de clicar.
+    Usa js_engine.force_click() e registra log detalhado.
+    """
+
+    xpath_base = "//a[contains(@class,'btModel btGray btok') and contains(normalize-space(.),'Salvar')]"
+
+    try:
+        elementos = js_engine.driver.find_elements("xpath", xpath_base)
+        total = len(elementos)
+        log(doc, f"💾 Foram encontrados {total} botão(ões) 'Salvar' na tela.")
+
+        if total == 0:
+            log(doc, "⚠️ Nenhum botão 'Salvar' foi encontrado.")
+            return {"total": 0, "clicados": 0}
+
+        total_clicados = 0
+        for i in range(1, total + 1):
+            xpath_indexado = f"({xpath_base})[{i}]"
+            try:
+                log(doc, f"🎯 Clicando no botão 'Salvar' (índice {i}/{total})...")
+                js_engine.force_click(xpath_indexado, by_xpath=True)
+                js_engine.wait_ajax_complete(timeout)
+                total_clicados += 1
+                log(doc, f"✅ Clique no botão 'Salvar' (índice {i}) realizado com sucesso.")
+                if pausa_entre > 0:
+                    import time
+                    time.sleep(pausa_entre)
+            except Exception as e:
+                log(doc, f"⚠️ Falha ao clicar no botão 'Salvar' (índice {i}): {e}")
+
+        log(doc, f"🧾 Resumo: {total_clicados}/{total} botões 'Salvar' clicados com sucesso.")
+        return {"total": total, "clicados": total_clicados}
+
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao procurar ou clicar nos botões 'Salvar': {e}")
+        return {"total": 0, "clicados": 0}
+
+
+def clicar_botao_voltar_por_indice(js_engine, doc, indice=1, timeout=5):
+    """
+    Clica no botão 'Voltar (ESC)' pelo índice informado (1-based).
+    Usa js_engine.force_click() e registra log.
+    """
+    xpath = f"(//a[@class='sprites sp-voltarGrande' and @title='Voltar (ESC)'])[{indice}]"
+    log(doc, f"↩️ Clicando no botão 'Voltar (ESC)' (índice {indice})...")
+
+    try:
+        js_engine.force_click(xpath, by_xpath=True)
+        js_engine.wait_ajax_complete(timeout)
+        log(doc, f"✅ Clique no botão 'Voltar (ESC)' (índice {indice}) realizado com sucesso.")
+        return True
+    except Exception as e:
+        log(doc, f"⚠️ Falha ao clicar no botão 'Voltar (ESC)' (índice {indice}): {e}")
+        return False
+
 def clicar_pesquisar_por_indice(js_engine, doc, indice=1, timeout=5):
     """
     Clica no botão 'Pesquisar' pelo índice informado (1-based).
     Conta e exibe quantos botões existem antes do clique.
     Usa js_engine.force_click() e registra log.
     """
-    xpath_base = "//a[contains(@class,'btPesquisar') and contains(normalize-space(.),'Pesquisar')]"
+    xpath_base = "//a[contains(@class,'btPesquisar btAzulDegrade') and contains(normalize-space(.),'Pesquisar')]"
     xpath_indexado = f"({xpath_base})[{indice}]"
 
     try:
@@ -1358,6 +1497,70 @@ def clicar_pesquisar_por_indice(js_engine, doc, indice=1, timeout=5):
         log(doc, f"⚠️ Erro ao clicar no botão 'Pesquisar' (índice {indice}): {e}")
         return False
 
+
+def clicar_salvar_por_indice(js_engine, doc, indice=1, timeout=5):
+    """
+    Clica no botão 'Salvar' pelo índice informado (1-based).
+    Conta e exibe quantos botões existem antes do clique.
+    Usa js_engine.force_click() e registra log.
+    """
+    xpath_base = "//a[contains(@class,'btModel btGray btok') and contains(normalize-space(.),'Salvar')]"
+    xpath_indexado = f"({xpath_base})[{indice}]"
+
+    try:
+        # Conta quantos botões existem
+        elementos = js_engine.driver.find_elements("xpath", xpath_base)
+        total = len(elementos)
+        log(doc, f"💾 Foram encontrados {total} botão(ões) 'Salvar' na tela.")
+
+        if total == 0:
+            log(doc, "⚠️ Nenhum botão 'Salvar' foi encontrado.")
+            return False
+        if indice > total:
+            log(doc, f"⚠️ Índice {indice} inválido — só existem {total} botão(ões).")
+            return False
+
+        log(doc, f"🎯 Clicando no botão 'Salvar' (índice {indice})...")
+        js_engine.force_click(xpath_indexado, by_xpath=True)
+        js_engine.wait_ajax_complete(timeout)
+        log(doc, f"✅ Clique no botão 'Salvar' (índice {indice}) realizado com sucesso.")
+        return True
+
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao clicar no botão 'Salvar' (índice {indice}): {e}")
+        return False
+
+
+def clicar_titulo_produtos(js_engine, doc, timeout=3):
+    """
+    Clica no elemento <h2> que contém o texto 'PRODUTOS'.
+    """
+    xpath = "//h2[contains(normalize-space(.), 'PRODUTOS')]"
+    try:
+        log(doc, "🧩 Retornando à aba Principal")
+        js_engine.force_click(xpath, by_xpath=True)
+        js_engine.wait_ajax_complete(timeout)
+        log(doc, "✅ Clique no título 'PRODUTOS' realizado com sucesso.")
+        return True
+    except Exception as e:
+        log(doc, f"⚠️ Falha ao clicar no título 'PRODUTOS': {e}")
+        return False
+
+
+def clicar_titulo_titulos(js_engine, doc, timeout=3):
+    """
+    Clica no elemento <h2> que contém o texto 'TÍTULOS'.
+    """
+    xpath = "//h2[contains(normalize-space(.), 'TÍTULOS')]"
+    try:
+        log(doc, "🧩 Retornando à aba Principal")
+        js_engine.force_click(xpath, by_xpath=True)
+        js_engine.wait_ajax_complete(timeout)
+        log(doc, "✅ Clique no título 'TÍTULOS' realizado com sucesso.")
+        return True
+    except Exception as e:
+        log(doc, f"⚠️ Falha ao clicar no título 'TÍTULOS': {e}")
+        return False
 
 # ==== EXECUÇÃO DO TESTE ====
 def executar_teste():
@@ -1420,19 +1623,17 @@ def executar_teste():
             js_engine.force_fill("//input[@class='nomeProd']", "PRUDUTO", by_xpath=True)
         )
         time.sleep(2)
-        safe_action(doc, "Clicando em Pesquisar", lambda:
-            clicar_pesquisar_por_indice(js_engine, doc, indice=3)
+        safe_action(doc, "Clicando em todos os botões 'Pesquisar'", lambda:
+            clicar_todos_pesquisar(js_engine, doc, pausa_entre=0.3)
         )
-
 
 
         time.sleep(20)
 
         safe_action(doc, "Adicionando primeiro produto", lambda: clicar_primeiro_sp_add(js_engine, doc))
         time.sleep(1)
-        safe_action(doc, "Voltando à aba principal", lambda:
-            js_engine.force_click("(//a[@class='sprites sp-voltarGrande' and @title='Voltar (ESC)'])[1]", by_xpath=True)
-        )
+        clicar_titulo_produtos(js_engine, doc)
+
         time.sleep(1)
 
         safe_action(doc, "Clicando em 'Adicionar Títulos'", lambda:
@@ -1448,26 +1649,18 @@ def executar_teste():
         safe_action(doc, "Selecionando Pessoa", lambda:
             lov_handler.open_and_select(
                 btn_index=0,
-                search_text="JOÃO EDUARDO JUSTINO PASCHOAL",
-                result_text="JOÃO EDUARDO JUSTINO PASCHOAL"
+                search_text="TESTANDO PESSOA TITULAR",
+                result_text="TESTANDO PESSOA TITULAR"
             )
         )
         
-        safe_action(doc, "Clicando em Pesquisar", lambda:
-            js_engine.force_click(
-                "(//a[@class='btPesquisar btAzulDegrade' and contains(normalize-space(.), 'Pesquisar')])[1]",
-                by_xpath=True
-            )
-        )
+        clicar_pesquisar_por_indice(js_engine, doc, indice=1)
 
         time.sleep(20)
 
         safe_action(doc, "Adicionando primeiro título", lambda: clicar_primeiro_sp_add(js_engine, doc))
         time.sleep(1)
-
-        safe_action(doc, "Voltando à aba principal", lambda:
-            js_engine.force_click("(//a[@class='sprites sp-voltarGrande'])[1]", by_xpath=True)
-        )
+        clicar_titulo_titulos(js_engine, doc)
 
         safe_action(doc, "Prosseguindo com o Pagamento", lambda:
             js_engine.force_click("//a[@class='btVenda' and normalize-space()='Prosseguir com pagamento (F5)']", by_xpath=True)
@@ -1484,13 +1677,9 @@ def executar_teste():
 
         # Formas de pagamento
         formas_pagamento = [
-            ("Dinheiro", "//input[@class='valor vDinheiro']", "100,00"),
-            ("Cartão de Débito", "//input[@class='valor vDebito']", "100,00"),
-            ("Cartão de Crédito", "//input[@class='valor vCredito']", "100,00"),
-            ("Depósito", "//input[@class='valor vDeposito']", "100,00"),
-            ("Boleto", "//input[@class='valor vBoleto']", "100,00"),
-            ("Cheque", "//input[@class='valor vCheque']", "100,00"),
-            ("Transferência", "//input[@class='valor vTransferencia']", "100,00"),
+            ("Dinheiro", "//input[@class='valor vDinheiro']", "10000,00"),
+            ("Boleto", "//input[@class='valor vBoleto']", "10000,00"),
+
         ]
 
         for nome, xpath, valor in formas_pagamento:
@@ -1508,6 +1697,50 @@ def executar_teste():
         log(doc, "🔍 Verificando mensagens de alerta...")
         encontrar_mensagem_alerta()
 
+        time.sleep(10)
+
+
+        safe_action(doc, "Gerando Nota Fiscal", lambda:
+                js_engine.force_click("//a[@id='BtYes' and @class='btModel btGray btyes' and normalize-space()='Sim']", by_xpath=True)
+            )
+        time.sleep(5)
+
+                # ===== LOV COM PROTEÇÃO =====
+        safe_action(doc, "Selecionando Emitente", lambda:
+            lov_handler.open_and_select(
+                btn_index=4,
+                search_text="CONCESSIONARIA RIO PAX S/A",
+                result_text="CONCESSIONARIA RIO PAX S/A"
+            )
+        )
+        resultado_salvar = clicar_todos_salvar(js_engine, doc, pausa_entre=0.3)
+
+        total = resultado_salvar.get("total", 0)
+        clicados = resultado_salvar.get("clicados", 0)
+        log(doc, f"💾 Resultado final — Total: {total}, Clicados: {clicados}")
+
+
+        safe_action(doc, "Clicando em 'Fechar Caixa'", lambda:
+                js_engine.force_click("//a[contains(@class,'btAzulDegrade') and contains(@class,'btFecharCaixa')]", by_xpath=True)
+            )
+
+
+        safe_action(doc, "Fechando Caixa", lambda:
+                js_engine.force_click("//a[@class='btModel btGray btyes' and normalize-space()='Fechar Caixa' and .//span[contains(@class,'sp-salvar')]]", by_xpath=True)
+            )
+        time.sleep(3)
+        fechar_abas_extras_e_verificar_alerta(js_engine.driver, doc)
+
+        safe_action(doc, "Gerando Relatório", lambda:
+                js_engine.force_click("//a[@id='BtYes' and @class='btModel btGray btyes' and normalize-space()='Autenticar']", by_xpath=True)
+            )
+        time.sleep(5)
+        fechar_abas_extras_e_verificar_alerta(js_engine.driver, doc)
+
+        safe_action(doc, "Fechando modal autenticação", lambda:
+                js_engine.force_click("//a[@id='BtNo' and @class='btModel btGray btno' and normalize-space()='Fechar']", by_xpath=True)
+            )
+        
         safe_action(doc, "Fechando modal do Controle de Caixa", lambda:
             js_engine.force_click(
                 "//a[@class='sprites sp-fecharGrande' and @title='Sair']",
