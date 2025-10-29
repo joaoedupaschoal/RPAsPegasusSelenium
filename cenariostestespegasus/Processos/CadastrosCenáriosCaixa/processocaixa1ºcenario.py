@@ -609,6 +609,25 @@ class JSForceEngine:
         except:
             return False
 
+import time
+
+def clicar_finalizar_e_verificar_alerta(js_engine, doc, timeout=5, pausa=0.5):
+    """
+    Clica no botão 'Finalizar', aguarda 0,5s e procura mensagens de alerta.
+    Usa safe_action e js_engine.force_click().
+    """
+    safe_action(doc, "Clicando em 'Finalizar'", lambda:
+        js_engine.force_click(
+            "//a[@class='btModel btGray btyes' and normalize-space()='Finalizar']",
+            by_xpath=True
+        )
+    )
+
+    time.sleep(pausa)
+    log(doc, "🔍 Verificando mensagens de alerta após o clique em 'Finalizar'...")
+    return encontrar_mensagem_alerta()
+
+
 # ==== LOV HANDLER ====
 class LOVHandler:
     """Handler especializado para modais LOV"""
@@ -617,23 +636,40 @@ class LOVHandler:
         self.js = js_engine
         self.doc = js_engine.doc
     
-    def open_and_select(self, btn_index=None, btn_xpath=None, search_text="", 
-                       result_text="", iframe_xpath=None, max_attempts=5):
+
+def _is_visible_enabled(el):
+    try:
+        return el.is_displayed() and el.is_enabled()
+    except Exception:
+        return False
+
+
+class LOVHandler:
+    def __init__(self, js_engine, doc):
+        self.js = js_engine
+        self.doc = doc
+
+    # ==========================================================
+    # 🔹 Função principal - Abre LOV, pesquisa e seleciona
+    # ==========================================================
+    def open_and_select(self, btn_index=None, btn_xpath=None,
+                        search_text="", result_text="",
+                        iframe_xpath=None, max_attempts=5):
         """Abre LOV, pesquisa e seleciona resultado"""
         log(self.doc, f"🔍 Processando LOV: '{search_text}' → '{result_text}'")
-        
+
         for attempt in range(max_attempts):
             try:
                 if attempt > 0:
                     log(self.doc, f"   Tentativa {attempt + 1}/{max_attempts}")
-                
-                # Volta para conteúdo principal
+
+                # Volta ao conteúdo principal
                 try:
                     self.js.driver.switch_to.default_content()
                 except:
                     pass
-                
-                # Clica no botão LOV
+
+                # Define seletor do botão
                 if btn_index is not None:
                     btn_selector = f"(//a[@class='sprites sp-openLov'])[{btn_index + 1}]"
                     by_xpath = True
@@ -642,12 +678,12 @@ class LOVHandler:
                     by_xpath = True
                 else:
                     raise ValueError("btn_index ou btn_xpath deve ser fornecido")
-                
+
                 log(self.doc, "   📌 Abrindo LOV...")
                 self.js.force_click(btn_selector, by_xpath=by_xpath)
                 time.sleep(1.5)
-                
-                # Troca para iframe se necessário
+
+                # Se houver iframe, entra
                 if iframe_xpath:
                     log(self.doc, "   🔄 Entrando no iframe...")
                     try:
@@ -657,40 +693,38 @@ class LOVHandler:
                         time.sleep(0.5)
                     except:
                         log(self.doc, "   ⚠️ Iframe não encontrado, continuando...")
-                
-                # Aguarda modal carregar
+
+                # Aguarda carregamento
                 self.js.wait_ajax_complete(10)
                 time.sleep(1)
-                
-                # Preenche campo de pesquisa
-                log(self.doc, f"   ✏️ Pesquisando: '{search_text}'")
-                search_selectors = [
-                    "//input[@id='txtPesquisa']",
-                    "//input[@class='nomePesquisa']",
-                ]
-                
-                search_filled = False
-                for selector in search_selectors:
-                    try:
-                        self.js.force_fill(selector, search_text, by_xpath=True)
-                        search_filled = True
-                        break
-                    except:
-                        continue
-                
-                if not search_filled:
-                    raise Exception("Campo de pesquisa não encontrado")
-                
+
+                # Preenche campos de pesquisa
+                log(self.doc, f"   ✏️ Preenchendo campos de pesquisa com: '{search_text}'")
+                res = self.preencher_campos_pesquisa_por_indice(
+                    search_text=search_text,
+                    search_xpaths=[
+                        "//input[@id='txtPesquisa']",
+                        "//input[@class='nomePesquisa']",
+                        "//input[contains(translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'pesquisa')]",
+                        "//input[contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'pesquisa')]",
+                        "//input[@type='text']",
+                        "//input[@class='campoPesquisa']",
+                    ],
+                    max_campos=None,
+                    pausa=0.3,
+                    limpar_antes=True
+                )
+                log(self.doc, f"   📊 Resultado: {res}")
                 time.sleep(0.5)
-                
-                # Clica em Pesquisar
+
+                # Clica em "Pesquisar"
                 log(self.doc, "   🔎 Executando pesquisa...")
                 search_btn_selectors = [
                     "//a[contains(@class,'lpFind') and contains(normalize-space(.),'Pesquisar')]",
                     "//button[contains(normalize-space(.),'Pesquisar')]",
                     "//a[contains(normalize-space(.),'Buscar')]"
                 ]
-                
+
                 search_clicked = False
                 for selector in search_btn_selectors:
                     try:
@@ -699,21 +733,35 @@ class LOVHandler:
                         break
                     except:
                         continue
-                
+
+                # Fallback: ENTER
                 if not search_clicked:
-                    raise Exception("Botão de pesquisa não encontrado")
-                
+                    try:
+                        first_input = self.js.driver.find_element(
+                            "xpath",
+                            "(//input[@id='txtPesquisa'] | //input[@class='nomePesquisa'] | "
+                            "//input[contains(@class,'pesquisa')] | "
+                            "//input[contains(@name,'pesquisa')] | "
+                            "//input[@type='text'])[1]"
+                        )
+                        first_input.send_keys(Keys.ENTER)
+                        search_clicked = True
+                        log(self.doc, "   ⚙️ Fallback: pesquisa via tecla ENTER")
+                    except Exception:
+                        raise Exception("Botão de pesquisa não encontrado")
+
                 # Aguarda resultados
                 time.sleep(2)
                 self.js.wait_ajax_complete(15)
-                
+
                 # Clica no resultado
                 log(self.doc, f"   🎯 Selecionando: '{result_text}'")
-                result_xpath = f"//tr[td[contains(normalize-space(.), '{result_text}')]]"
+                safe_text = result_text.replace("'", '"')
+                result_xpath = f"//tr[td[contains(normalize-space(.), \"{safe_text}\")]]"
                 self.js.force_click(result_xpath, by_xpath=True)
-                
+
                 time.sleep(1)
-                
+
                 # Volta para conteúdo principal
                 if iframe_xpath:
                     try:
@@ -721,28 +769,101 @@ class LOVHandler:
                         log(self.doc, "   ✅ Voltou para conteúdo principal")
                     except:
                         pass
-                
-                # Aguarda modal fechar
+
+                # Aguarda fechamento
                 time.sleep(1)
                 self.js.wait_ajax_complete(10)
-                
+
                 log(self.doc, f"✅ LOV processado com sucesso!")
                 return True
-                
+
             except Exception as e:
                 log(self.doc, f"⚠️ Tentativa {attempt + 1} falhou: {str(e)[:150]}")
-                
+
                 try:
                     self.js.driver.switch_to.default_content()
                 except:
                     pass
-                
+
                 if attempt < max_attempts - 1:
                     time.sleep(2 + attempt * 0.5)
                 else:
                     raise Exception(f"Falha ao processar LOV após {max_attempts} tentativas: {e}")
-        
+
         return False
+
+    # ==========================================================
+    # 🔹 Preenche campos de pesquisa genéricos dentro da LOV
+    # ==========================================================
+    def preencher_campos_pesquisa_por_indice(
+        self, search_text: str,
+        search_xpaths=None,
+        max_campos: int | None = None,
+        pausa: float = 0.2,
+        limpar_antes: bool = True
+    ) -> dict:
+        """
+        Preenche um ou mais campos de pesquisa dentro da LOV.
+        """
+        if search_xpaths is None:
+            search_xpaths = [
+                "//input[@id='txtPesquisa']",
+                "//input[@class='nomePesquisa']",
+                "//input[contains(translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'pesquisa')]",
+                "//input[contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'pesquisa')]",
+                "//input[@type='text']",
+                "//input[@class='campoPesquisa']",
+            ]
+
+        preenchidos = 0
+        encontrados = 0
+        usados = []
+
+        for xp in search_xpaths:
+            try:
+                candidatos = self.js.driver.find_elements("xpath", xp)
+            except Exception:
+                candidatos = []
+            if not candidatos:
+                continue
+
+            candidatos = [el for el in candidatos if _is_visible_enabled(el)]
+            if not candidatos:
+                continue
+
+            encontrados += len(candidatos)
+
+            for el in candidatos:
+                if max_campos is not None and preenchidos >= max_campos:
+                    break
+                try:
+                    self.js.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", el)
+
+                    if limpar_antes:
+                        el.clear()
+                        el.send_keys(Keys.CONTROL, "a")
+                        el.send_keys(Keys.DELETE)
+
+                    if search_text:
+                        el.send_keys(search_text)
+                        usados.append(xp)
+                        preenchidos += 1
+                        time.sleep(pausa)
+
+                except (StaleElementReferenceException, ElementNotInteractableException):
+                    continue
+                except Exception:
+                    continue
+
+            if max_campos is not None and preenchidos >= max_campos:
+                break
+
+        return {
+            "texto": search_text,
+            "totalEncontrados": encontrados,
+            "totalPreenchidos": preenchidos,
+            "xpathsUsados": usados,
+        }
 
 # ==== FUNÇÕES AUXILIARES ====
 def encontrar_mensagem_alerta():
@@ -846,6 +967,121 @@ def finalizar_relatorio():
             log(doc, "✅ Driver encerrado")
         except:
             pass
+
+def preencher_campos_pesquisa_por_indice(self, 
+                                         search_text: str, 
+                                         search_xpaths=None, 
+                                         max_campos: int | None = None, 
+                                         pausa: float = 0.3,
+                                         limpar_antes: bool = True):
+    """
+    Procura TODOS os campos de pesquisa e preenche um após o outro (ordem no DOM).
+    - search_text: texto a preencher.
+    - search_xpaths: lista de XPaths para busca (usa padrão se None).
+    - max_campos: limita quantos campos serão preenchidos (None = todos).
+    - pausa: pausa curta entre preenchimentos.
+    - limpar_antes: se True, limpa o campo antes de preencher.
+
+    Retorna: {"total_encontrados": int, "total_preenchidos": int, "xpaths_usados": [str], "falhas": [str]}
+    """
+    search_xpaths = search_xpaths or [
+        "//input[@id='txtPesquisa']",
+        "//input[@class='nomePesquisa']",
+        # adicione mais padrões específicos antes do genérico:
+        "//input[contains(translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'pesquisa')]",
+        "//input[contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'pesquisa')]",
+        "//input[@type='text']"
+    ]
+
+    # Monta um XPATH-UNIÃO para manter a ordem no DOM
+    xpath_uniao = " | ".join(f"({xp})" for xp in search_xpaths)
+
+    # Coleta elementos (evita duplicados por id/ref)
+    try:
+        elementos = self.js.driver.find_elements(By.XPATH, xpath_uniao)
+    except Exception as e:
+        log(self.doc, f"⚠️ Erro ao buscar campos de pesquisa: {e}")
+        return {"total_encontrados": 0, "total_preenchidos": 0, "xpaths_usados": [], "falhas": [str(e)]}
+
+    # Filtra apenas visíveis e habilitados
+    elementos_filtrados = []
+    for el in elementos:
+        try:
+            if el.is_displayed() and el.is_enabled():
+                elementos_filtrados.append(el)
+        except Exception:
+            continue
+
+    total_encontrados = len(elementos_filtrados)
+    if total_encontrados == 0:
+        log(self.doc, "🔎 Nenhum campo de pesquisa visível/habilitado encontrado.")
+        return {"total_encontrados": 0, "total_preenchidos": 0, "xpaths_usados": [], "falhas": []}
+
+    if max_campos is not None and max_campos > 0:
+        elementos_filtrados = elementos_filtrados[:max_campos]
+
+    log(self.doc, f"🧭 Campos de pesquisa encontrados: {total_encontrados} | A preencher: {len(elementos_filtrados)}")
+
+    total_preenchidos = 0
+    falhas = []
+    xpaths_usados = []
+
+    for idx, el in enumerate(elementos_filtrados, start=1):
+        try:
+            # Recalcula um XPATH relativo único para log (opcional, pode ser pesado).
+            # Aqui só registramos o index para simplificar.
+            xpaths_usados.append(f"[campo #{idx}]")
+
+            # Traz para a tela e foca
+            self.js.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+            try:
+                el.click()
+            except Exception:
+                pass
+
+            if limpar_antes:
+                try:
+                    el.clear()
+                except Exception:
+                    # fallback via JS
+                    try:
+                        self.js.driver.execute_script("arguments[0].value='';", el)
+                    except Exception:
+                        pass
+
+            # Preenche (usa seu helper para manter padrão)
+            try:
+                self.js.force_fill_element(el, search_text)  # se você tiver esse helper
+            except AttributeError:
+                # fallback: force_fill por XPATH do próprio elemento (gera um xpath usando JS)
+                try:
+                    self.js.driver.execute_script("arguments[0].value = arguments[1];", el, search_text)
+                except Exception:
+                    # último fallback: send_keys
+                    el.send_keys(search_text)
+
+            total_preenchidos += 1
+            log(self.doc, f"   ✏️ Preenchido campo #{idx} com '{search_text}'")
+            if pausa:
+                time.sleep(pausa)
+
+        except (StaleElementReferenceException, ElementNotInteractableException) as e:
+            falhas.append(f"Campo #{idx}: {type(e).__name__}")
+            log(self.doc, f"   ⚠️ Falha no campo #{idx}: {e}")
+            continue
+        except Exception as e:
+            falhas.append(f"Campo #{idx}: {e}")
+            log(self.doc, f"   ⚠️ Erro inesperado no campo #{idx}: {e}")
+            continue
+
+    resumo = {
+        "total_encontrados": total_encontrados,
+        "total_preenchidos": total_preenchidos,
+        "xpaths_usados": xpaths_usados,
+        "falhas": falhas
+    }
+    log(self.doc, f"✅ Pesquisa preenchida em {total_preenchidos}/{len(elementos_filtrados)} campos. Falhas: {len(falhas)}")
+    return resumo
 
 def clicar_lov_por_indice(indice_lov: int, max_tentativas: int = 5, timeout: int = 10, scroll: bool = True):
     """Clica no ícone de LOV pelo índice"""
@@ -1294,11 +1530,10 @@ def fechar_abas_extras_e_verificar_alerta(driver, doc):
         log(doc, f"⚠️ Erro ao fechar abas extras e verificar alerta: {e}")
         return False
 
-
 def verificar_e_abrir_caixa(js_engine, doc, timeout=10):
     """
     Verifica o estado do caixa:
-      - Se encontrar o botão 'Abrir caixa', realiza a abertura normalmente.
+      - Se encontrar o botão 'Abrir caixa' visível (sem display: none), realiza a abertura normalmente.
       - Se detectar 'Fechar caixa', entende que o caixa já está aberto e apenas prossegue.
     """
     abrir_xpath = "//a[contains(@class,'btAzulDegrade') and contains(@class,'btAbrirCaixa')]"
@@ -1308,18 +1543,23 @@ def verificar_e_abrir_caixa(js_engine, doc, timeout=10):
     log(doc, "🔍 Verificando estado do caixa...")
 
     try:
-        # Primeiro tenta localizar o botão 'Abrir caixa'
-        abrir_existe = driver.execute_script("""
-            return document.evaluate(arguments[0], document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null)
-                   .singleNodeValue !== null;
-        """, abrir_xpath)
+        # Verifica se existe botão Abrir Caixa visível
+        abrir_visivel = driver.execute_script(f"""
+            const el = document.evaluate("{abrir_xpath}", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+            if (!el) return false;
+            const style = window.getComputedStyle(el);
+            return style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
+        """)
 
-        fechar_existe = driver.execute_script("""
-            return document.evaluate(arguments[0], document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null)
-                   .singleNodeValue !== null;
-        """, fechar_xpath)
+        # Verifica se existe botão Fechar Caixa visível
+        fechar_visivel = driver.execute_script(f"""
+            const el = document.evaluate("{fechar_xpath}", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+            if (!el) return false;
+            const style = window.getComputedStyle(el);
+            return style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
+        """)
 
-        if abrir_existe:
+        if abrir_visivel:
             log(doc, "📦 Caixa fechado — iniciando abertura normal...")
             safe_action(doc, "Clicando em 'Abrir Caixa'", lambda:
                 js_engine.force_click(abrir_xpath, by_xpath=True)
@@ -1335,32 +1575,33 @@ def verificar_e_abrir_caixa(js_engine, doc, timeout=10):
             )
 
             # Descrição
-            safe_action(doc, "Preenchendo Descrição", 
-                preencher_textarea_por_indice(0,
-                    "Abertura automática de caixa via automação Selenium.")
+            safe_action(doc, "Preenchendo Descrição", lambda:
+                preencher_textarea_por_indice(0, "Abertura automática de caixa via automação Selenium.")
             )
 
-            # Confirma abertura
+            # Confirmar abertura
             safe_action(doc, "Confirmando Abertura", lambda:
                 js_engine.force_click("//a[@class='btModel btGray btyes' and normalize-space()='Abrir']", by_xpath=True)
             )
-            time.sleep(0.3)
+            time.sleep(0.5)
             encontrar_mensagem_alerta()
 
+            # Autenticação
             safe_action(doc, "Autenticando Abertura", lambda:
-                js_engine.force_click("//a[@class='btModel btGray btyes' and @id='BtYes' and normalize-space()='Autenticar' and span[@class='sprites sp-salvar']]", by_xpath=True)
+                js_engine.force_click("//a[@id='BtYes' and contains(@class,'btModel btGray btyes') and contains(normalize-space(.),'Autenticar')]", by_xpath=True)
             )
-            time.sleep(4)
-            fechar_abas_extras_e_verificar_alerta(js_engine.driver, doc)
+            time.sleep(3)
+            fechar_abas_extras_e_verificar_alerta(driver, doc)
 
+            # Fecha modal de autenticação
             safe_action(doc, "Fechando modal autenticação", lambda:
-                js_engine.force_click("//a[@id='BtNo' and @class='btModel btGray btno' and normalize-space()='Fechar']", by_xpath=True)
+                js_engine.force_click("//a[@id='BtNo' and contains(@class,'btno') and normalize-space()='Fechar']", by_xpath=True)
             )
-        elif fechar_existe:
 
+        elif fechar_visivel:
             log(doc, "✅ Caixa já está aberto — prosseguindo com o fluxo normalmente.")
         else:
-            log(doc, "⚠️ Nenhum botão de 'Abrir' ou 'Fechar caixa' foi encontrado — prosseguindo com cautela.")
+            log(doc, "⚠️ Nenhum botão de 'Abrir' ou 'Fechar caixa' visível encontrado — prosseguindo com cautela.")
 
     except Exception as e:
         log(doc, f"❌ Erro ao verificar/abrir caixa: {e}")
@@ -1407,47 +1648,167 @@ def clicar_todos_pesquisar(js_engine, doc, pausa_entre=0.5, timeout=5):
         return {"total": 0, "clicados": 0}
 
 
-def clicar_todos_salvar(js_engine, doc, pausa_entre=0.5, timeout=5):
+def clicar_todos_voltar(js_engine, doc, pausa_entre=0.5, timeout=5):
     """
-    Procura todos os botões 'Salvar' visíveis e clica em cada um deles na ordem.
+    Procura todos os botões 'Voltar (ESC)' visíveis e clica em cada um deles na ordem.
     Conta e exibe quantos botões existem antes de clicar.
     Usa js_engine.force_click() e registra log detalhado.
     """
 
-    xpath_base = "//a[contains(@class,'btModel btGray btok') and contains(normalize-space(.),'Salvar')]"
+    xpath_base = "//a[contains(@class,'sp-voltarGrande') and @title='Voltar (ESC)']"
 
     try:
         elementos = js_engine.driver.find_elements("xpath", xpath_base)
         total = len(elementos)
-        log(doc, f"💾 Foram encontrados {total} botão(ões) 'Salvar' na tela.")
+        log(doc, f"🔍 Foram encontrados {total} botão(ões) 'Voltar (ESC)' na tela.")
 
         if total == 0:
-            log(doc, "⚠️ Nenhum botão 'Salvar' foi encontrado.")
+            log(doc, "⚠️ Nenhum botão 'Voltar (ESC)' foi encontrado.")
             return {"total": 0, "clicados": 0}
 
         total_clicados = 0
         for i in range(1, total + 1):
             xpath_indexado = f"({xpath_base})[{i}]"
             try:
-                log(doc, f"🎯 Clicando no botão 'Salvar' (índice {i}/{total})...")
+                log(doc, f"🎯 Clicando no botão 'Voltar (ESC)' (índice {i}/{total})...")
                 js_engine.force_click(xpath_indexado, by_xpath=True)
                 js_engine.wait_ajax_complete(timeout)
                 total_clicados += 1
-                log(doc, f"✅ Clique no botão 'Salvar' (índice {i}) realizado com sucesso.")
+                log(doc, f"✅ Clique no botão 'Voltar (ESC)' (índice {i}) realizado com sucesso.")
                 if pausa_entre > 0:
                     import time
                     time.sleep(pausa_entre)
             except Exception as e:
-                log(doc, f"⚠️ Falha ao clicar no botão 'Salvar' (índice {i}): {e}")
+                log(doc, f"⚠️ Falha ao clicar no botão 'Voltar (ESC)' (índice {i}): {e}")
 
-        log(doc, f"🧾 Resumo: {total_clicados}/{total} botões 'Salvar' clicados com sucesso.")
+        log(doc, f"🧾 Resumo: {total_clicados}/{total} botões 'Voltar (ESC)' clicados com sucesso.")
         return {"total": total, "clicados": total_clicados}
 
     except Exception as e:
-        log(doc, f"⚠️ Erro ao procurar ou clicar nos botões 'Salvar': {e}")
+        log(doc, f"⚠️ Erro ao procurar ou clicar nos botões 'Voltar (ESC)': {e}")
         return {"total": 0, "clicados": 0}
 
 
+def clicar_salvar_modal(js_engine, doc, timeout=5):
+    """Versão simplificada focada no modal específico com logs detalhados"""
+    import time
+    
+    try:
+        log(doc, "🔍 Iniciando busca por botões 'Salvar' no modal...")
+        
+        # Script JavaScript que retorna informações detalhadas
+        script = """
+        var botoes = document.querySelectorAll('.modal.overflow .btok');
+        var info = {
+            total: botoes.length,
+            visiveis: 0,
+            clicados: 0
+        };
+        
+        botoes.forEach(function(btn) {
+            if (btn.offsetParent !== null) {  // Verifica se está visível
+                info.visiveis++;
+                try {
+                    btn.click();
+                    info.clicados++;
+                } catch(e) {
+                    console.error('Erro ao clicar:', e);
+                }
+            }
+        });
+        
+        return info;
+        """
+        
+        log(doc, "⚙️ Executando JavaScript para clicar no(s) botão(ões)...")
+        resultado = js_engine.driver.execute_script(script)
+        
+        log(doc, f"📊 Total de botões encontrados: {resultado['total']}")
+        log(doc, f"👁️ Botões visíveis: {resultado['visiveis']}")
+        log(doc, f"✅ Botões clicados com sucesso: {resultado['clicados']}")
+        
+        if resultado['clicados'] == 0:
+            log(doc, "⚠️ Nenhum botão 'Salvar' foi clicado.")
+            if resultado['total'] == 0:
+                log(doc, "❌ Motivo: Nenhum botão encontrado no modal.")
+            elif resultado['visiveis'] == 0:
+                log(doc, "❌ Motivo: Botões existem mas não estão visíveis.")
+        else:
+            log(doc, f"🎉 Sucesso! {resultado['clicados']} botão(ões) clicado(s).")
+            log(doc, f"⏳ Aguardando conclusão do AJAX (timeout: {timeout}s)...")
+            js_engine.wait_ajax_complete(timeout)
+            log(doc, "✅ AJAX concluído.")
+        
+        return {"total": resultado['total'], "clicados": resultado['clicados']}
+        
+    except Exception as e:
+        log(doc, f"❌ Erro ao executar clique no modal: {e}")
+        import traceback
+        log(doc, f"📋 Detalhes do erro: {traceback.format_exc()}")
+        return {"total": 0, "clicados": 0}
+    
+
+def clicar_botao_por_classe(js_engine, doc, classe, nome_botao="Botão", timeout=5):
+    """Clica em botão por classe CSS com logs detalhados"""
+    import time
+    
+    try:
+        log(doc, f"🔍 Iniciando busca pelo botão '{nome_botao}' (classe: {classe})...")
+        
+        script = f"""
+        var botoes = document.querySelectorAll('a.{classe}');
+        var info = {{
+            total: botoes.length,
+            visiveis: 0,
+            clicados: 0
+        }};
+        
+        botoes.forEach(function(btn) {{
+            if (btn.offsetParent !== null) {{
+                info.visiveis++;
+                try {{
+                    btn.click();
+                    info.clicados++;
+                }} catch(e) {{
+                    console.error('Erro ao clicar:', e);
+                }}
+            }}
+        }});
+        
+        return info;
+        """
+        
+        log(doc, f"⚙️ Executando JavaScript para clicar no botão '{nome_botao}'...")
+        resultado = js_engine.driver.execute_script(script)
+        
+        log(doc, f"📊 Total de botões encontrados: {resultado['total']}")
+        log(doc, f"👁️ Botões visíveis: {resultado['visiveis']}")
+        log(doc, f"✅ Botões clicados: {resultado['clicados']}")
+        
+        if resultado['clicados'] == 0:
+            log(doc, f"⚠️ Nenhum botão '{nome_botao}' foi clicado.")
+            if resultado['total'] == 0:
+                log(doc, f"❌ Motivo: Nenhum botão encontrado.")
+            elif resultado['visiveis'] == 0:
+                log(doc, f"❌ Motivo: Botão existe mas não está visível.")
+        else:
+            log(doc, f"🎉 Sucesso! Botão '{nome_botao}' clicado.")
+            log(doc, f"⏳ Aguardando AJAX (timeout: {timeout}s)...")
+            js_engine.wait_ajax_complete(timeout)
+            log(doc, "✅ AJAX concluído.")
+        
+        return {"total": resultado['total'], "clicados": resultado['clicados']}
+        
+    except Exception as e:
+        log(doc, f"❌ Erro ao clicar no botão '{nome_botao}': {e}")
+        return {"total": 0, "clicados": 0}
+        
+    except Exception as e:
+        log(doc, f"❌ Erro ao executar clique no modal: {e}")
+        import traceback
+        log(doc, f"📋 Detalhes do erro: {traceback.format_exc()}")
+        return {"total": 0, "clicados": 0}
+    
 def clicar_botao_voltar_por_indice(js_engine, doc, indice=1, timeout=5):
     """
     Clica no botão 'Voltar (ESC)' pelo índice informado (1-based).
@@ -1546,6 +1907,103 @@ def clicar_titulo_produtos(js_engine, doc, timeout=3):
         log(doc, f"⚠️ Falha ao clicar no título 'PRODUTOS': {e}")
         return False
 
+def clicar_salvar_ate_modal_fechar(js_engine, doc, timeout_total=60, pausa_entre=0.5):
+    """
+    Clica repetidamente no botão 'Salvar' do modal de emissão de nota fiscal
+    até que o modal desapareça da tela ou o tempo máximo seja atingido.
+    """
+    xpath_modal = "//div[contains(@class,'modal') and .//h2[contains(.,'Emissão de Nota Fiscal de Serviço')]]"
+    xpath_btn_salvar = "//a[contains(normalize-space(.),'Salvar')]"
+
+    log(doc, "⚙️ Iniciando loop de clique em 'Salvar' até fechamento do modal...")
+    inicio = time.time()
+
+    while True:
+        try:
+            # Verifica se o modal ainda está presente na tela
+            modais = js_engine.driver.find_elements("xpath", xpath_modal)
+            if not modais or not modais[0].is_displayed():
+                log(doc, "✅ Modal fechado — parando cliques.")
+                break
+
+            # Clica no botão 'Salvar'
+            try:
+                js_engine.force_click(xpath_btn_salvar, by_xpath=True)
+                log(doc, "💾 Clique em 'Salvar' realizado.")
+            except Exception as e:
+                log(doc, f"⚠️ Erro ao clicar em 'Salvar': {e}")
+
+            # Espera um pouco antes de tentar novamente
+            time.sleep(pausa_entre)
+
+            # Verifica timeout total
+            if time.time() - inicio > timeout_total:
+                log(doc, "⏰ Tempo limite atingido — modal ainda aberto, encerrando tentativa.")
+                break
+
+        except Exception as e:
+            log(doc, f"⚠️ Erro inesperado no loop de salvamento: {e}")
+            break
+
+    log(doc, "🏁 Finalizado processo de clique repetido em 'Salvar'.")
+
+def clicar_voltar(js_engine, doc, timeout=5):
+    """Clica no botão 'Voltar' do modal com logs detalhados"""
+    import time
+    
+    try:
+        log(doc, "🔍 Iniciando busca pelo botão 'Voltar'...")
+        
+        # Script JavaScript que retorna informações detalhadas
+        script = """
+        var botoes = document.querySelectorAll('a.sp-voltarGrande');
+        var info = {
+            total: botoes.length,
+            visiveis: 0,
+            clicados: 0
+        };
+        
+        botoes.forEach(function(btn) {
+            if (btn.offsetParent !== null) {  // Verifica se está visível
+                info.visiveis++;
+                try {
+                    btn.click();
+                    info.clicados++;
+                } catch(e) {
+                    console.error('Erro ao clicar:', e);
+                }
+            }
+        });
+        
+        return info;
+        """
+        
+        log(doc, "⚙️ Executando JavaScript para clicar no botão 'Voltar'...")
+        resultado = js_engine.driver.execute_script(script)
+        
+        log(doc, f"📊 Total de botões 'Voltar' encontrados: {resultado['total']}")
+        log(doc, f"👁️ Botões visíveis: {resultado['visiveis']}")
+        log(doc, f"✅ Botões clicados com sucesso: {resultado['clicados']}")
+        
+        if resultado['clicados'] == 0:
+            log(doc, "⚠️ Nenhum botão 'Voltar' foi clicado.")
+            if resultado['total'] == 0:
+                log(doc, "❌ Motivo: Nenhum botão 'Voltar' encontrado.")
+            elif resultado['visiveis'] == 0:
+                log(doc, "❌ Motivo: Botão existe mas não está visível.")
+        else:
+            log(doc, f"🎉 Sucesso! Botão 'Voltar' clicado.")
+            log(doc, f"⏳ Aguardando conclusão do AJAX (timeout: {timeout}s)...")
+            js_engine.wait_ajax_complete(timeout)
+            log(doc, "✅ AJAX concluído.")
+        
+        return {"total": resultado['total'], "clicados": resultado['clicados']}
+        
+    except Exception as e:
+        log(doc, f"❌ Erro ao clicar no botão 'Voltar': {e}")
+        import traceback
+        log(doc, f"📋 Detalhes do erro: {traceback.format_exc()}")
+        return {"total": 0, "clicados": 0}
 
 def clicar_titulo_titulos(js_engine, doc, timeout=3):
     """
@@ -1562,6 +2020,82 @@ def clicar_titulo_titulos(js_engine, doc, timeout=3):
         log(doc, f"⚠️ Falha ao clicar no título 'TÍTULOS': {e}")
         return False
 
+
+
+def selecionar_template_por_texto(js_engine, doc, texto="PADRÃO", timeout=5):
+    """
+    Seleciona uma opção do select 'templateNota' pelo texto exibido.
+    
+    Args:
+        js_engine: Instância do JSForceEngine
+        doc: Documento para logs
+        texto: Texto da opção a ser selecionada (default: "PADRÃO")
+        timeout: Timeout para aguardar AJAX (default: 5)
+    
+    Returns:
+        bool: True se selecionou com sucesso, False caso contrário
+    """
+    try:
+        log(doc, f"📋 Selecionando template por texto: '{texto}'...")
+        
+        # Script JavaScript para selecionar por texto
+        script = """
+        const selectElement = document.querySelector('select.templateNota');
+        const texto = arguments[0];
+        
+        if (!selectElement) {
+            throw new Error('Select .templateNota não encontrado');
+        }
+        
+        // Procura a opção pelo texto
+        const option = Array.from(selectElement.options).find(
+            opt => opt.text.trim() === texto.trim()
+        );
+        
+        if (!option) {
+            throw new Error(`Opção com texto '${texto}' não encontrada`);
+        }
+        
+        // Torna o select visível e interativo
+        selectElement.style.display = 'block';
+        selectElement.style.visibility = 'visible';
+        selectElement.removeAttribute('disabled');
+        
+        // Seleciona a opção pelo value
+        selectElement.value = option.value;
+        
+        // Dispara eventos
+        selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+        selectElement.dispatchEvent(new Event('input', { bubbles: true }));
+        selectElement.dispatchEvent(new Event('blur', { bubbles: true }));
+        
+        return {
+            sucesso: true,
+            valorSelecionado: selectElement.value,
+            textoSelecionado: selectElement.options[selectElement.selectedIndex].text
+        };
+        """
+        
+        resultado = js_engine.execute_js(
+            script, 
+            texto, 
+            timeout=timeout,
+            fallback_result=None
+        )
+        
+        if resultado and resultado.get('sucesso'):
+            value = resultado.get('valorSelecionado', '')
+            log(doc, f"✅ Template '{texto}' (value={value}) selecionado com sucesso!")
+            js_engine.wait_ajax_complete(timeout)
+            return True
+        else:
+            log(doc, f"⚠️ Falha ao selecionar template '{texto}'")
+            return False
+            
+    except Exception as e:
+        log(doc, f"❌ Erro ao selecionar template '{texto}': {e}")
+        return False
+
 # ==== EXECUÇÃO DO TESTE ====
 def executar_teste():
     """Execução principal do teste com JS forçado e proteção anti-timeout"""
@@ -1573,7 +2107,7 @@ def executar_teste():
         
         # Cria engine JS forçado COM PROTEÇÃO ANTI-TIMEOUT
         js_engine = JSForceEngine(driver, wait, doc, timeout_padrao=10, max_retries=3)
-        lov_handler = LOVHandler(js_engine)
+        lov_handler = LOVHandler(js_engine, doc)
         
         # ===== LOGIN =====
         safe_action(doc, "Acessando sistema", lambda: driver.get(URL))
@@ -1608,9 +2142,10 @@ def executar_teste():
         
         time.sleep(5)
 
-        safe_action(doc, "Verificando e abrindo caixa", 
-            lambda: verificar_e_abrir_caixa(js_engine, doc)
+        safe_action(doc, "Verificando e abrindo o caixa", lambda:
+            verificar_e_abrir_caixa(js_engine, doc)
         )
+
 
         safe_action(doc, "Clicando em 'Adicionar Produtos'", lambda:
             js_engine.force_click(
@@ -1635,6 +2170,7 @@ def executar_teste():
         clicar_titulo_produtos(js_engine, doc)
 
         time.sleep(1)
+        clicar_botao_por_classe(js_engine, doc, "sp-voltarGrande", "Voltar")
 
         safe_action(doc, "Clicando em 'Adicionar Títulos'", lambda:
             js_engine.force_click(
@@ -1658,9 +2194,11 @@ def executar_teste():
 
         time.sleep(20)
 
-        safe_action(doc, "Adicionando primeiro título", lambda: clicar_primeiro_sp_add(js_engine, doc))
+        safe_action(doc, "Adicionando título", lambda: clicar_primeiro_sp_add(js_engine, doc))
         time.sleep(1)
         clicar_titulo_titulos(js_engine, doc)
+
+        clicar_botao_por_classe(js_engine, doc, "sp-voltarGrande", "Voltar")
 
         safe_action(doc, "Prosseguindo com o Pagamento", lambda:
             js_engine.force_click("//a[@class='btVenda' and normalize-space()='Prosseguir com pagamento (F5)']", by_xpath=True)
@@ -1687,38 +2225,21 @@ def executar_teste():
                 js_engine.force_fill(x, v, by_xpath=True)
             )
 
-        safe_action(doc, "Clicando em Finalizar", lambda:
-            js_engine.force_click(
-                "//a[@class='btModel btGray btyes' and normalize-space()='Finalizar']",
-                by_xpath=True
-            )
-        )
-
-        log(doc, "🔍 Verificando mensagens de alerta...")
-        encontrar_mensagem_alerta()
+        alerta = clicar_finalizar_e_verificar_alerta(js_engine, doc)
+        if alerta:
+            log(doc, f"⚠️ Alerta detectado: {alerta.text}")
+        else:
+            log(doc, "✅ Nenhum alerta foi encontrado após clicar em 'Finalizar'.")
 
         time.sleep(10)
 
 
-        safe_action(doc, "Gerando Nota Fiscal", lambda:
-                js_engine.force_click("//a[@id='BtYes' and @class='btModel btGray btyes' and normalize-space()='Sim']", by_xpath=True)
+        safe_action(doc, "Recusando Geração de Nota Fiscal", lambda:
+                js_engine.force_click("//a[@id='BtNo' and @class='btModel btGray btno' and normalize-space()='Não']", by_xpath=True)
             )
         time.sleep(5)
 
-                # ===== LOV COM PROTEÇÃO =====
-        safe_action(doc, "Selecionando Emitente", lambda:
-            lov_handler.open_and_select(
-                btn_index=4,
-                search_text="CONCESSIONARIA RIO PAX S/A",
-                result_text="CONCESSIONARIA RIO PAX S/A"
-            )
-        )
-        resultado_salvar = clicar_todos_salvar(js_engine, doc, pausa_entre=0.3)
-
-        total = resultado_salvar.get("total", 0)
-        clicados = resultado_salvar.get("clicados", 0)
-        log(doc, f"💾 Resultado final — Total: {total}, Clicados: {clicados}")
-
+    
 
         safe_action(doc, "Clicando em 'Fechar Caixa'", lambda:
                 js_engine.force_click("//a[contains(@class,'btAzulDegrade') and contains(@class,'btFecharCaixa')]", by_xpath=True)
@@ -1728,7 +2249,7 @@ def executar_teste():
         safe_action(doc, "Fechando Caixa", lambda:
                 js_engine.force_click("//a[@class='btModel btGray btyes' and normalize-space()='Fechar Caixa' and .//span[contains(@class,'sp-salvar')]]", by_xpath=True)
             )
-        time.sleep(3)
+        time.sleep(40)
         fechar_abas_extras_e_verificar_alerta(js_engine.driver, doc)
 
         safe_action(doc, "Gerando Relatório", lambda:
@@ -1737,10 +2258,16 @@ def executar_teste():
         time.sleep(5)
         fechar_abas_extras_e_verificar_alerta(js_engine.driver, doc)
 
-        safe_action(doc, "Fechando modal autenticação", lambda:
-                js_engine.force_click("//a[@id='BtNo' and @class='btModel btGray btno' and normalize-space()='Fechar']", by_xpath=True)
+        safe_action(doc, "Fechando modal de Geração", lambda:
+                js_engine.force_click("//a[@id='BtNo' and @class='btModel btGray btno' and normalize-space()='Não']", by_xpath=True)
             )
-        
+
+        safe_action(doc, "Fechando modal de Autenticação", lambda:
+                js_engine.force_click("//a[@id='BtNo' and @class='btModel btGray btno' and normalize-space()='Fechar']", by_xpath=True)
+            )          
+                # Voltar
+
+
         safe_action(doc, "Fechando modal do Controle de Caixa", lambda:
             js_engine.force_click(
                 "//a[@class='sprites sp-fecharGrande' and @title='Sair']",
