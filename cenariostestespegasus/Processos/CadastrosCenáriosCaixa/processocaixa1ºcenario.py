@@ -2172,6 +2172,55 @@ def executar_teste():
         time.sleep(1)
         clicar_botao_por_classe(js_engine, doc, "sp-voltarGrande", "Voltar")
 
+
+        safe_action(doc, "Prosseguindo com o Pagamento", lambda:
+            js_engine.force_click("//a[@class='btVenda' and normalize-space()='Prosseguir com pagamento (F5)']", by_xpath=True)
+        )
+        time.sleep(3)
+
+        safe_action(doc, "Preenchendo CNPJ do Cliente", lambda:
+            js_engine.force_fill("//input[@maxlength='14']", str(fake.cnpj()), by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Nº NFe", lambda:
+            js_engine.force_fill("//input[@maxlength='20']", "55.001.12345", by_xpath=True)
+        )
+
+        # Formas de pagamento
+        formas_pagamento = [
+            ("Dinheiro", "//input[@class='valor vDinheiro']", "10000,00"),
+            ("Boleto", "//input[@class='valor vBoleto']", "10000,00"),
+
+        ]
+
+        for nome, xpath, valor in formas_pagamento:
+            safe_action(doc, f"Preenchendo Forma de Pagamento: {nome}", lambda x=xpath, v=valor:
+                js_engine.force_fill(x, v, by_xpath=True)
+            )
+
+        alerta = clicar_finalizar_e_verificar_alerta(js_engine, doc)
+        if alerta:
+            log(doc, f"⚠️ Alerta detectado: {alerta.text}")
+        else:
+            log(doc, "✅ Nenhum alerta foi encontrado após clicar em 'Finalizar'.")
+
+        time.sleep(10)
+
+
+        safe_action(doc, "Recusando Geração de Nota Fiscal", lambda:
+                js_engine.force_click("//a[@id='BtNo' and @class='btModel btGray btno' and normalize-space()='Não']", by_xpath=True)
+            )
+        time.sleep(10)
+
+    
+        safe_action(doc, "Clicando em 'Nova Venda'", lambda:
+            js_engine.force_click(
+                "(//a[@class='btCancelarCaixa' and contains(normalize-space(.), ' Nova Venda')])[1]",
+                by_xpath=True
+            )
+        )
+        time.sleep(2)
+
         safe_action(doc, "Clicando em 'Adicionar Títulos'", lambda:
             js_engine.force_click(
                 "(//a[@class='btAddTit' and contains(normalize-space(.), 'Adicionar títulos')])[1]",
@@ -2216,8 +2265,13 @@ def executar_teste():
         # Formas de pagamento
         formas_pagamento = [
             ("Dinheiro", "//input[@class='valor vDinheiro']", "10000,00"),
+            ("Cartão de Debito", "//input[@class='valor vDebito']", "10000,00"),
+            ("Cartão de Credito", "//input[@class='valor vCredito']", "10000,00"),
+            ("Depósito", "//input[@class='valor vDeposito']", "10000,00"),
             ("Boleto", "//input[@class='valor vBoleto']", "10000,00"),
-
+            ("Cheque", "//input[@class='valor vCheque']", "10000,00"),
+            ("PIX", "//input[@class='valor vPIX']", "10000,00"),
+            ("Transferência", "//input[@class='valor vTransferencia']", "10000,00"),
         ]
 
         for nome, xpath, valor in formas_pagamento:
