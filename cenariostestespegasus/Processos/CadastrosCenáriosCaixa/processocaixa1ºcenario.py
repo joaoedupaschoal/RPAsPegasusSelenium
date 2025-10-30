@@ -485,7 +485,7 @@ class JSForceEngine:
                 log(self.doc, f"⚠️ Tentativa {attempt + 1} falhou: {e}")
         
         raise Exception(f"Falha ao preencher após {max_attempts} tentativas: {selector}")
-    
+
     def _get_fill_script(self, strategy_func, selector, value, by_xpath):
         """Retorna o script de preenchimento"""
         base_locator = """
@@ -967,6 +967,375 @@ def finalizar_relatorio():
             log(doc, "✅ Driver encerrado")
         except:
             pass
+
+
+
+
+
+def _sanitize_timeout(t):
+    """Garante timeout válido"""
+    if not isinstance(t, (int, float)) or t <= 0:
+        return TIMEOUT_DEFAULT
+    return max(5, min(120, t))  # Entre 5 e 120 segundos
+
+# ==== AGUARDAR ELEMENTO MELHORADO ====
+def aguardar_elemento(seletor, timeout=TIMEOUT_DEFAULT, condicao='clickable', by_type=By.CSS_SELECTOR):
+    """Função centralizada para aguardar elementos com diferentes condições"""
+    global driver, wait
+    
+    if driver is None:
+        raise Exception("Driver não inicializado")
+    
+    timeout = _sanitize_timeout(timeout)
+    
+    condicoes = {
+        'present': EC.presence_of_element_located,
+        'visible': EC.visibility_of_element_located,
+        'clickable': EC.element_to_be_clickable,
+        'invisible': EC.invisibility_of_element_located
+    }
+    
+    if condicao not in condicoes:
+        condicao = 'clickable'
+    
+    try:
+        wait_obj = WebDriverWait(driver, timeout)
+        elemento = wait_obj.until(condicoes[condicao]((by_type, seletor)))
+        return elemento
+    except TimeoutException:
+        log(doc, f"❌ Timeout aguardando elemento: {seletor} (condição: {condicao}, timeout: {timeout}s)", 'ERROR')
+        raise TimeoutException(f"Elemento não encontrado: {seletor} (condição: {condicao})")
+    except Exception as e:
+        log(doc, f"❌ Erro aguardando elemento {seletor}: {e}", 'ERROR')
+        raise
+
+# ==== SCROLL CORRIGIDO - PRINCIPAL CORREÇÃO ====
+def scroll_to_element_safe(elemento_ou_seletor, by_type=By.CSS_SELECTOR):
+    """Scroll seguro até elemento com validação robusta"""
+    global driver
+    
+    if driver is None:
+        log(doc, "⚠️ Driver não disponível para scroll", 'WARN')
+        return False
+    
+    try:
+        # Se for seletor, encontra o elemento
+        if isinstance(elemento_ou_seletor, str):
+            elemento = aguardar_elemento(elemento_ou_seletor, 10, 'present', by_type)
+        else:
+            elemento = elemento_ou_seletor
+        
+        if elemento is None:
+            log(doc, "⚠️ Elemento não encontrado para scroll", 'WARN')
+            return False
+        
+        # Verifica se elemento é válido antes de fazer scroll
+        if not elemento.is_displayed():
+            log(doc, "⚠️ Elemento não está visível para scroll", 'WARN')
+            return False
+        
+        # Estratégias de scroll em ordem de preferência
+        scroll_strategies = [
+            # Estratégia 1: JavaScript com verificação prévia
+            lambda: driver.execute_script("""
+                var element = arguments[0];
+                if (element && typeof element.scrollIntoView === 'function') {
+                    element.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                        inline: 'center'
+                    });
+                    return true;
+                } else {
+                    return false;
+                }
+            """, elemento),
+            
+            # Estratégia 2: ActionChains
+            lambda: ActionChains(driver).move_to_element(elemento).perform(),
+            
+            # Estratégia 3: JavaScript alternativo
+            lambda: driver.execute_script("""
+                var element = arguments[0];
+                if (element) {
+                    element.scrollIntoView();
+                    window.scrollBy(0, -100);
+                }
+            """, elemento),
+            
+            # Estratégia 4: Scroll da página até o elemento
+            lambda: driver.execute_script("""
+                var element = arguments[0];
+                if (element) {
+                    var rect = element.getBoundingClientRect();
+                    var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    var targetY = rect.top + scrollTop - (window.innerHeight / 2);
+                    window.scrollTo(0, targetY);
+                }
+            """, elemento)
+        ]
+        
+        for i, strategy in enumerate(scroll_strategies, 1):
+            try:
+                log(doc, f"   Tentando estratégia de scroll {i}...")
+                result = strategy()
+                
+                # Para estratégia 1, verifica resultado
+                if i == 1 and result is False:
+                    log(doc, f"   Estratégia {i}: elemento não suporta scrollIntoView", 'WARN')
+                    continue
+                
+                time.sleep(0.8)  # Aguarda scroll completar
+                
+                # Verifica se elemento ainda está acessível
+                if elemento.is_displayed() and elemento.is_enabled():
+                    log(doc, f"✅ Scroll realizado com estratégia {i}")
+                    return True
+                else:
+                    log(doc, f"   Estratégia {i}: elemento não ficou acessível", 'WARN')
+                    continue
+                    
+            except Exception as e:
+                log(doc, f"   Estratégia {i} de scroll falhou: {str(e)[:100]}...", 'WARN')
+                continue
+        
+        log(doc, "⚠️ Todas as estratégias de scroll falharam", 'WARN')
+        return False
+        
+    except Exception as e:
+        log(doc, f"⚠️ Erro geral no scroll: {e}", 'WARN')
+        return False
+
+
+
+# ==== SISTEMA DATEPICKER MELHORADO ====
+def encontrar_campos_datepicker():
+    """Encontra todos os campos datepicker na página"""
+    global driver
+    
+    if driver is None:
+        return []
+    
+    seletores_datepicker = [
+        "input.hasDatepicker",
+        "input[id^='dp']",
+        "input[maxlength='10'][grupo='']",
+        "input[type='text'][maxlength='10']",
+        "input[class*='datepicker']",
+        ".hasDatepicker"
+    ]
+    
+    campos_encontrados = []
+    
+    for seletor in seletores_datepicker:
+        try:
+            elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
+            for elemento in elementos:
+                if elemento.is_displayed() and elemento.is_enabled():
+                    info = {
+                        'elemento': elemento,
+                        'id': elemento.get_attribute('id') or f"dp_{len(campos_encontrados)}",
+                        'seletor_usado': seletor,
+                        'maxlength': elemento.get_attribute('maxlength'),
+                        'placeholder': elemento.get_attribute('placeholder')
+                    }
+                    # Evita duplicatas
+                    if not any(c['id'] == info['id'] for c in campos_encontrados):
+                        campos_encontrados.append(info)
+        except Exception as e:
+            log(doc, f"⚠️ Erro ao buscar campos datepicker com {seletor}: {e}", 'WARN')
+            continue
+    
+    log(doc, f"📊 Encontrados {len(campos_encontrados)} campos datepicker")
+    return campos_encontrados
+
+def _datepicker_jquery(campo_id, data_valor):
+    """Estratégia jQuery para datepicker"""
+    global driver
+    
+    resultado = driver.execute_script("""
+        var campoId = arguments[0], valor = arguments[1];
+        if (typeof jQuery === 'undefined') return 'jQuery não disponível';
+        var $campo = $('#' + campoId);
+        if (!$campo.length) return 'Campo não encontrado: ' + campoId;
+        try {
+            if ($campo.hasClass('hasDatepicker')) { 
+                $campo.datepicker('setDate', valor); 
+            } else { 
+                $campo.val(valor); 
+            }
+            $campo.trigger('input').trigger('change').trigger('blur');
+            return $campo.val();
+        } catch(e) { 
+            return 'Erro: ' + e.message; 
+        }
+    """, campo_id, data_valor)
+    
+    if isinstance(resultado, str) and ('Erro' in resultado or 'não disponível' in resultado):
+        raise Exception(f"jQuery falhou: {resultado}")
+
+def _datepicker_javascript(elemento, data_valor):
+    """Estratégia JavaScript para datepicker"""
+    global driver
+    
+    driver.execute_script("""
+        var campo = arguments[0], valor = arguments[1];
+        campo.focus(); 
+        campo.value = ''; 
+        campo.value = valor;
+        ['input','change','blur','keyup'].forEach(ev => 
+            campo.dispatchEvent(new Event(ev, {bubbles: true}))
+        );
+    """, elemento, data_valor)
+
+def _datepicker_actionchains(elemento, data_valor):
+    """Estratégia ActionChains para datepicker"""
+    global driver
+    
+    scroll_to_element_safe(elemento)
+    time.sleep(0.5)
+    
+    ActionChains(driver).move_to_element(elemento).click().perform()
+    time.sleep(0.5)
+    ActionChains(driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
+    time.sleep(0.3)
+    ActionChains(driver).send_keys(Keys.DELETE).perform()
+    time.sleep(0.3)
+    
+    for char in data_valor:
+        ActionChains(driver).send_keys(char).perform()
+        time.sleep(0.05)
+    
+    ActionChains(driver).send_keys(Keys.TAB).perform()
+
+def _datepicker_tradicional(elemento, data_valor):
+    """Estratégia tradicional para datepicker"""
+    scroll_to_element_safe(elemento)
+    time.sleep(0.5)
+    elemento.click()
+    time.sleep(0.5)
+    elemento.clear()
+    elemento.send_keys(data_valor)
+    elemento.send_keys(Keys.TAB)
+
+def validar_data_preenchida(elemento, data_esperada):
+    """Valida se a data foi preenchida corretamente"""
+    try:
+        if elemento is None:
+            return False
+            
+        val = (elemento.get_attribute('value') or '').strip()
+        if not val:
+            return False
+            
+        if val == data_esperada or data_esperada in val:
+            return True
+            
+        # Tenta comparar datas em diferentes formatos
+        formatos = [
+            '%d/%m/%Y %H:%M', '%d/%m/%Y %H:%M:%S',
+            '%d/%m/%Y', '%m/%d/%Y', '%Y-%m-%d', '%d-%m-%Y'
+        ]
+        
+        for formato in formatos:
+            try:
+                d1 = datetime.strptime(val, formato)
+                d2 = datetime.strptime(data_esperada, formato)
+                if d1 == d2:
+                    return True
+            except:
+                continue
+                
+        return False
+        
+    except Exception:
+        return False
+
+
+
+
+
+def preencher_datepicker_por_indice(indice_campo, data_valor, max_tentativas=5):
+    """Preenche datepicker pelo índice com estratégias múltiplas"""
+    def acao():
+        if not isinstance(indice_campo, int) or indice_campo < 0:
+            raise ValueError(f"Índice inválido: {indice_campo}")
+            
+        if not data_valor or not isinstance(data_valor, str):
+            raise ValueError(f"Data inválida: {data_valor}")
+        
+        tentativa = 0
+        while tentativa < max_tentativas:
+            tentativa += 1
+            
+            try:
+                campos = encontrar_campos_datepicker()
+                
+                if not campos:
+                    if tentativa < max_tentativas:
+                        log(doc, f"⚠️ Nenhum campo datepicker encontrado, tentativa {tentativa}/{max_tentativas}", 'WARN')
+                        time.sleep(2)
+                        continue
+                    raise Exception("Nenhum campo datepicker encontrado na página")
+                
+                if indice_campo >= len(campos):
+                    raise Exception(f"Índice {indice_campo} inválido. Encontrados {len(campos)} campos")
+                
+                campo_info = campos[indice_campo]
+                elemento = campo_info['elemento']
+                campo_id = campo_info['id']
+                
+                log(doc, f"🎯 Tentativa {tentativa}: Preenchendo datepicker {indice_campo} (ID: {campo_id}) com '{data_valor}'")
+                
+                # Verifica se já está preenchido corretamente
+                if validar_data_preenchida(elemento, data_valor):
+                    log(doc, f"✅ Campo {indice_campo} já está preenchido corretamente!")
+                    return True
+                
+                # Estratégias específicas para datepicker
+                estrategias = [
+                    lambda: _datepicker_jquery(campo_id, data_valor),
+                    lambda: _datepicker_javascript(elemento, data_valor),
+                    lambda: _datepicker_actionchains(elemento, data_valor),
+                    lambda: _datepicker_tradicional(elemento, data_valor)
+                ]
+                
+                for i, estrategia in enumerate(estrategias, 1):
+                    try:
+                        log(doc, f"   Aplicando estratégia {i} para datepicker...")
+                        estrategia()
+                        time.sleep(1)
+                        
+                        # Verifica se funcionou
+                        if validar_data_preenchida(elemento, data_valor):
+                            valor_atual = elemento.get_attribute('value')
+                            log(doc, f"✅ Datepicker preenchido com estratégia {i}: '{valor_atual}'")
+                            return True
+                        else:
+                            log(doc, f"⚠️ Estratégia {i} não preencheu corretamente", 'WARN')
+                            
+                    except Exception as e:
+                        log(doc, f"⚠️ Estratégia {i} falhou: {e}", 'WARN')
+                        continue
+                
+                # Se chegou aqui, nenhuma estratégia funcionou nesta tentativa
+                if tentativa < max_tentativas:
+                    log(doc, f"⚠️ Tentativa {tentativa} falhou, tentando novamente em 2s...", 'WARN')
+                    time.sleep(2)
+                    continue
+                
+            except Exception as e:
+                if tentativa < max_tentativas:
+                    log(doc, f"⚠️ Erro na tentativa {tentativa}: {e}, tentando novamente...", 'WARN')
+                    time.sleep(2)
+                    continue
+                else:
+                    raise
+        
+        raise Exception(f"Falha ao preencher datepicker {indice_campo} após {max_tentativas} tentativas")
+    
+    return acao
+
 
 def preencher_campos_pesquisa_por_indice(self, 
                                          search_text: str, 
@@ -2096,6 +2465,88 @@ def selecionar_template_por_texto(js_engine, doc, texto="PADRÃO", timeout=5):
         log(doc, f"❌ Erro ao selecionar template '{texto}': {e}")
         return False
 
+def selecionar_banco_por_value(js_engine, doc, value="1040", nome_banco="Caixa Econômica Federal", timeout=5):
+    """
+    Seleciona uma opção do select 'banco' pelo valor (value).
+    
+    Args:
+        js_engine: Instância do JSForceEngine
+        doc: Documento para logs
+        value: Valor do option a ser selecionado (default: "1040" para CEF)
+        nome_banco: Nome do banco para logs (default: "Caixa Econômica Federal")
+        timeout: Timeout para aguardar AJAX (default: 5)
+    
+    Returns:
+        bool: True se selecionou com sucesso, False caso contrário
+    """
+    try:
+        log(doc, f"🏦 Selecionando banco '{nome_banco}' (value={value})...")
+        
+        # Script JavaScript robusto para selecionar a opção
+        script = """
+        const selectElement = document.querySelector('select.chqf.banco');
+        const value = arguments[0];
+        
+        if (!selectElement) {
+            throw new Error('Select .chqf.banco não encontrado');
+        }
+        
+        // Verifica se a opção existe
+        const option = Array.from(selectElement.options).find(opt => opt.value === value);
+        if (!option) {
+            throw new Error(`Opção com value '${value}' não encontrada`);
+        }
+        
+        // Torna o select visível e interativo
+        selectElement.style.display = 'block';
+        selectElement.style.visibility = 'visible';
+        selectElement.removeAttribute('disabled');
+        
+        // Seleciona a opção
+        selectElement.value = value;
+        
+        // Dispara eventos para garantir que listeners sejam acionados
+        selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+        selectElement.dispatchEvent(new Event('input', { bubbles: true }));
+        selectElement.dispatchEvent(new Event('blur', { bubbles: true }));
+        
+        // Verifica se a seleção foi bem-sucedida
+        if (selectElement.value !== value) {
+            throw new Error('Seleção não foi aplicada corretamente');
+        }
+        
+        return {
+            sucesso: true,
+            valorSelecionado: selectElement.value,
+            textoSelecionado: selectElement.options[selectElement.selectedIndex].text
+        };
+        """
+        
+        # Executa o script com proteção contra timeout
+        resultado = js_engine.execute_js(
+            script, 
+            value, 
+            timeout=timeout,
+            fallback_result=None
+        )
+        
+        if resultado and resultado.get('sucesso'):
+            texto = resultado.get('textoSelecionado', nome_banco)
+            log(doc, f"✅ Banco '{texto}' selecionado com sucesso!")
+            
+            # Aguarda AJAX completar
+            js_engine.wait_ajax_complete(timeout)
+            return True
+        else:
+            log(doc, f"⚠️ Falha ao selecionar banco '{nome_banco}'")
+            return False
+            
+    except Exception as e:
+        log(doc, f"❌ Erro ao selecionar banco '{nome_banco}': {e}")
+        return False
+
+
+
 # ==== EXECUÇÃO DO TESTE ====
 def executar_teste():
     """Execução principal do teste com JS forçado e proteção anti-timeout"""
@@ -2172,7 +2623,6 @@ def executar_teste():
         time.sleep(1)
         clicar_botao_por_classe(js_engine, doc, "sp-voltarGrande", "Voltar")
 
-
         safe_action(doc, "Prosseguindo com o Pagamento", lambda:
             js_engine.force_click("//a[@class='btVenda' and normalize-space()='Prosseguir com pagamento (F5)']", by_xpath=True)
         )
@@ -2189,8 +2639,13 @@ def executar_teste():
         # Formas de pagamento
         formas_pagamento = [
             ("Dinheiro", "//input[@class='valor vDinheiro']", "10000,00"),
+            ("Cartão de Debito", "//input[@class='valor vDebito']", "10000,00"),
+            ("Cartão de Credito", "//input[@class='valor vCredito']", "10000,00"),
+            ("Depósito", "//input[@class='valor vDeposito']", "10000,00"),
             ("Boleto", "//input[@class='valor vBoleto']", "10000,00"),
-
+            ("Cheque", "//input[@class='valor vCheque']", "10000,00"),
+            ("PIX", "//input[@class='valor vPIX']", "10000,00"),
+            ("Transferência", "//input[@class='valor vTransferencia']", "10000,00"),
         ]
 
         for nome, xpath, valor in formas_pagamento:
@@ -2207,11 +2662,176 @@ def executar_teste():
         time.sleep(10)
 
 
+        safe_action(doc, "Selecionando Banco", lambda:
+        selecionar_banco_por_value(js_engine, doc, value="2372", nome_banco="Bradesco")
+    )
+
+        safe_action(doc, "Preenchendo Agência", lambda:
+            js_engine.force_fill("//input[@class='chqf agencia nl onb']", "4332", by_xpath=True),
+            js_engine.force_fill("//input[@class='dvAgencia nl onb']", "1", by_xpath=True)
+
+        )
+
+        safe_action(doc, "Preenchendo Conta", lambda:
+            js_engine.force_fill("//input[@class='chqf conta nl onb' and @size='15']", "830399381234257", by_xpath=True),
+            js_engine.force_fill("//input[@class='chqf dvConta nl onb' and @size='4']", "1", by_xpath=True)
+
+        )
+        safe_action(doc, "Preenchendo Emitente", lambda:
+            js_engine.force_fill("//input[@class='nomeEmitente chqf' and @maxlength='70']", "TESTE EMITENTE SELENIUM AUTOMATIZADO", by_xpath=True),
+        )
+
+
+        safe_action(doc, "Preenchendo CNPJ do Emitente", lambda:
+            js_engine.force_fill("//input[@class='chqf cpfCnpj']", str(fake.cnpj()), by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Data Boa", lambda:
+            js_engine.force_fill("//input[@class='hasDatepicker chqf dataBoa dateField']", "30/10/2025", by_xpath=True)
+        )
+
+        
+        safe_action(doc, "Preenchendo Número do Cheque", lambda:
+            js_engine.force_fill("//input[@class='chqf numeroCheque']", "2383", by_xpath=True)
+        )
+        
+        safe_action(doc, "Preenchendo Código de Barras", lambda:
+            js_engine.force_fill("//input[@class='codigoBarras limpar']", "829402783924782428470284576467", by_xpath=True)
+        )
+        
+        safe_action(doc, "Preenchendo Compensação", lambda:
+            js_engine.force_fill("//input[@class='comp limpar']", "123", by_xpath=True)
+        )
+        
+        safe_action(doc, "Preenchendo C1", lambda:
+            js_engine.force_fill("//input[@class='c1 limpar']", "1", by_xpath=True)
+        )
+        
+        safe_action(doc, "Preenchendo C2", lambda:
+            js_engine.force_fill("//input[@class='c2 limpar']", "2", by_xpath=True)
+        )
+        safe_action(doc, "Preenchendo C3", lambda:
+            js_engine.force_fill("//input[@class='c3 limpar']", "3", by_xpath=True)
+        )
+
+        safe_action(doc, "Adicionando", lambda:
+                js_engine.force_click("//a[@class='btModel btGray btAddCheque' and contains(normalize-space(.),'Adicionar')]", by_xpath=True)
+            )
+        time.sleep(0.5)
+
+        encontrar_mensagem_alerta()
+
+
+
+        safe_action(doc, "Entrando na aba de Pagamento com Cartão", lambda:
+                js_engine.force_click("//h3[contains(@class,'ui-accordion-header') and contains(.,'Pagamento com Cartão')]", by_xpath=True)
+            )
+        time.sleep(0.5)
+        
+        safe_action(doc, "Entrando na (Novamente) aba de Pagamento com Cartão", lambda:
+                js_engine.force_click("//h3[contains(@class,'ui-accordion-header') and contains(.,'Pagamento com Cartão')]", by_xpath=True),
+            )
+        time.sleep(0.5)
+
+        safe_action(doc, "Preenchendo Nome", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='255' and @style='width: 255px;']", "TESTE NOME CARTÃO SELENIUM", by_xpath=True)
+        )
+        
+        safe_action(doc, "Selecionando Bandeira", lambda:
+            lov_handler.open_and_select(
+                btn_index=1,
+                search_text="BANDEIRA ELO CRÉDITO",
+                result_text="BANDEIRA ELO CRÉDITO"
+            )
+        )
+        
+
+        safe_action(doc, "Preenchendo Número do Cartão", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='16' and @style='width: 200px;']", "7886872642871462", by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Autorização", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='10' and @style='width: 80px;']", "8739", by_xpath=True)
+        )
+
+
+        safe_action(doc, "Preenchendo Data da Venda", 
+                   preencher_datepicker_por_indice(12, "30/10/2025"))
+
+
+        safe_action(doc, "Preenchendo Valor", lambda:
+            js_engine.force_fill("//input[contains(@class,'chqf') and @type='text' and contains(@placeholder,'R$')]", "R$ 10.000,00", by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Quantidade de Parcelas", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='3']", "1", by_xpath=True)
+        )
+
+        safe_action(doc, "Adicionando", lambda:
+                js_engine.force_click("//a[@class='btModel btGray btAddCartao' and contains(normalize-space(.),'Adicionar')]", by_xpath=True)
+            )
+        time.sleep(0.5)
+
+
+        encontrar_mensagem_alerta()
+
+
+
+        safe_action(doc, "Preenchendo Nome", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='255' and @style='width: 255px;']", "TESTE NOME CARTÃO SELENIUM", by_xpath=True)
+        )
+        
+        safe_action(doc, "Selecionando Bandeira", lambda:
+            lov_handler.open_and_select(
+                btn_index=1,
+                search_text="SIPAG - DÉBITO",
+                result_text="SIPAG - DÉBITO"
+            )
+        )
+        
+
+        safe_action(doc, "Preenchendo Número do Cartão", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='16' and @style='width: 200px;']", "7886872642871462", by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Autorização", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='10' and @style='width: 80px;']", "8739", by_xpath=True)
+        )
+
+
+        safe_action(doc, "Preenchendo Data da Venda", 
+                   preencher_datepicker_por_indice(12, "30/10/2025"))
+
+
+        safe_action(doc, "Preenchendo Valor", lambda:
+            js_engine.force_fill("//input[contains(@class,'chqf') and @type='text' and contains(@placeholder,'R$')]", "R$ 10.000,00", by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Quantidade de Parcelas", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='3']", "1", by_xpath=True)
+        )
+
+        safe_action(doc, "Adicionando", lambda:
+                js_engine.force_click("//a[@class='btModel btGray btAddCartao' and contains(normalize-space(.),'Adicionar')]", by_xpath=True)
+            )
+        time.sleep(0.5)
+
+
+        encontrar_mensagem_alerta()
+        
+        time.sleep(5)
+        safe_action(doc, "Concluindo", lambda:
+                js_engine.force_click("//a[@class='btModel btGreen btConcluir' and contains(normalize-space(.),'Concluir')]", by_xpath=True)
+            )
+        time.sleep(0.5)
+
+        encontrar_mensagem_alerta()
+
+
         safe_action(doc, "Recusando Geração de Nota Fiscal", lambda:
                 js_engine.force_click("//a[@id='BtNo' and @class='btModel btGray btno' and normalize-space()='Não']", by_xpath=True)
             )
-        time.sleep(10)
-
+        time.sleep(5)
     
         safe_action(doc, "Clicando em 'Nova Venda'", lambda:
             js_engine.force_click(
@@ -2286,6 +2906,175 @@ def executar_teste():
             log(doc, "✅ Nenhum alerta foi encontrado após clicar em 'Finalizar'.")
 
         time.sleep(10)
+
+
+        safe_action(doc, "Selecionando Banco", lambda:
+        selecionar_banco_por_value(js_engine, doc, value="2372", nome_banco="Bradesco")
+    )
+
+        safe_action(doc, "Preenchendo Agência", lambda:
+            js_engine.force_fill("//input[@class='chqf agencia nl onb']", "4332", by_xpath=True),
+            js_engine.force_fill("//input[@class='dvAgencia nl onb']", "1", by_xpath=True)
+
+        )
+
+        safe_action(doc, "Preenchendo Conta", lambda:
+            js_engine.force_fill("//input[@class='chqf conta nl onb' and @size='15']", "830399381234257", by_xpath=True),
+            js_engine.force_fill("//input[@class='chqf dvConta nl onb' and @size='4']", "1", by_xpath=True)
+
+        )
+        safe_action(doc, "Preenchendo Emitente", lambda:
+            js_engine.force_fill("//input[@class='nomeEmitente chqf' and @maxlength='70']", "TESTE EMITENTE SELENIUM AUTOMATIZADO", by_xpath=True),
+        )
+
+
+        safe_action(doc, "Preenchendo CNPJ do Emitente", lambda:
+            js_engine.force_fill("//input[@class='chqf cpfCnpj']", str(fake.cnpj()), by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Data Boa", lambda:
+            js_engine.force_fill("//input[@class='hasDatepicker chqf dataBoa dateField']", "30/10/2025", by_xpath=True)
+        )
+
+        
+        safe_action(doc, "Preenchendo Número do Cheque", lambda:
+            js_engine.force_fill("//input[@class='chqf numeroCheque']", "2383", by_xpath=True)
+        )
+        
+        safe_action(doc, "Preenchendo Código de Barras", lambda:
+            js_engine.force_fill("//input[@class='codigoBarras limpar']", "829402783924782428470284576467", by_xpath=True)
+        )
+        
+        safe_action(doc, "Preenchendo Compensação", lambda:
+            js_engine.force_fill("//input[@class='comp limpar']", "123", by_xpath=True)
+        )
+        
+        safe_action(doc, "Preenchendo C1", lambda:
+            js_engine.force_fill("//input[@class='c1 limpar']", "1", by_xpath=True)
+        )
+        
+        safe_action(doc, "Preenchendo C2", lambda:
+            js_engine.force_fill("//input[@class='c2 limpar']", "2", by_xpath=True)
+        )
+        safe_action(doc, "Preenchendo C3", lambda:
+            js_engine.force_fill("//input[@class='c3 limpar']", "3", by_xpath=True)
+        )
+
+        safe_action(doc, "Adicionando", lambda:
+                js_engine.force_click("//a[@class='btModel btGray btAddCheque' and contains(normalize-space(.),'Adicionar')]", by_xpath=True)
+            )
+        time.sleep(0.5)
+
+        encontrar_mensagem_alerta()
+
+
+
+        safe_action(doc, "Entrando na aba de Pagamento com Cartão", lambda:
+                js_engine.force_click("//h3[contains(@class,'ui-accordion-header') and contains(.,'Pagamento com Cartão')]", by_xpath=True),
+            )
+        time.sleep(0.5)
+
+        safe_action(doc, "Entrando na (Novamente) aba de Pagamento com Cartão", lambda:
+                js_engine.force_click("//h3[contains(@class,'ui-accordion-header') and contains(.,'Pagamento com Cartão')]", by_xpath=True),
+            )
+        time.sleep(0.5)
+
+        safe_action(doc, "Preenchendo Nome", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='255' and @style='width: 255px; display: block; visibility: visible;']", "TESTE NOME CARTÃO SELENIUM", by_xpath=True)
+        )
+        
+        safe_action(doc, "Selecionando Bandeira", lambda:
+            lov_handler.open_and_select(
+                btn_index=1,
+                search_text="BANDEIRA ELO CRÉDITO",
+                result_text="BANDEIRA ELO CRÉDITO"
+            )
+        )
+        
+
+        safe_action(doc, "Preenchendo Número do Cartão", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='16' and @style='width: 200px;']", "7886872642871462", by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Autorização", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='10' and @style='width: 80px;']", "8739", by_xpath=True)
+        )
+
+
+        safe_action(doc, "Preenchendo Data da Venda", 
+                   preencher_datepicker_por_indice(12, "30/10/2025"))
+
+
+        safe_action(doc, "Preenchendo Valor", lambda:
+            js_engine.force_fill("//input[contains(@class,'chqf') and @type='text' and contains(@placeholder,'R$')]", "R$ 10.000,00", by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Quantidade de Parcelas", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='3']", "1", by_xpath=True)
+        )
+
+        safe_action(doc, "Adicionando", lambda:
+                js_engine.force_click("//a[@class='btModel btGray btAddCartao' and contains(normalize-space(.),'Adicionar')]", by_xpath=True)
+            )
+        time.sleep(0.5)
+
+
+        encontrar_mensagem_alerta()
+
+
+
+
+        safe_action(doc, "Preenchendo Nome", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='255' and @style='width: 255px; display: block; visibility: visible;']", "TESTE NOME CARTÃO SELENIUM", by_xpath=True)
+        )
+        
+        
+        safe_action(doc, "Selecionando Bandeira", lambda:
+            lov_handler.open_and_select(
+                btn_index=1,
+                search_text="SIPAG - DÉBITO",
+                result_text="SIPAG - DÉBITO"
+            )
+        )
+        
+
+        safe_action(doc, "Preenchendo Número do Cartão", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='16' and @style='width: 200px;']", "7886872642871462", by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Autorização", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='10' and @style='width: 80px;']", "8739", by_xpath=True)
+        )
+
+
+        safe_action(doc, "Preenchendo Data da Venda", 
+                   preencher_datepicker_por_indice(12, "30/10/2025"))
+
+
+        safe_action(doc, "Preenchendo Valor", lambda:
+            js_engine.force_fill("//input[contains(@class,'chqf') and @type='text' and contains(@placeholder,'R$')]", "R$ 10.000,00", by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Quantidade de Parcelas", lambda:
+            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='3']", "1", by_xpath=True)
+        )
+
+        safe_action(doc, "Adicionando", lambda:
+                js_engine.force_click("//a[@class='btModel btGray btAddCartao' and contains(normalize-space(.),'Adicionar')]", by_xpath=True)
+            )
+        time.sleep(0.5)
+
+
+        encontrar_mensagem_alerta()
+        
+        time.sleep(5)
+        safe_action(doc, "Concluindo", lambda:
+                js_engine.force_click("//a[@class='btModel btGreen btConcluir' and contains(normalize-space(.),'Concluir')]", by_xpath=True)
+            )
+        time.sleep(0.5)
+
+
+        encontrar_mensagem_alerta()
 
 
         safe_action(doc, "Recusando Geração de Nota Fiscal", lambda:
