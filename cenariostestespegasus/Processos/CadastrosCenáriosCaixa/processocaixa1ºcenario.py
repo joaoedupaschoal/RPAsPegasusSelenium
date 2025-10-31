@@ -669,13 +669,60 @@ class LOVHandler:
                 except:
                     pass
 
+                # ===== NOVO BLOCO: varredura e contagem de lovepickers =====
+                driver = self.js.driver
+                try:
+                    # Coleta separada
+                    anchors_openlov = driver.find_elements(
+                        "xpath", "//a[contains(@class,'sprites') and contains(@class,'sp-openLov')]"
+                    )
+                    inputs_lovpicker = driver.find_elements(
+                        "xpath", "//input[contains(@class,'lovPicker')]"
+                    )
+
+                    q_anchors = len(anchors_openlov)
+                    q_inputs  = len(inputs_lovpicker)
+                    total_lov = q_anchors + q_inputs
+
+                    log(self.doc, f"   🔎 Varredura de LOVs no DOM:")
+                    log(self.doc, f"      • Botões (a.sp-openLov): {q_anchors}")
+                    log(self.doc, f"      • Inputs  (input.lovPicker): {q_inputs}")
+                    log(self.doc, f"      • Total detectado: {total_lov}")
+
+                    # Lista detalhada (até 10) em ordem de documento (união dos dois conjuntos)
+                    # A união em XPath preserva a ordem de documento:
+                    encontrados = driver.find_elements(
+                        "xpath",
+                        "//a[contains(@class,'sprites') and contains(@class,'sp-openLov')]"
+                        " | //input[contains(@class,'lovPicker')]"
+                    )
+                    limite_log = min(25, len(encontrados))
+                    for i, el in enumerate(encontrados[:limite_log], start=1):
+                        try:
+                            tag = el.tag_name
+                            _id = el.get_attribute("id") or ""
+                            _cls = el.get_attribute("class") or ""
+                            vis = el.is_displayed()
+                            log(self.doc, f"         #{i:02d} <{tag}> id='{_id}' class='{_cls}' visível={vis}")
+                        except Exception as _:
+                            log(self.doc, f"         #{i:02d} <elemento> (falha ao ler atributos)")
+                    if len(encontrados) > limite_log:
+                        log(self.doc, f"         … ({len(encontrados) - limite_log} itens ocultados no log)")
+
+                except Exception as _:
+                    # Não bloquear o fluxo caso a varredura falhe
+                    log(self.doc, "   ⚠️ Não foi possível listar os lovepickers (seguindo com o fluxo).")
+                # ===== FIM DO NOVO BLOCO =====
+
                 # Define seletor do botão
                 if btn_index is not None:
                     btn_selector = f"(//a[@class='sprites sp-openLov'])[{btn_index + 1}]"
                     by_xpath = True
+                    log(self.doc, f"   🎯 Seleção por índice: btn_index={btn_index} → {btn_selector}")
                 elif btn_xpath:
                     btn_selector = btn_xpath
                     by_xpath = True
+                    log(self.doc, f"   🎯 Seleção por XPath customizado: {btn_selector}")
                 else:
                     raise ValueError("btn_index ou btn_xpath deve ser fornecido")
 
@@ -2545,6 +2592,146 @@ def selecionar_banco_por_value(js_engine, doc, value="1040", nome_banco="Caixa E
         log(doc, f"❌ Erro ao selecionar banco '{nome_banco}': {e}")
         return False
 
+def garantir_accordion_aberto(js_engine, doc, titulo_header="Pagamento com Cartão", timeout=5):
+    """
+    Garante que o painel do Accordion com o título informado esteja ABERTO.
+    Usa jQuery UI quando disponível; caso contrário, força atributos/classes.
+    """
+    script = r"""
+    (function(titulo){
+      // acha todos os headers do accordion
+      var headers = Array.from(document.querySelectorAll("h3.ui-accordion-header"));
+      if (!headers.length) return {ok:false, reason:"Nenhum header de accordion encontrado."};
+
+      // localiza o header pelo texto
+      var idx = headers.findIndex(h => (h.textContent || "").trim().includes(titulo));
+      if (idx < 0) return {ok:false, reason:"Header não encontrado: " + titulo};
+
+      var header = headers[idx];
+      var acc = header.closest(".ui-accordion");
+      var panel = header.nextElementSibling;
+
+      function estaAberto(){
+        var exp = header.getAttribute("aria-expanded");
+        if (exp === "true") return true;
+        if (panel && panel.style.display !== "none") return true;
+        if (panel && panel.classList.contains("ui-accordion-content-active")) return true;
+        return false;
+      }
+
+      // 1) Preferência: jQuery UI
+      if (window.jQuery && jQuery(acc).accordion) {
+        jQuery(acc).accordion("option", "active", idx);
+      } else {
+        // 2) Fallback manual: força estado "aberto"
+        header.setAttribute("aria-expanded", "true");
+        header.classList.add("ui-state-active","ui-accordion-header-active");
+        if (panel){
+          panel.style.display = "block";
+          panel.setAttribute("aria-hidden","false");
+          panel.classList.add("ui-accordion-content-active");
+        }
+      }
+
+      // valida
+      var aberto = estaAberto();
+
+      // medida extra: se algum outro handler tentar fechar imediatamente, comuta uma flag por 800ms
+      if (aberto) {
+        header.setAttribute("data-lock-open","1");
+        setTimeout(function(){ header.removeAttribute("data-lock-open"); }, 800);
+      }
+
+      return {ok:aberto, index:idx};
+    })(arguments[0]);
+    """
+    res = js_engine.execute_js(script, titulo_header, timeout=timeout, fallback_result={"ok": False})
+    if res.get("ok"):
+        log(doc, f"✅ Accordion '{titulo_header}' aberto e travado em aberto (idx={res.get('index')}).")
+        js_engine.wait_ajax_complete(timeout)
+        return True
+    else:
+        log(doc, f"⚠️ Falha ao abrir accordion '{titulo_header}': {res.get('reason')}")
+        return False
+
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+def abrir_aba_pagamento_cartao(js_engine, doc, max_attempts=3, timeout=8):
+    """
+    Abre a aba 'Pagamento com Cartão' clicando no <h3> do accordion
+    e valida aria-expanded='true'. Evita o efeito abre/fecha.
+    """
+    drv = js_engine.driver
+    hdr_xpath = "//h3[contains(@class,'ui-accordion-header') and contains(normalize-space(.),'Pagamento com Cartão')]"
+    log(doc, "🔄 Abrindo a aba 'Pagamento com Cartão'...")
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            hdr = WebDriverWait(drv, timeout).until(
+                EC.presence_of_element_located((By.XPATH, hdr_xpath))
+            )
+            js_engine.scroll_into_view(hdr)  # se você tiver esse helper
+            # Clique no H3 (não no ícone). Use 1 clique somente.
+            js_engine.click_element(hdr)
+            # Aguarda aria-expanded=true
+            WebDriverWait(drv, timeout).until(
+                lambda d: d.find_element(By.XPATH, hdr_xpath).get_attribute("aria-expanded") == "true"
+            )
+            log(doc, "✅ Aba 'Pagamento com Cartão' aberta.")
+            return True
+        except Exception as e:
+            if attempt < max_attempts:
+                log(doc, f"⚠️ Tentativa {attempt} falhou, tentando novamente...")
+            else:
+                log(doc, f"❌ Erro após {max_attempts} tentativas: {e}")
+                return False
+
+def preencher_por_label(js_engine, doc, label_text, valor, timeout=8, clear=True):
+    """
+    Preenche um input ancorado pelo texto do <label>.
+    Aceita label bem próximo ao input (seguinte no DOM).
+    """
+    drv = js_engine.driver
+    # Ancorado no label → primeiro input adiante
+    xpath = f"//label[normalize-space()='{label_text}']/following::input[1]"
+    try:
+        el = WebDriverWait(drv, timeout).until(
+            EC.element_to_be_clickable((By.XPATH, xpath))
+        )
+        js_engine.scroll_into_view(el)
+        if clear:
+            el.clear()
+        el.send_keys(valor)
+        log(doc, f"✏️ Preenchido '{label_text}': {valor}")
+        return True
+    except Exception as e:
+        log(doc, f"❌ Não foi possível preencher '{label_text}': {e}")
+        return False
+
+def preencher_campos_cartao(js_engine, doc, dados):
+    """
+    Garante a aba aberta e preenche campos principais do cartão.
+    'dados' é um dict com chaves: nome, numero, autorizacao, data, valor, parcelas.
+    """
+    if not abrir_aba_pagamento_cartao(js_engine, doc):
+        return False
+
+    ok = True
+    ok &= preencher_por_label(js_engine, doc, "Nome", dados.get("nome", ""))
+    ok &= preencher_por_label(js_engine, doc, "Número do Cartão", dados.get("numero", ""))
+    ok &= preencher_por_label(js_engine, doc, "Autorização", dados.get("autorizacao", ""))
+    ok &= preencher_por_label(js_engine, doc, "Data da Venda", dados.get("data", ""))  # se for datepicker você já tem um helper
+    ok &= preencher_por_label(js_engine, doc, "Valor", dados.get("valor", ""))
+    ok &= preencher_por_label(js_engine, doc, "Quantidade de Parcelas", dados.get("parcelas", ""))
+
+    if ok:
+        log(doc, "✅ Campos do cartão preenchidos com sucesso.")
+    else:
+        log(doc, "⚠️ Alguns campos do cartão não foram preenchidos. Veja logs acima.")
+    return ok
+
 
 
 # ==== EXECUÇÃO DO TESTE ====
@@ -2661,7 +2848,6 @@ def executar_teste():
 
         time.sleep(10)
 
-
         safe_action(doc, "Selecionando Banco", lambda:
         selecionar_banco_por_value(js_engine, doc, value="2372", nome_banco="Bradesco")
     )
@@ -2722,50 +2908,38 @@ def executar_teste():
         encontrar_mensagem_alerta()
 
 
-
-        safe_action(doc, "Entrando na aba de Pagamento com Cartão", lambda:
-                js_engine.force_click("//h3[contains(@class,'ui-accordion-header') and contains(.,'Pagamento com Cartão')]", by_xpath=True)
-            )
-        time.sleep(0.5)
-        
-        safe_action(doc, "Entrando na (Novamente) aba de Pagamento com Cartão", lambda:
-                js_engine.force_click("//h3[contains(@class,'ui-accordion-header') and contains(.,'Pagamento com Cartão')]", by_xpath=True),
-            )
-        time.sleep(0.5)
-
-        safe_action(doc, "Preenchendo Nome", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='255' and @style='width: 255px;']", "TESTE NOME CARTÃO SELENIUM", by_xpath=True)
+        safe_action(doc, "Abrindo a aba 'Pagamento com Cartão'",
+            lambda: garantir_accordion_aberto(js_engine, doc, "Pagamento com Cartão", timeout=5)
         )
+
+
+        # Após adicionar com sucesso e sem alertas
+        safe_action(doc, "Abrindo aba de Pagamento com Cartão", 
+                    lambda: abrir_aba_pagamento_cartao(js_engine, doc))
+
+        # Monta os dados do cartão
+        dados_cartao = {
+            "nome": "TESTE NOME CARTÃO SELENIUM",
+            "numero": "4111111111111111",
+            "autorizacao": "123",
+            "data": "31/10/2025",
+            "valor": "R$ 10.000,00",
+            "parcelas": "1"
+        }
+
+
+        # Preenche os campos
+        safe_action(doc, "Preenchendo campos do cartão",
+                    lambda: preencher_campos_cartao(js_engine, doc, dados_cartao))
         
         safe_action(doc, "Selecionando Bandeira", lambda:
             lov_handler.open_and_select(
-                btn_index=1,
+                btn_index=19,
                 search_text="BANDEIRA ELO CRÉDITO",
                 result_text="BANDEIRA ELO CRÉDITO"
             )
         )
         
-
-        safe_action(doc, "Preenchendo Número do Cartão", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='16' and @style='width: 200px;']", "7886872642871462", by_xpath=True)
-        )
-
-        safe_action(doc, "Preenchendo Autorização", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='10' and @style='width: 80px;']", "8739", by_xpath=True)
-        )
-
-
-        safe_action(doc, "Preenchendo Data da Venda", 
-                   preencher_datepicker_por_indice(12, "30/10/2025"))
-
-
-        safe_action(doc, "Preenchendo Valor", lambda:
-            js_engine.force_fill("//input[contains(@class,'chqf') and @type='text' and contains(@placeholder,'R$')]", "R$ 10.000,00", by_xpath=True)
-        )
-
-        safe_action(doc, "Preenchendo Quantidade de Parcelas", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='3']", "1", by_xpath=True)
-        )
 
         safe_action(doc, "Adicionando", lambda:
                 js_engine.force_click("//a[@class='btModel btGray btAddCartao' and contains(normalize-space(.),'Adicionar')]", by_xpath=True)
@@ -2776,40 +2950,30 @@ def executar_teste():
         encontrar_mensagem_alerta()
 
 
+        # Monta os dados do cartão
+        dados_cartao = {
+            "nome": "TESTE NOME CARTÃO SELENIUM",
+            "numero": "4111111111111111",
+            "autorizacao": "123",
+            "data": "31/10/2025",
+            "valor": "R$ 10.000,00",
+            "parcelas": "1"
+        }
 
-        safe_action(doc, "Preenchendo Nome", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='255' and @style='width: 255px;']", "TESTE NOME CARTÃO SELENIUM", by_xpath=True)
-        )
-        
+
+        # Preenche os campos
+        safe_action(doc, "Preenchendo campos do cartão",
+                    lambda: preencher_campos_cartao(js_engine, doc, dados_cartao))
+
         safe_action(doc, "Selecionando Bandeira", lambda:
             lov_handler.open_and_select(
-                btn_index=1,
+                btn_index=19,
                 search_text="SIPAG - DÉBITO",
                 result_text="SIPAG - DÉBITO"
             )
         )
         
 
-        safe_action(doc, "Preenchendo Número do Cartão", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='16' and @style='width: 200px;']", "7886872642871462", by_xpath=True)
-        )
-
-        safe_action(doc, "Preenchendo Autorização", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='10' and @style='width: 80px;']", "8739", by_xpath=True)
-        )
-
-
-        safe_action(doc, "Preenchendo Data da Venda", 
-                   preencher_datepicker_por_indice(12, "30/10/2025"))
-
-
-        safe_action(doc, "Preenchendo Valor", lambda:
-            js_engine.force_fill("//input[contains(@class,'chqf') and @type='text' and contains(@placeholder,'R$')]", "R$ 10.000,00", by_xpath=True)
-        )
-
-        safe_action(doc, "Preenchendo Quantidade de Parcelas", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='3']", "1", by_xpath=True)
-        )
 
         safe_action(doc, "Adicionando", lambda:
                 js_engine.force_click("//a[@class='btModel btGray btAddCartao' and contains(normalize-space(.),'Adicionar')]", by_xpath=True)
@@ -2825,6 +2989,7 @@ def executar_teste():
             )
         time.sleep(0.5)
 
+
         encontrar_mensagem_alerta()
 
 
@@ -2832,6 +2997,7 @@ def executar_teste():
                 js_engine.force_click("//a[@id='BtNo' and @class='btModel btGray btno' and normalize-space()='Não']", by_xpath=True)
             )
         time.sleep(5)
+
     
         safe_action(doc, "Clicando em 'Nova Venda'", lambda:
             js_engine.force_click(
@@ -2968,50 +3134,38 @@ def executar_teste():
         encontrar_mensagem_alerta()
 
 
-
-        safe_action(doc, "Entrando na aba de Pagamento com Cartão", lambda:
-                js_engine.force_click("//h3[contains(@class,'ui-accordion-header') and contains(.,'Pagamento com Cartão')]", by_xpath=True),
-            )
-        time.sleep(0.5)
-
-        safe_action(doc, "Entrando na (Novamente) aba de Pagamento com Cartão", lambda:
-                js_engine.force_click("//h3[contains(@class,'ui-accordion-header') and contains(.,'Pagamento com Cartão')]", by_xpath=True),
-            )
-        time.sleep(0.5)
-
-        safe_action(doc, "Preenchendo Nome", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='255' and @style='width: 255px; display: block; visibility: visible;']", "TESTE NOME CARTÃO SELENIUM", by_xpath=True)
+        safe_action(doc, "Abrindo a aba 'Pagamento com Cartão'",
+            lambda: garantir_accordion_aberto(js_engine, doc, "Pagamento com Cartão", timeout=5)
         )
+
+
+        # Após adicionar com sucesso e sem alertas
+        safe_action(doc, "Abrindo aba de Pagamento com Cartão", 
+                    lambda: abrir_aba_pagamento_cartao(js_engine, doc))
+
+        # Monta os dados do cartão
+        dados_cartao = {
+            "nome": "TESTE NOME CARTÃO SELENIUM",
+            "numero": "4111111111111111",
+            "autorizacao": "123",
+            "data": "31/10/2025",
+            "valor": "R$ 10.000,00",
+            "parcelas": "1"
+        }
+
+
+        # Preenche os campos
+        safe_action(doc, "Preenchendo campos do cartão",
+                    lambda: preencher_campos_cartao(js_engine, doc, dados_cartao))        
         
         safe_action(doc, "Selecionando Bandeira", lambda:
             lov_handler.open_and_select(
-                btn_index=1,
+                btn_index=19,
                 search_text="BANDEIRA ELO CRÉDITO",
                 result_text="BANDEIRA ELO CRÉDITO"
             )
         )
         
-
-        safe_action(doc, "Preenchendo Número do Cartão", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='16' and @style='width: 200px;']", "7886872642871462", by_xpath=True)
-        )
-
-        safe_action(doc, "Preenchendo Autorização", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='10' and @style='width: 80px;']", "8739", by_xpath=True)
-        )
-
-
-        safe_action(doc, "Preenchendo Data da Venda", 
-                   preencher_datepicker_por_indice(12, "30/10/2025"))
-
-
-        safe_action(doc, "Preenchendo Valor", lambda:
-            js_engine.force_fill("//input[contains(@class,'chqf') and @type='text' and contains(@placeholder,'R$')]", "R$ 10.000,00", by_xpath=True)
-        )
-
-        safe_action(doc, "Preenchendo Quantidade de Parcelas", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='3']", "1", by_xpath=True)
-        )
 
         safe_action(doc, "Adicionando", lambda:
                 js_engine.force_click("//a[@class='btModel btGray btAddCartao' and contains(normalize-space(.),'Adicionar')]", by_xpath=True)
@@ -3022,42 +3176,30 @@ def executar_teste():
         encontrar_mensagem_alerta()
 
 
+        # Monta os dados do cartão
+        dados_cartao = {
+            "nome": "TESTE NOME CARTÃO SELENIUM",
+            "numero": "4111111111111111",
+            "autorizacao": "123",
+            "data": "31/10/2025",
+            "valor": "R$ 10.000,00",
+            "parcelas": "1"
+        }
 
 
-        safe_action(doc, "Preenchendo Nome", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='255' and @style='width: 255px; display: block; visibility: visible;']", "TESTE NOME CARTÃO SELENIUM", by_xpath=True)
-        )
-        
-        
+        # Preenche os campos
+        safe_action(doc, "Preenchendo campos do cartão",
+                    lambda: preencher_campos_cartao(js_engine, doc, dados_cartao))
+
         safe_action(doc, "Selecionando Bandeira", lambda:
             lov_handler.open_and_select(
-                btn_index=1,
+                btn_index=19,
                 search_text="SIPAG - DÉBITO",
                 result_text="SIPAG - DÉBITO"
             )
         )
         
 
-        safe_action(doc, "Preenchendo Número do Cartão", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='16' and @style='width: 200px;']", "7886872642871462", by_xpath=True)
-        )
-
-        safe_action(doc, "Preenchendo Autorização", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='10' and @style='width: 80px;']", "8739", by_xpath=True)
-        )
-
-
-        safe_action(doc, "Preenchendo Data da Venda", 
-                   preencher_datepicker_por_indice(12, "30/10/2025"))
-
-
-        safe_action(doc, "Preenchendo Valor", lambda:
-            js_engine.force_fill("//input[contains(@class,'chqf') and @type='text' and contains(@placeholder,'R$')]", "R$ 10.000,00", by_xpath=True)
-        )
-
-        safe_action(doc, "Preenchendo Quantidade de Parcelas", lambda:
-            js_engine.force_fill("//input[@type='text' and @class='chqf' and @maxlength='3']", "1", by_xpath=True)
-        )
 
         safe_action(doc, "Adicionando", lambda:
                 js_engine.force_click("//a[@class='btModel btGray btAddCartao' and contains(normalize-space(.),'Adicionar')]", by_xpath=True)
