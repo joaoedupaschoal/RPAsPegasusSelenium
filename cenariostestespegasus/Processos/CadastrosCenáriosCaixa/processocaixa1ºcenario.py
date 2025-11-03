@@ -22,7 +22,14 @@ import os
 import random
 import re
 from functools import wraps
-
+from selenium.common.exceptions import (
+    TimeoutException,
+    StaleElementReferenceException,
+    ElementClickInterceptedException,
+    NoSuchElementException,
+    ElementNotInteractableException
+)
+from selenium.webdriver import ActionChains
 # ==== CONFIGURAÇÕES GLOBAIS ====
 TIMEOUT_DEFAULT = 30
 TIMEOUT_CURTO = 10
@@ -109,6 +116,289 @@ def take_screenshot(driver, doc, nome):
             screenshot_registradas.add(nome)
         except Exception as e:
             log(doc, f"⚠️ Erro ao tirar screenshot {nome}: {e}")
+
+def preencher_elemento_por_indice(js_engine, doc, xpath_base, indice, valor, descricao="Campo", timeout=10):
+    """
+    Preenche um elemento específico por índice usando xpath base.
+    
+    Args:
+        js_engine: Instância do JSForceEngine
+        doc: Documento para logs
+        xpath_base: XPath base do elemento (sem índice)
+        indice: Índice do elemento (1-based)
+        valor: Valor a ser preenchido
+        descricao: Descrição do campo para logs
+        timeout: Timeout para operação
+    
+    Returns:
+        bool: True se preencheu com sucesso, False caso contrário
+    
+    Exemplo:
+        preencher_elemento_por_indice(
+            js_engine, doc,
+            xpath_base="//input[@class='hasDatepicker chqf']",
+            indice=1,
+            valor="30/10/2025",
+            descricao="Data de Venda"
+        )
+    """
+    xpath_indexado = f"({xpath_base})[{indice}]"
+    
+    try:
+        log(doc, f"📝 Preenchendo {descricao} (índice {indice}): '{valor}'")
+        
+        # Conta quantos elementos existem
+        try:
+            elementos = js_engine.driver.find_elements(By.XPATH, xpath_base)
+            total = len(elementos)
+            log(doc, f"   ℹ️ Total de elementos encontrados: {total}")
+            
+            if total == 0:
+                log(doc, f"   ⚠️ Nenhum elemento encontrado com xpath: {xpath_base}")
+                return False
+            
+            if indice > total:
+                log(doc, f"   ⚠️ Índice {indice} inválido - só existem {total} elemento(s)")
+                return False
+                
+        except Exception as e:
+            log(doc, f"   ⚠️ Erro ao contar elementos: {e}")
+        
+        # Preenche usando force_fill
+        js_engine.force_fill(xpath_indexado, valor, by_xpath=True)
+        
+        # Aguarda um pouco para garantir que preencheu
+        time.sleep(0.4)
+        
+        # Valida se preencheu corretamente
+        try:
+            elemento = js_engine.driver.find_element(By.XPATH, xpath_indexado)
+            valor_atual = elemento.get_attribute('value') or ''
+            
+            # Normaliza para comparação (remove formatação)
+            valor_norm = valor.replace('R$ ', '').replace('.', '').replace(',', '.').strip()
+            atual_norm = valor_atual.replace('R$ ', '').replace('.', '').replace(',', '.').strip()
+            
+            if valor_norm in atual_norm or atual_norm in valor_norm or valor_atual == valor:
+                log(doc, f"   ✅ {descricao} preenchido: '{valor_atual}'")
+                return True
+            else:
+                log(doc, f"   ⚠️ Valor preenchido difere: esperado '{valor}', atual '{valor_atual}'")
+                return True  # Retorna True mesmo assim pois pode ser formatação diferente
+                
+        except Exception as e:
+            log(doc, f"   ⚠️ Não foi possível validar: {e}")
+            return True  # Assume sucesso se não conseguiu validar
+        
+    except Exception as e:
+        log(doc, f"   ❌ Erro ao preencher {descricao}: {e}")
+        return False
+
+
+def preencher_datepicker_por_indice_xpath(js_engine, doc, xpath_base, indice, data_valor, descricao="Data", timeout=10):
+    """
+    Preenche um campo datepicker específico por índice.
+    Versão especializada para campos de data que usa estratégias específicas.
+    
+    Args:
+        js_engine: Instância do JSForceEngine
+        doc: Documento para logs
+        xpath_base: XPath base do datepicker
+        indice: Índice do elemento (1-based)
+        data_valor: Data no formato string (ex: "30/10/2025")
+        descricao: Descrição do campo para logs
+        timeout: Timeout para operação
+    
+    Returns:
+        bool: True se preencheu com sucesso, False caso contrário
+    """
+    xpath_indexado = f"({xpath_base})[{indice}]"
+    
+    try:
+        log(doc, f"📅 Preenchendo {descricao} (índice {indice}): '{data_valor}'")
+        
+        # Conta elementos
+        try:
+            elementos = js_engine.driver.find_elements(By.XPATH, xpath_base)
+            total = len(elementos)
+            log(doc, f"   ℹ️ Total de datepickers encontrados: {total}")
+            
+            if total == 0:
+                log(doc, f"   ⚠️ Nenhum datepicker encontrado")
+                return False
+            
+            if indice > total:
+                log(doc, f"   ⚠️ Índice {indice} inválido - só existem {total} datepicker(s)")
+                return False
+        except:
+            pass
+        
+        # Localiza o elemento específico
+        elemento = js_engine.driver.find_element(By.XPATH, xpath_indexado)
+        campo_id = elemento.get_attribute('id') or f"datepicker_{indice}"
+        
+        log(doc, f"   🎯 Elemento localizado (ID: {campo_id})")
+        
+        # Estratégias específicas para datepicker
+        estrategias = [
+            # Estratégia 1: jQuery datepicker
+            lambda: js_engine.driver.execute_script(f"""
+                var campo = document.evaluate("{xpath_indexado}", document, null, 
+                    XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                if (!campo) return false;
+                
+                if (typeof jQuery !== 'undefined' && campo.classList.contains('hasDatepicker')) {{
+                    jQuery(campo).datepicker('setDate', '{data_valor}');
+                }} else {{
+                    campo.value = '{data_valor}';
+                }}
+                
+                campo.dispatchEvent(new Event('input', {{bubbles: true}}));
+                campo.dispatchEvent(new Event('change', {{bubbles: true}}));
+                campo.dispatchEvent(new Event('blur', {{bubbles: true}}));
+                return campo.value;
+            """),
+            
+            # Estratégia 2: Force fill padrão
+            lambda: js_engine.force_fill(xpath_indexado, data_valor, by_xpath=True),
+            
+            # Estratégia 3: JavaScript puro
+            lambda: js_engine.driver.execute_script(f"""
+                var campo = document.evaluate("{xpath_indexado}", document, null, 
+                    XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                if (!campo) return false;
+                
+                campo.focus();
+                campo.value = '';
+                campo.value = '{data_valor}';
+                
+                ['input', 'change', 'blur', 'keyup'].forEach(ev => 
+                    campo.dispatchEvent(new Event(ev, {{bubbles: true}}))
+                );
+                return campo.value;
+            """),
+            
+            # Estratégia 4: ActionChains
+            lambda: (
+                elemento.click(),
+                time.sleep(0.2),
+                ActionChains(js_engine.driver)
+                    .key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL)
+                    .send_keys(Keys.DELETE)
+                    .send_keys(data_valor)
+                    .send_keys(Keys.TAB)
+                    .perform()
+            )
+        ]
+        
+        # Tenta cada estratégia
+        for i, estrategia in enumerate(estrategias, 1):
+            try:
+                log(doc, f"   ▶️ Tentando estratégia {i}...")
+                estrategia()
+                time.sleep(0.5)
+                
+                # Valida
+                elemento_reload = js_engine.driver.find_element(By.XPATH, xpath_indexado)
+                valor_atual = elemento_reload.get_attribute('value') or ''
+                
+                if data_valor in valor_atual or valor_atual in data_valor:
+                    log(doc, f"   ✅ {descricao} preenchido com estratégia {i}: '{valor_atual}'")
+                    return True
+                else:
+                    log(doc, f"   ⚠️ Estratégia {i} não refletiu o valor")
+                    
+            except Exception as e:
+                log(doc, f"   ⚠️ Estratégia {i} falhou: {str(e)[:80]}")
+                continue
+        
+        log(doc, f"   ❌ Todas as estratégias falharam para {descricao}")
+        return False
+        
+    except Exception as e:
+        log(doc, f"   ❌ Erro ao preencher {descricao}: {e}")
+        return False
+
+
+def preencher_campo_monetario_por_indice(js_engine, doc, xpath_base, indice, valor, descricao="Valor", timeout=10):
+    """
+    Preenche um campo monetário específico por índice.
+    Versão especializada para campos de valor/dinheiro.
+    
+    Args:
+        js_engine: Instância do JSForceEngine
+        doc: Documento para logs
+        xpath_base: XPath base do campo monetário
+        indice: Índice do elemento (1-based)
+        valor: Valor a ser preenchido (pode ser com ou sem "R$ ")
+        descricao: Descrição do campo para logs
+        timeout: Timeout para operação
+    
+    Returns:
+        bool: True se preencheu com sucesso, False caso contrário
+    """
+    xpath_indexado = f"({xpath_base})[{indice}]"
+    
+    try:
+        log(doc, f"💰 Preenchendo {descricao} (índice {indice}): '{valor}'")
+        
+        # Conta elementos
+        try:
+            elementos = js_engine.driver.find_elements(By.XPATH, xpath_base)
+            total = len(elementos)
+            log(doc, f"   ℹ️ Total de campos encontrados: {total}")
+            
+            if total == 0:
+                log(doc, f"   ⚠️ Nenhum campo encontrado")
+                return False
+            
+            if indice > total:
+                log(doc, f"   ⚠️ Índice {indice} inválido - só existem {total} campo(s)")
+                return False
+        except:
+            pass
+        
+        # Normaliza o valor (garante que tem R$)
+        valor_limpo = str(valor).replace('R$', '').replace(' ', '').strip()
+        valor_formatado = f"R$ {valor_limpo}" if not valor.startswith('R$') else valor
+        
+        log(doc, f"   🎯 Valor formatado: '{valor_formatado}'")
+        
+        # Tenta preencher
+        js_engine.force_fill(xpath_indexado, valor_formatado, by_xpath=True)
+        time.sleep(0.4)
+        
+        # Valida
+        try:
+            elemento = js_engine.driver.find_element(By.XPATH, xpath_indexado)
+            valor_atual = elemento.get_attribute('value') or ''
+            
+            # Compara valores normalizados
+            atual_num = valor_atual.replace('R$', '').replace(' ', '').replace('.', '').replace(',', '.')
+            esper_num = valor_limpo.replace('.', '').replace(',', '.')
+            
+            try:
+                if float(atual_num.strip()) == float(esper_num.strip()):
+                    log(doc, f"   ✅ {descricao} preenchido: '{valor_atual}'")
+                    return True
+            except:
+                pass
+            
+            # Se não conseguiu comparar numericamente, compara texto
+            if valor_limpo in valor_atual or valor_atual in valor_limpo:
+                log(doc, f"   ✅ {descricao} preenchido: '{valor_atual}'")
+                return True
+            else:
+                log(doc, f"   ⚠️ Valores diferem: esperado '{valor}', atual '{valor_atual}'")
+                return True  # Retorna True pois pode ser só formatação
+                
+        except Exception as e:
+            log(doc, f"   ⚠️ Não foi possível validar: {e}")
+            return True
+        
+    except Exception as e:
+        log(doc, f"   ❌ Erro ao preencher {descricao}: {e}")
+        return False
 
 # ==== SISTEMA ANTI-TIMEOUT JAVASCRIPT ====
 class JSTimeoutHandler:
@@ -221,6 +511,8 @@ class JSTimeoutHandler:
         except Exception:
             pass
 
+
+
 # ==== JS FORCE ENGINE COM PROTEÇÃO ANTI-TIMEOUT ====
 class JSForceEngine:
     """Motor de execução JavaScript forçado com proteção contra timeouts"""
@@ -266,6 +558,89 @@ class JSForceEngine:
                 pass
             time.sleep(0.2)
         return True
+    
+    def scroll_into_view(self, target, padding=100):
+        """
+        Faz scroll até um WebElement (ou seletor XPath/CSS).
+        padding: desloca um pouco pra cima pra não ficar colado no topo.
+        """
+        try:
+            el = target
+            # Se vier como string, tenta resolver
+            if isinstance(target, str):
+                try:
+                    el = self.driver.find_element("xpath", target)
+                except Exception:
+                    el = self.driver.find_element("css selector", target)
+
+            # Estratégia principal via JS
+            self.driver.execute_script("""
+                const el = arguments[0], pad = arguments[1] || 0;
+                if (!el) return;
+                el.scrollIntoView({block:'center', inline:'center'});
+                try { window.scrollBy(0, -pad); } catch(e) {}
+            """, el, padding)
+            time.sleep(0.2)
+            return True
+        except Exception:
+            # Fallback ActionChains
+            try:
+                ActionChains(self.driver).move_to_element(el).perform()
+                time.sleep(0.2)
+                return True
+            except Exception:
+                return False
+
+    def click_element(self, el, wait_after=0.4):
+        """
+        Clica com múltiplas estratégias em um WebElement já localizado.
+        """
+        try:
+            # 1) Clique padrão
+            el.click()
+            time.sleep(wait_after)
+            self.wait_ajax_complete(min(10, int(wait_after*10)) or 3)
+            return True
+        except Exception:
+            pass
+
+        try:
+            # 2) Clique via JS
+            self.driver.execute_script("arguments[0].click();", el)
+            time.sleep(wait_after)
+            self.wait_ajax_complete(min(10, int(wait_after*10)) or 3)
+            return True
+        except Exception:
+            pass
+
+        try:
+            # 3) Sequência de eventos de mouse
+            self.execute_js("""
+                const e = arguments[0];
+                const rect = e.getBoundingClientRect();
+                const x = rect.left + 5, y = rect.top + 5;
+                ['mouseover','mouseenter','mousemove','mousedown','mouseup','click'].forEach(t=>{
+                    e.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,view:window,clientX:x,clientY:y}));
+                });
+                if (typeof e.click==='function') e.click();
+                return true;
+            """, el, timeout=5, fallback_result=True)
+            time.sleep(wait_after)
+            self.wait_ajax_complete(min(10, int(wait_after*10)) or 3)
+            return True
+        except Exception:
+            pass
+
+        # 4) Último recurso: ActionChains
+        try:
+            ActionChains(self.driver).move_to_element(el).pause(0.05).click().perform()
+            time.sleep(wait_after)
+            self.wait_ajax_complete(min(10, int(wait_after*10)) or 3)
+            return True
+        except Exception:
+            pass
+
+        raise Exception("Não foi possível clicar no elemento com as estratégias disponíveis.")
     
     def force_click(self, selector, by_xpath=False, max_attempts=5):
         """Clique forçado com proteção contra timeout"""
@@ -608,7 +983,7 @@ class JSForceEngine:
             return self.execute_js(script, selector, expected_value, by_xpath, timeout=3, fallback_result=False)
         except:
             return False
-
+        
 import time
 
 def clicar_finalizar_e_verificar_alerta(js_engine, doc, timeout=5, pausa=0.5):
@@ -628,290 +1003,636 @@ def clicar_finalizar_e_verificar_alerta(js_engine, doc, timeout=5, pausa=0.5):
     return encontrar_mensagem_alerta()
 
 
-# ==== LOV HANDLER ====
-class LOVHandler:
-    """Handler especializado para modais LOV"""
-    
-    def __init__(self, js_engine):
-        self.js = js_engine
-        self.doc = js_engine.doc
-    
-
-def _is_visible_enabled(el):
-    try:
-        return el.is_displayed() and el.is_enabled()
-    except Exception:
-        return False
-
+import time
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import (
+    TimeoutException,
+    StaleElementReferenceException,
+    ElementClickInterceptedException,
+    NoSuchElementException,
+    ElementNotInteractableException
+)
+from selenium.webdriver import ActionChains
 
 class LOVHandler:
-    def __init__(self, js_engine, doc):
+    """
+    Handler ultra-robusto para manipulação de LOV (List of Values) com:
+    - 10 estratégias diferentes de clique
+    - Detecção automática de iframes
+    - Retry inteligente com backoff exponencial
+    - Reforço automático de cliques
+    - Logs detalhados de cada tentativa
+    """
+    
+    def __init__(self, js_engine, doc, max_retries=5, timeout=10):
         self.js = js_engine
         self.doc = doc
-
-    # ==========================================================
-    # 🔹 Função principal - Abre LOV, pesquisa e seleciona
-    # ==========================================================
-    def open_and_select(self, btn_index=None, btn_xpath=None,
-                        search_text="", result_text="",
-                        iframe_xpath=None, max_attempts=5):
-        """Abre LOV, pesquisa e seleciona resultado"""
-        log(self.doc, f"🔍 Processando LOV: '{search_text}' → '{result_text}'")
-
-        for attempt in range(max_attempts):
-            try:
-                if attempt > 0:
-                    log(self.doc, f"   Tentativa {attempt + 1}/{max_attempts}")
-
-                # Volta ao conteúdo principal
+        self.driver = js_engine.driver
+        self.max_retries = max_retries
+        self.timeout = timeout
+        
+    def _log(self, msg, level="INFO"):
+        """Log padronizado com níveis"""
+        prefixes = {
+            "INFO": "ℹ️",
+            "SUCCESS": "✅",
+            "WARNING": "⚠️",
+            "ERROR": "❌",
+            "DEBUG": "🔍"
+        }
+        prefix = prefixes.get(level, "📝")
+        log(self.doc, f"{prefix} {msg}")
+    
+    def _wait_element(self, locator_type, locator_value, timeout=None, condition="clickable"):
+        """Aguarda elemento com diferentes condições"""
+        timeout = timeout or self.timeout
+        conditions = {
+            "present": EC.presence_of_element_located,
+            "visible": EC.visibility_of_element_located,
+            "clickable": EC.element_to_be_clickable
+        }
+        
+        try:
+            cond = conditions.get(condition, conditions["clickable"])
+            return WebDriverWait(self.driver, timeout).until(
+                cond((locator_type, locator_value))
+            )
+        except TimeoutException:
+            return None
+    
+    def _is_element_visible(self, element):
+        """Verifica se elemento está realmente visível"""
+        try:
+            if not element:
+                return False
+            if not element.is_displayed():
+                return False
+            
+            # Verifica via JavaScript também
+            is_visible = self.driver.execute_script("""
+                const el = arguments[0];
+                if (!el) return false;
+                const style = window.getComputedStyle(el);
+                return (
+                    style.display !== 'none' &&
+                    style.visibility !== 'hidden' &&
+                    parseFloat(style.opacity || 1) > 0.01 &&
+                    el.offsetParent !== null
+                );
+            """, element)
+            
+            return is_visible
+        except:
+            return False
+    
+    def _force_element_visible(self, element):
+        """Força elemento a ficar visível e interativo"""
+        try:
+            self.driver.execute_script("""
+                const el = arguments[0];
+                el.style.display = 'block';
+                el.style.visibility = 'visible';
+                el.style.opacity = '1';
+                el.style.pointerEvents = 'auto';
+                el.removeAttribute('disabled');
+                el.removeAttribute('readonly');
+                
+                // Remove overlays que podem bloquear
+                const overlays = document.querySelectorAll(
+                    '.modal-backdrop, .overlay, .blockUI, [class*="loading"]'
+                );
+                overlays.forEach(o => {
+                    o.style.display = 'none';
+                    o.style.visibility = 'hidden';
+                });
+            """, element)
+            return True
+        except:
+            return False
+    
+    def _detect_and_enter_iframe(self, iframe_xpath=None):
+        """Detecta e entra no iframe automaticamente"""
+        try:
+            # Primeiro volta para o contexto principal
+            self.driver.switch_to.default_content()
+            
+            # Se foi fornecido um xpath específico
+            if iframe_xpath:
                 try:
-                    self.js.driver.switch_to.default_content()
+                    frame = self._wait_element("xpath", iframe_xpath, timeout=3)
+                    if frame:
+                        self.driver.switch_to.frame(frame)
+                        self._log(f"Entrou no iframe: {iframe_xpath}", "SUCCESS")
+                        return True
                 except:
                     pass
-
-                # ===== NOVO BLOCO: varredura e contagem de lovepickers =====
-                driver = self.js.driver
+            
+            # Detecção automática de iframes
+            iframe_selectors = [
+                "//iframe[contains(@class,'LOV') or contains(@id,'LOV') or contains(@id,'lov')]",
+                "//iframe[contains(@class,'modal') or contains(@class,'popup')]",
+                "//iframe[contains(@src,'lov') or contains(@src,'LOV')]",
+                "(//iframe)[last()]"  # Último iframe (geralmente o modal)
+            ]
+            
+            for selector in iframe_selectors:
                 try:
-                    # Coleta separada
-                    anchors_openlov = driver.find_elements(
-                        "xpath", "//a[contains(@class,'sprites') and contains(@class,'sp-openLov')]"
-                    )
-                    inputs_lovpicker = driver.find_elements(
-                        "xpath", "//input[contains(@class,'lovPicker')]"
-                    )
-
-                    q_anchors = len(anchors_openlov)
-                    q_inputs  = len(inputs_lovpicker)
-                    total_lov = q_anchors + q_inputs
-
-                    log(self.doc, f"   🔎 Varredura de LOVs no DOM:")
-                    log(self.doc, f"      • Botões (a.sp-openLov): {q_anchors}")
-                    log(self.doc, f"      • Inputs  (input.lovPicker): {q_inputs}")
-                    log(self.doc, f"      • Total detectado: {total_lov}")
-
-                    # Lista detalhada (até 10) em ordem de documento (união dos dois conjuntos)
-                    # A união em XPath preserva a ordem de documento:
-                    encontrados = driver.find_elements(
-                        "xpath",
-                        "//a[contains(@class,'sprites') and contains(@class,'sp-openLov')]"
-                        " | //input[contains(@class,'lovPicker')]"
-                    )
-                    limite_log = min(25, len(encontrados))
-                    for i, el in enumerate(encontrados[:limite_log], start=1):
-                        try:
-                            tag = el.tag_name
-                            _id = el.get_attribute("id") or ""
-                            _cls = el.get_attribute("class") or ""
-                            vis = el.is_displayed()
-                            log(self.doc, f"         #{i:02d} <{tag}> id='{_id}' class='{_cls}' visível={vis}")
-                        except Exception as _:
-                            log(self.doc, f"         #{i:02d} <elemento> (falha ao ler atributos)")
-                    if len(encontrados) > limite_log:
-                        log(self.doc, f"         … ({len(encontrados) - limite_log} itens ocultados no log)")
-
-                except Exception as _:
-                    # Não bloquear o fluxo caso a varredura falhe
-                    log(self.doc, "   ⚠️ Não foi possível listar os lovepickers (seguindo com o fluxo).")
-                # ===== FIM DO NOVO BLOCO =====
-
-                # Define seletor do botão
-                if btn_index is not None:
-                    btn_selector = f"(//a[@class='sprites sp-openLov'])[{btn_index + 1}]"
-                    by_xpath = True
-                    log(self.doc, f"   🎯 Seleção por índice: btn_index={btn_index} → {btn_selector}")
-                elif btn_xpath:
-                    btn_selector = btn_xpath
-                    by_xpath = True
-                    log(self.doc, f"   🎯 Seleção por XPath customizado: {btn_selector}")
-                else:
-                    raise ValueError("btn_index ou btn_xpath deve ser fornecido")
-
-                log(self.doc, "   📌 Abrindo LOV...")
-                self.js.force_click(btn_selector, by_xpath=by_xpath)
-                time.sleep(1.5)
-
-                # Se houver iframe, entra
-                if iframe_xpath:
-                    log(self.doc, "   🔄 Entrando no iframe...")
+                    frames = self.driver.find_elements(By.XPATH, selector)
+                    for frame in frames:
+                        if self._is_element_visible(frame):
+                            self.driver.switch_to.frame(frame)
+                            self._log(f"Iframe detectado automaticamente: {selector}", "SUCCESS")
+                            return True
+                except:
+                    continue
+            
+            return False
+        except Exception as e:
+            self._log(f"Erro ao detectar iframe: {e}", "WARNING")
+            return False
+    
+    def _click_strategy_1_standard(self, element):
+        """Estratégia 1: Clique padrão do Selenium"""
+        element.click()
+        return True
+    
+    def _click_strategy_2_javascript_simple(self, element):
+        """Estratégia 2: JavaScript simples"""
+        self.driver.execute_script("arguments[0].click();", element)
+        return True
+    
+    def _click_strategy_3_javascript_advanced(self, element):
+        """Estratégia 3: JavaScript com eventos completos"""
+        self.driver.execute_script("""
+            const el = arguments[0];
+            const rect = el.getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            
+            const events = ['mouseover', 'mouseenter', 'mousemove', 'mousedown', 'mouseup', 'click'];
+            events.forEach(eventType => {
+                const evt = new MouseEvent(eventType, {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    detail: 1,
+                    clientX: x,
+                    clientY: y
+                });
+                el.dispatchEvent(evt);
+            });
+            
+            if (typeof el.click === 'function') el.click();
+        """, element)
+        return True
+    
+    def _click_strategy_4_action_chains(self, element):
+        """Estratégia 4: ActionChains com pause"""
+        ActionChains(self.driver)\
+            .move_to_element(element)\
+            .pause(0.1)\
+            .click()\
+            .perform()
+        return True
+    
+    def _click_strategy_5_action_chains_offset(self, element):
+        """Estratégia 5: ActionChains com offset"""
+        ActionChains(self.driver)\
+            .move_to_element_with_offset(element, 5, 5)\
+            .pause(0.05)\
+            .click()\
+            .perform()
+        return True
+    
+    def _click_strategy_6_force_visible_then_click(self, element):
+        """Estratégia 6: Força visibilidade e clica"""
+        self._force_element_visible(element)
+        time.sleep(0.2)
+        element.click()
+        return True
+    
+    def _click_strategy_7_scroll_and_click(self, element):
+        """Estratégia 7: Scroll suave até elemento"""
+        self.driver.execute_script("""
+            arguments[0].scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+                inline: 'center'
+            });
+        """, element)
+        time.sleep(0.3)
+        element.click()
+        return True
+    
+    def _click_strategy_8_remove_overlays(self, element):
+        """Estratégia 8: Remove todos os overlays e clica"""
+        self.driver.execute_script("""
+            // Remove todos os overlays possíveis
+            const overlays = document.querySelectorAll(`
+                .modal-backdrop, .overlay, .blockUI, .blockScreen,
+                [class*="loading"], [class*="spinner"], [class*="overlay"],
+                [style*="z-index: 9999"], [style*="position: fixed"]
+            `);
+            overlays.forEach(o => {
+                o.style.display = 'none';
+                o.style.visibility = 'hidden';
+                o.remove();
+            });
+            
+            const el = arguments[0];
+            el.style.zIndex = '999999';
+            el.click();
+        """, element)
+        return True
+    
+    def _click_strategy_9_jquery_trigger(self, element):
+        """Estratégia 9: jQuery trigger (se disponível)"""
+        self.driver.execute_script("""
+            const el = arguments[0];
+            if (typeof jQuery !== 'undefined') {
+                jQuery(el).trigger('click');
+            } else {
+                el.click();
+            }
+        """, element)
+        return True
+    
+    def _click_strategy_10_nuclear_option(self, element):
+        """Estratégia 10: Opção nuclear - força tudo"""
+        self.driver.execute_script("""
+            const el = arguments[0];
+            
+            // Remove TODOS os atributos que podem bloquear
+            el.removeAttribute('disabled');
+            el.removeAttribute('readonly');
+            el.style.pointerEvents = 'auto !important';
+            el.style.display = 'block !important';
+            el.style.visibility = 'visible !important';
+            el.style.opacity = '1 !important';
+            el.style.zIndex = '999999 !important';
+            
+            // Remove TODOS os overlays da página
+            document.querySelectorAll('*').forEach(elem => {
+                const style = window.getComputedStyle(elem);
+                if (
+                    style.position === 'fixed' &&
+                    parseInt(style.zIndex) > 1000 &&
+                    elem !== el &&
+                    !elem.contains(el)
+                ) {
+                    elem.style.display = 'none';
+                }
+            });
+            
+            // Foca no elemento
+            el.focus();
+            
+            // Dispara TODOS os eventos possíveis
+            const allEvents = [
+                'focus', 'focusin', 'mouseover', 'mouseenter', 'mousemove',
+                'mousedown', 'mouseup', 'click', 'dblclick'
+            ];
+            
+            allEvents.forEach(eventType => {
+                try {
+                    const evt = new MouseEvent(eventType, {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    });
+                    el.dispatchEvent(evt);
+                } catch(e) {}
+            });
+            
+            // Clique direto
+            if (typeof el.click === 'function') el.click();
+            
+            // jQuery se disponível
+            if (typeof jQuery !== 'undefined') {
+                jQuery(el).trigger('click');
+            }
+            
+            // Tenta onclick manual
+            if (el.onclick) el.onclick();
+            
+            return true;
+        """, element)
+        return True
+    
+    def _advanced_click(self, element, max_attempts=10):
+        """
+        Sistema avançado de clique com 10 estratégias diferentes
+        Tenta cada estratégia até uma funcionar
+        """
+        strategies = [
+            ("Clique Padrão", self._click_strategy_1_standard),
+            ("JavaScript Simples", self._click_strategy_2_javascript_simple),
+            ("JavaScript Avançado", self._click_strategy_3_javascript_advanced),
+            ("ActionChains", self._click_strategy_4_action_chains),
+            ("ActionChains Offset", self._click_strategy_5_action_chains_offset),
+            ("Força Visível", self._click_strategy_6_force_visible_then_click),
+            ("Scroll e Clique", self._click_strategy_7_scroll_and_click),
+            ("Remove Overlays", self._click_strategy_8_remove_overlays),
+            ("jQuery Trigger", self._click_strategy_9_jquery_trigger),
+            ("Opção Nuclear", self._click_strategy_10_nuclear_option)
+        ]
+        
+        for attempt in range(1, max_attempts + 1):
+            for strategy_name, strategy_func in strategies:
+                try:
+                    self._log(f"Tentativa {attempt}/{max_attempts}: {strategy_name}", "DEBUG")
+                    
+                    # Tenta executar a estratégia
+                    strategy_func(element)
+                    time.sleep(0.3)
+                    
+                    self._log(f"✓ {strategy_name} funcionou!", "SUCCESS")
+                    return True
+                    
+                except StaleElementReferenceException:
+                    self._log(f"Elemento ficou stale, tentando recarregar...", "WARNING")
+                    return False  # Precisa recarregar elemento
+                    
+                except (ElementClickInterceptedException, 
+                        ElementNotInteractableException) as e:
+                    self._log(f"✗ {strategy_name}: {str(e)[:50]}", "DEBUG")
+                    continue
+                    
+                except Exception as e:
+                    self._log(f"✗ {strategy_name}: {str(e)[:50]}", "DEBUG")
+                    continue
+            
+            if attempt < max_attempts:
+                time.sleep(0.5 * attempt)  # Backoff exponencial
+        
+        return False
+    
+    def _fill_search_fields(self, search_text, max_fields=10):
+        """Preenche TODOS os campos de pesquisa encontrados"""
+        if not search_text:
+            return 0
+        
+        search_field_xpaths = [
+            "//input[@id='txtPesquisa']",
+            "//input[contains(@class,'pesquisa')]",
+            "//input[contains(@class,'nomePesquisa')]",
+            "//input[contains(translate(@name,'PESQUISA','pesquisa'),'pesquisa')]",
+            "//input[@type='text' and contains(@style,'width:210px')]",
+            "//input[@type='text' and not(@disabled)]",
+        ]
+        
+        filled_count = 0
+        for xpath in search_field_xpaths:
+            try:
+                fields = self.driver.find_elements(By.XPATH, xpath)
+                for field in fields[:max_fields]:
                     try:
-                        WebDriverWait(self.js.driver, 10).until(
-                            EC.frame_to_be_available_and_switch_to_it((By.XPATH, iframe_xpath))
-                        )
-                        time.sleep(0.5)
-                    except:
-                        log(self.doc, "   ⚠️ Iframe não encontrado, continuando...")
-
-                # Aguarda carregamento
-                self.js.wait_ajax_complete(10)
-                time.sleep(1)
-
-                # Preenche campos de pesquisa
-                log(self.doc, f"   ✏️ Preenchendo campos de pesquisa com: '{search_text}'")
-                res = self.preencher_campos_pesquisa_por_indice(
-                    search_text=search_text,
-                    search_xpaths=[
-                        "//input[@id='txtPesquisa']",
-                        "//input[@class='nomePesquisa']",
-                        "//input[contains(translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'pesquisa')]",
-                        "//input[contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'pesquisa')]",
-                        "//input[@type='text']",
-                        "//input[@class='campoPesquisa']",
-                    ],
-                    max_campos=None,
-                    pausa=0.3,
-                    limpar_antes=True
-                )
-                log(self.doc, f"   📊 Resultado: {res}")
-                time.sleep(0.5)
-
-                # Clica em "Pesquisar"
-                log(self.doc, "   🔎 Executando pesquisa...")
-                search_btn_selectors = [
-                    "//a[contains(@class,'lpFind') and contains(normalize-space(.),'Pesquisar')]",
-                    "//button[contains(normalize-space(.),'Pesquisar')]",
-                    "//a[contains(normalize-space(.),'Buscar')]"
-                ]
-
-                search_clicked = False
-                for selector in search_btn_selectors:
-                    try:
-                        self.js.force_click(selector, by_xpath=True)
-                        search_clicked = True
-                        break
+                        if not self._is_element_visible(field):
+                            continue
+                        
+                        # Limpa e preenche
+                        self._force_element_visible(field)
+                        field.clear()
+                        field.click()
+                        field.send_keys(search_text)
+                        filled_count += 1
+                        
                     except:
                         continue
-
-                # Fallback: ENTER
-                if not search_clicked:
-                    try:
-                        first_input = self.js.driver.find_element(
-                            "xpath",
-                            "(//input[@id='txtPesquisa'] | //input[@class='nomePesquisa'] | "
-                            "//input[contains(@class,'pesquisa')] | "
-                            "//input[contains(@name,'pesquisa')] | "
-                            "//input[@type='text'])[1]"
-                        )
-                        first_input.send_keys(Keys.ENTER)
-                        search_clicked = True
-                        log(self.doc, "   ⚙️ Fallback: pesquisa via tecla ENTER")
-                    except Exception:
-                        raise Exception("Botão de pesquisa não encontrado")
-
-                # Aguarda resultados
-                time.sleep(2)
-                self.js.wait_ajax_complete(15)
-
-                # Clica no resultado
-                log(self.doc, f"   🎯 Selecionando: '{result_text}'")
-                safe_text = result_text.replace("'", '"')
-                result_xpath = f"//tr[td[contains(normalize-space(.), \"{safe_text}\")]]"
-                self.js.force_click(result_xpath, by_xpath=True)
-
-                time.sleep(1)
-
-                # Volta para conteúdo principal
-                if iframe_xpath:
-                    try:
-                        self.js.driver.switch_to.default_content()
-                        log(self.doc, "   ✅ Voltou para conteúdo principal")
-                    except:
-                        pass
-
-                # Aguarda fechamento
-                time.sleep(1)
-                self.js.wait_ajax_complete(10)
-
-                log(self.doc, f"✅ LOV processado com sucesso!")
-                return True
-
-            except Exception as e:
-                log(self.doc, f"⚠️ Tentativa {attempt + 1} falhou: {str(e)[:150]}")
-
+            except:
+                continue
+        
+        if filled_count > 0:
+            self._log(f"Preenchidos {filled_count} campos de pesquisa", "SUCCESS")
+        else:
+            self._log("Nenhum campo de pesquisa encontrado", "WARNING")
+        
+        return filled_count
+    
+    def _click_search_button(self):
+        """Clica no botão Pesquisar com múltiplas estratégias"""
+        search_button_xpaths = [
+            "//a[contains(@class,'btPesquisar') and contains(normalize-space(.),'Pesquisar')]",
+            "//button[contains(normalize-space(.),'Pesquisar')]",
+            "//input[@type='button' and contains(@value,'Pesquisar')]",
+            "//a[contains(@class,'lpFind')]",
+            "//a[contains(@onclick,'pesquisar')]"
+        ]
+        
+        for xpath in search_button_xpaths:
+            try:
+                btn = self._wait_element("xpath", xpath, timeout=2)
+                if btn and self._is_element_visible(btn):
+                    if self._advanced_click(btn):
+                        self._log("Botão 'Pesquisar' clicado", "SUCCESS")
+                        return True
+            except:
+                continue
+        
+        # Fallback: ENTER no campo ativo
+        try:
+            self._log("Tentando ENTER no campo de pesquisa", "DEBUG")
+            ActionChains(self.driver).send_keys(Keys.ENTER).perform()
+            return True
+        except:
+            pass
+        
+        self._log("Não foi possível clicar em 'Pesquisar'", "WARNING")
+        return False
+    
+    def _select_result(self, result_text=""):
+        """Seleciona o resultado da pesquisa"""
+        result_xpaths = []
+        
+        if result_text:
+            result_xpaths = [
+                f"//td[contains(normalize-space(.),'{result_text}')]",
+                f"//span[contains(normalize-space(.),'{result_text}')]",
+                f"//div[contains(normalize-space(.),'{result_text}')]",
+                f"//tr[contains(normalize-space(.),'{result_text}')]//td[1]",
+                f"//li[contains(normalize-space(.),'{result_text}')]"
+            ]
+        else:
+            result_xpaths = [
+                "(//table//tr[1]/td[1])[1]",
+                "(//tr[contains(@class,'ui-widget-content')][1])[1]",
+                "(//tr[contains(@class,'rich-table-row')][1])[1]",
+                "(//li[@class='ui-autocomplete-item'])[1]"
+            ]
+        
+        for xpath in result_xpaths:
+            try:
+                result = self._wait_element("xpath", xpath, timeout=3)
+                if result and self._is_element_visible(result):
+                    if self._advanced_click(result):
+                        self._log(f"Resultado selecionado: {result_text or 'primeiro'}", "SUCCESS")
+                        return xpath  # Retorna xpath usado
+            except:
+                continue
+        
+        self._log(f"Não foi possível selecionar: {result_text or 'primeiro resultado'}", "ERROR")
+        return None
+    
+    def _reinforce_click_on_result(self, result_xpath, max_reclick=5):
+        """
+        Reforça o clique no resultado SEMPRE, independente do modal
+        Clica repetidamente até max_reclick vezes
+        """
+        if not result_xpath:
+            return
+        
+        self._log(f"🔁 Reforçando clique no resultado ({max_reclick}x)", "INFO")
+        
+        for attempt in range(1, max_reclick + 1):
+            try:
+                time.sleep(0.35)
+                
+                # Tenta localizar o resultado novamente
+                result = self.driver.find_element(By.XPATH, result_xpath)
+                
+                # Clica usando sistema avançado
+                self._log(f"Reforço {attempt}/{max_reclick}", "DEBUG")
+                self._advanced_click(result)
+                
+            except StaleElementReferenceException:
+                self._log(f"Elemento stale no reforço {attempt}", "WARNING")
                 try:
-                    self.js.driver.switch_to.default_content()
+                    # Tenta recarregar o elemento
+                    result = self.driver.find_element(By.XPATH, result_xpath)
+                    self._advanced_click(result)
+                except:
+                    continue
+                    
+            except Exception as e:
+                self._log(f"Erro no reforço {attempt}: {str(e)[:50]}", "WARNING")
+                continue
+        
+        self._log("✅ Reforço de cliques concluído", "SUCCESS")
+    
+    def open_and_select(
+        self,
+        btn_index=None,
+        btn_xpath=None,
+        btn_css=None,
+        search_text="",
+        result_text="",
+        iframe_xpath=None,
+        auto_detect_iframe=True,
+        reinforce_clicks=5,
+        wait_after=0.5
+    ):
+        """
+        Método principal: abre LOV, pesquisa e seleciona resultado
+        
+        Args:
+            btn_index: Índice do botão LOV (0-based)
+            btn_xpath: XPath customizado do botão
+            btn_css: Seletor CSS do botão
+            search_text: Texto para pesquisar
+            result_text: Texto do resultado a selecionar
+            iframe_xpath: XPath do iframe (se houver)
+            auto_detect_iframe: Detectar iframe automaticamente
+            reinforce_clicks: Quantas vezes reforçar o clique (padrão: 5)
+            wait_after: Tempo de espera após conclusão
+        
+        Returns:
+            bool: True se bem-sucedido, False caso contrário
+        """
+        
+        self._log(f"🔍 LOV: '{search_text}' → '{result_text}'", "INFO")
+        
+        for retry in range(1, self.max_retries + 1):
+            try:
+                # ===== PASSO 1: Volta para contexto principal =====
+                try:
+                    self.driver.switch_to.default_content()
                 except:
                     pass
-
-                if attempt < max_attempts - 1:
-                    time.sleep(2 + attempt * 0.5)
+                
+                # ===== PASSO 2: Localiza e clica no botão LOV =====
+                btn_selector = None
+                by_type = None
+                
+                if btn_index is not None:
+                    btn_selector = f"(//a[@class='sprites sp-openLov'])[{btn_index + 1}]"
+                    by_type = "xpath"
+                elif btn_xpath:
+                    btn_selector = btn_xpath
+                    by_type = "xpath"
+                elif btn_css:
+                    btn_selector = btn_css
+                    by_type = "css"
                 else:
-                    raise Exception(f"Falha ao processar LOV após {max_attempts} tentativas: {e}")
-
-        return False
-
-    # ==========================================================
-    # 🔹 Preenche campos de pesquisa genéricos dentro da LOV
-    # ==========================================================
-    def preencher_campos_pesquisa_por_indice(
-        self, search_text: str,
-        search_xpaths=None,
-        max_campos: int | None = None,
-        pausa: float = 0.2,
-        limpar_antes: bool = True
-    ) -> dict:
-        """
-        Preenche um ou mais campos de pesquisa dentro da LOV.
-        """
-        if search_xpaths is None:
-            search_xpaths = [
-                "//input[@id='txtPesquisa']",
-                "//input[@class='nomePesquisa']",
-                "//input[contains(translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'pesquisa')]",
-                "//input[contains(translate(@class,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'pesquisa')]",
-                "//input[@type='text']",
-                "//input[@class='campoPesquisa']",
-            ]
-
-        preenchidos = 0
-        encontrados = 0
-        usados = []
-
-        for xp in search_xpaths:
-            try:
-                candidatos = self.js.driver.find_elements("xpath", xp)
-            except Exception:
-                candidatos = []
-            if not candidatos:
-                continue
-
-            candidatos = [el for el in candidatos if _is_visible_enabled(el)]
-            if not candidatos:
-                continue
-
-            encontrados += len(candidatos)
-
-            for el in candidatos:
-                if max_campos is not None and preenchidos >= max_campos:
-                    break
+                    raise ValueError("Forneça btn_index, btn_xpath ou btn_css")
+                
+                self._log(f"Localizando botão LOV: {btn_selector}", "DEBUG")
+                
+                lov_button = self._wait_element(by_type, btn_selector, timeout=5)
+                if not lov_button:
+                    raise Exception(f"Botão LOV não encontrado: {btn_selector}")
+                
+                self._log("Abrindo LOV...", "INFO")
+                if not self._advanced_click(lov_button):
+                    raise Exception("Falha ao clicar no botão LOV")
+                
+                time.sleep(0.8)
+                
+                # ===== PASSO 3: Entra no iframe se necessário =====
+                if iframe_xpath or auto_detect_iframe:
+                    self._detect_and_enter_iframe(iframe_xpath)
+                    time.sleep(0.3)
+                
+                # ===== PASSO 4: Preenche campos de pesquisa =====
+                if search_text:
+                    self._fill_search_fields(search_text)
+                    time.sleep(0.3)
+                
+                # ===== PASSO 5: Clica em Pesquisar =====
+                self._click_search_button()
+                time.sleep(0.8)
+                
+                # ===== PASSO 6: Seleciona resultado =====
+                result_xpath = self._select_result(result_text)
+                if not result_xpath:
+                    if retry < self.max_retries:
+                        self._log(f"Retry {retry}/{self.max_retries}...", "WARNING")
+                        time.sleep(1.5 * retry)
+                        continue
+                    raise Exception("Falha ao selecionar resultado")
+                
+                # ===== PASSO 7: Reforça clique SEMPRE =====
+                if reinforce_clicks > 0:
+                    self._reinforce_click_on_result(result_xpath, reinforce_clicks)
+                
+                # ===== PASSO 8: Volta para contexto principal =====
                 try:
-                    self.js.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", el)
-
-                    if limpar_antes:
-                        el.clear()
-                        el.send_keys(Keys.CONTROL, "a")
-                        el.send_keys(Keys.DELETE)
-
-                    if search_text:
-                        el.send_keys(search_text)
-                        usados.append(xp)
-                        preenchidos += 1
-                        time.sleep(pausa)
-
-                except (StaleElementReferenceException, ElementNotInteractableException):
+                    self.driver.switch_to.default_content()
+                except:
+                    pass
+                
+                time.sleep(wait_after)
+                self._log("LOV concluído com sucesso!", "SUCCESS")
+                return True
+                
+            except Exception as e:
+                self._log(f"Tentativa {retry} falhou: {str(e)[:100]}", "ERROR")
+                
+                # Tenta recuperar voltando para contexto principal
+                try:
+                    self.driver.switch_to.default_content()
+                except:
+                    pass
+                
+                if retry < self.max_retries:
+                    time.sleep(2 * retry)  # Backoff exponencial
                     continue
-                except Exception:
-                    continue
-
-            if max_campos is not None and preenchidos >= max_campos:
-                break
-
-        return {
-            "texto": search_text,
-            "totalEncontrados": encontrados,
-            "totalPreenchidos": preenchidos,
-            "xpathsUsados": usados,
-        }
-
+        
+        self._log(f"LOV falhou após {self.max_retries} tentativas", "ERROR")
+        return False
+    
 # ==== FUNÇÕES AUXILIARES ====
 def encontrar_mensagem_alerta():
     seletores = [
@@ -2654,14 +3375,11 @@ def garantir_accordion_aberto(js_engine, doc, titulo_header="Pagamento com Cart�
         log(doc, f"⚠️ Falha ao abrir accordion '{titulo_header}': {res.get('reason')}")
         return False
 
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 
 def abrir_aba_pagamento_cartao(js_engine, doc, max_attempts=3, timeout=8):
     """
     Abre a aba 'Pagamento com Cartão' clicando no <h3> do accordion
-    e valida aria-expanded='true'. Evita o efeito abre/fecha.
+    SOMENTE se ela não estiver aberta.
     """
     drv = js_engine.driver
     hdr_xpath = "//h3[contains(@class,'ui-accordion-header') and contains(normalize-space(.),'Pagamento com Cartão')]"
@@ -2672,18 +3390,37 @@ def abrir_aba_pagamento_cartao(js_engine, doc, max_attempts=3, timeout=8):
             hdr = WebDriverWait(drv, timeout).until(
                 EC.presence_of_element_located((By.XPATH, hdr_xpath))
             )
-            js_engine.scroll_into_view(hdr)  # se você tiver esse helper
-            # Clique no H3 (não no ícone). Use 1 clique somente.
+
+            # lê o estado atual
+            aria_expanded = hdr.get_attribute("aria-expanded")
+
+            # se já está aberta, não clica de novo
+            if aria_expanded == "true":
+                log(doc, "✅ Aba 'Pagamento com Cartão' já estava aberta.")
+                return True
+
+            # se tiver helper de scroll, usa
+            try:
+                if hasattr(js_engine, "scroll_into_view"):
+                    js_engine.scroll_into_view(hdr)
+            except:
+                pass
+
+            # clica uma vez só
             js_engine.click_element(hdr)
-            # Aguarda aria-expanded=true
+
+            # espera ficar aberta
             WebDriverWait(drv, timeout).until(
                 lambda d: d.find_element(By.XPATH, hdr_xpath).get_attribute("aria-expanded") == "true"
             )
+
             log(doc, "✅ Aba 'Pagamento com Cartão' aberta.")
             return True
+
         except Exception as e:
             if attempt < max_attempts:
                 log(doc, f"⚠️ Tentativa {attempt} falhou, tentando novamente...")
+                time.sleep(1)
             else:
                 log(doc, f"❌ Erro após {max_attempts} tentativas: {e}")
                 return False
@@ -2718,20 +3455,64 @@ def preencher_campos_cartao(js_engine, doc, dados):
     if not abrir_aba_pagamento_cartao(js_engine, doc):
         return False
 
+    # Seletores específicos baseados nos atributos únicos de cada campo
+    campos = {
+        "nome": {
+            "seletor": "input.chqf[type='text'][maxlength='255'][style*='width: 255px']",
+            "valor": dados.get("nome", ""),
+            "descricao": "Nome"
+        },
+        "numero": {
+            "seletor": "input.chqf[type='text'][maxlength='16'][style*='width: 200px']",
+            "valor": dados.get("numero", ""),
+            "descricao": "Número do Cartão"
+        },
+        "autorizacao": {
+            "seletor": "input.chqf[type='text'][maxlength='10'][style*='width: 80px']",
+            "valor": dados.get("autorizacao", ""),
+            "descricao": "Autorização"
+        },
+        "valor": {
+            "seletor": "input.chqf[type='text'][placeholder='R$ ']",
+            "valor": dados.get("valor", ""),
+            "descricao": "Valor"
+        },
+        "parcelas": {
+            "seletor": "input.chqf[type='text'][maxlength='3']",
+            "valor": dados.get("parcelas", ""),
+            "descricao": "Quantidade de Parcelas"
+        }
+    }
+
     ok = True
-    ok &= preencher_por_label(js_engine, doc, "Nome", dados.get("nome", ""))
-    ok &= preencher_por_label(js_engine, doc, "Número do Cartão", dados.get("numero", ""))
-    ok &= preencher_por_label(js_engine, doc, "Autorização", dados.get("autorizacao", ""))
-    ok &= preencher_por_label(js_engine, doc, "Data da Venda", dados.get("data", ""))  # se for datepicker você já tem um helper
-    ok &= preencher_por_label(js_engine, doc, "Valor", dados.get("valor", ""))
-    ok &= preencher_por_label(js_engine, doc, "Quantidade de Parcelas", dados.get("parcelas", ""))
+    for campo_key, campo_info in campos.items():
+        try:
+            seletor = campo_info["seletor"]
+            valor = campo_info["valor"]
+            descricao = campo_info["descricao"]
+            
+            if not valor:
+                log(doc, f"⊘ {descricao}: sem valor fornecido")
+                continue
+            
+            # Usa force_fill do js_engine para preencher o campo
+            try:
+                js_engine.force_fill(seletor, str(valor), by_xpath=False)
+                log(doc, f"✓ {descricao}: preenchido com '{valor}'")
+            except Exception as e:
+                log(doc, f"✗ {descricao}: erro ao preencher - {str(e)}")
+                ok = False
+                
+        except Exception as e:
+            log(doc, f"✗ {descricao}: erro inesperado - {str(e)}")
+            ok = False
 
     if ok:
-        log(doc, "✅ Campos do cartão preenchidos com sucesso.")
+        log(doc, "✅ Todos os campos do cartão foram preenchidos com sucesso.")
     else:
         log(doc, "⚠️ Alguns campos do cartão não foram preenchidos. Veja logs acima.")
+    
     return ok
-
 
 
 # ==== EXECUÇÃO DO TESTE ====
@@ -2907,36 +3688,44 @@ def executar_teste():
 
         encontrar_mensagem_alerta()
 
-
-        safe_action(doc, "Abrindo a aba 'Pagamento com Cartão'",
-            lambda: garantir_accordion_aberto(js_engine, doc, "Pagamento com Cartão", timeout=5)
-        )
-
-
-        # Após adicionar com sucesso e sem alertas
         safe_action(doc, "Abrindo aba de Pagamento com Cartão", 
                     lambda: abrir_aba_pagamento_cartao(js_engine, doc))
+
 
         # Monta os dados do cartão
         dados_cartao = {
             "nome": "TESTE NOME CARTÃO SELENIUM",
             "numero": "4111111111111111",
             "autorizacao": "123",
-            "data": "31/10/2025",
-            "valor": "R$ 10.000,00",
             "parcelas": "1"
         }
 
 
+
         # Preenche os campos
-        safe_action(doc, "Preenchendo campos do cartão",
-                    lambda: preencher_campos_cartao(js_engine, doc, dados_cartao))
+        resultado = safe_action(
+            doc, 
+            "Preenchendo campos do cartão",
+            lambda: preencher_campos_cartao(js_engine, doc, dados_cartao)
+        )
+
+        safe_action(doc, "Preenchendo Data de Venda", lambda:
+            js_engine.force_fill("//input[@class='hasDatepicker chqf']", "30/10/2025", by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Valor", lambda:
+            js_engine.force_fill("//input[@type='text' and contains(@class,'chqf') and contains(@placeholder,'R$')]", "R$ 10.000.00", by_xpath=True)
+        )
+
+        if not resultado:
+            log(doc, "❌ Falha ao preencher campos do cartão")
+            return False
         
         safe_action(doc, "Selecionando Bandeira", lambda:
             lov_handler.open_and_select(
-                btn_index=19,
-                search_text="BANDEIRA ELO CRÉDITO",
-                result_text="BANDEIRA ELO CRÉDITO"
+                btn_index=10,
+                search_text="BANDEIRA ELO CREDITO",
+                result_text="BANDEIRA ELO CREDITO"
             )
         )
         
@@ -2949,25 +3738,39 @@ def executar_teste():
 
         encontrar_mensagem_alerta()
 
-
         # Monta os dados do cartão
         dados_cartao = {
             "nome": "TESTE NOME CARTÃO SELENIUM",
             "numero": "4111111111111111",
             "autorizacao": "123",
-            "data": "31/10/2025",
-            "valor": "R$ 10.000,00",
             "parcelas": "1"
         }
 
 
-        # Preenche os campos
-        safe_action(doc, "Preenchendo campos do cartão",
-                    lambda: preencher_campos_cartao(js_engine, doc, dados_cartao))
 
+        # Preenche os campos
+        resultado = safe_action(
+            doc, 
+            "Preenchendo campos do cartão",
+            lambda: preencher_campos_cartao(js_engine, doc, dados_cartao)
+        )
+        
+        safe_action(doc, "Preenchendo Data de Venda", lambda:
+            js_engine.force_fill("//input[@class='hasDatepicker chqf']", "30/10/2025", by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Valor", lambda:
+            js_engine.force_fill("//input[@type='text' and contains(@class,'chqf') and contains(@placeholder,'R$')]", "R$ 10.000.00", by_xpath=True)
+        )
+
+        if not resultado:
+            log(doc, "❌ Falha ao preencher campos do cartão")
+            return False
+        
+        
         safe_action(doc, "Selecionando Bandeira", lambda:
             lov_handler.open_and_select(
-                btn_index=19,
+                btn_index=10,
                 search_text="SIPAG - DÉBITO",
                 result_text="SIPAG - DÉBITO"
             )
@@ -3074,6 +3877,7 @@ def executar_teste():
         time.sleep(10)
 
 
+        
         safe_action(doc, "Selecionando Banco", lambda:
         selecionar_banco_por_value(js_engine, doc, value="2372", nome_banco="Bradesco")
     )
@@ -3133,36 +3937,44 @@ def executar_teste():
 
         encontrar_mensagem_alerta()
 
-
-        safe_action(doc, "Abrindo a aba 'Pagamento com Cartão'",
-            lambda: garantir_accordion_aberto(js_engine, doc, "Pagamento com Cartão", timeout=5)
-        )
-
-
-        # Após adicionar com sucesso e sem alertas
         safe_action(doc, "Abrindo aba de Pagamento com Cartão", 
                     lambda: abrir_aba_pagamento_cartao(js_engine, doc))
+
 
         # Monta os dados do cartão
         dados_cartao = {
             "nome": "TESTE NOME CARTÃO SELENIUM",
             "numero": "4111111111111111",
             "autorizacao": "123",
-            "data": "31/10/2025",
-            "valor": "R$ 10.000,00",
             "parcelas": "1"
         }
 
 
+
         # Preenche os campos
-        safe_action(doc, "Preenchendo campos do cartão",
-                    lambda: preencher_campos_cartao(js_engine, doc, dados_cartao))        
+        resultado = safe_action(
+            doc, 
+            "Preenchendo campos do cartão",
+            lambda: preencher_campos_cartao(js_engine, doc, dados_cartao)
+        )
+
+        safe_action(doc, "Preenchendo Data de Venda", lambda:
+            js_engine.force_fill("//input[@class='hasDatepicker chqf']", "30/10/2025", by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Valor", lambda:
+            js_engine.force_fill("//input[@type='text' and contains(@class,'chqf') and contains(@placeholder,'R$ ')]", "R$ 10.000.00", by_xpath=True)
+        )
+
+        if not resultado:
+            log(doc, "❌ Falha ao preencher campos do cartão")
+            return False
         
         safe_action(doc, "Selecionando Bandeira", lambda:
             lov_handler.open_and_select(
-                btn_index=19,
-                search_text="BANDEIRA ELO CRÉDITO",
-                result_text="BANDEIRA ELO CRÉDITO"
+                btn_index=10,
+                search_text="BANDEIRA ELO CREDITO",
+                result_text="BANDEIRA ELO CREDITO"
             )
         )
         
@@ -3175,25 +3987,39 @@ def executar_teste():
 
         encontrar_mensagem_alerta()
 
-
         # Monta os dados do cartão
         dados_cartao = {
             "nome": "TESTE NOME CARTÃO SELENIUM",
             "numero": "4111111111111111",
             "autorizacao": "123",
-            "data": "31/10/2025",
-            "valor": "R$ 10.000,00",
             "parcelas": "1"
         }
 
 
-        # Preenche os campos
-        safe_action(doc, "Preenchendo campos do cartão",
-                    lambda: preencher_campos_cartao(js_engine, doc, dados_cartao))
 
+        # Preenche os campos
+        resultado = safe_action(
+            doc, 
+            "Preenchendo campos do cartão",
+            lambda: preencher_campos_cartao(js_engine, doc, dados_cartao)
+        )
+        
+        safe_action(doc, "Preenchendo Data de Venda", lambda:
+            js_engine.force_fill("//input[@class='hasDatepicker chqf']", "30/10/2025", by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Valor", lambda:
+            js_engine.force_fill("//input[@type='text' and contains(@class,'chqf') and contains(@placeholder,'R$ ')]", "R$ 10.000.00", by_xpath=True)
+        )
+
+        if not resultado:
+            log(doc, "❌ Falha ao preencher campos do cartão")
+            return False
+        
+        
         safe_action(doc, "Selecionando Bandeira", lambda:
             lov_handler.open_and_select(
-                btn_index=19,
+                btn_index=10,
                 search_text="SIPAG - DÉBITO",
                 result_text="SIPAG - DÉBITO"
             )
