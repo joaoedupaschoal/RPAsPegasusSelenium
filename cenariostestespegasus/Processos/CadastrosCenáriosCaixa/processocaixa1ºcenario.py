@@ -1422,6 +1422,14 @@ class LOVHandler:
             "//a[contains(@onclick,'pesquisar')]"
         ]
         
+        # Fallback: ENTER no campo ativo
+        try:
+            self._log("Tentando ENTER no campo de pesquisa", "DEBUG")
+            ActionChains(self.driver).send_keys(Keys.ENTER).perform()
+            return True
+        except Exception:
+            pass
+        
         for xpath in search_button_xpaths:
             try:
                 btn = self._wait_element("xpath", xpath, timeout=2)
@@ -1430,15 +1438,7 @@ class LOVHandler:
                         self._log("Botão 'Pesquisar' clicado", "SUCCESS")
                         return True
             except:
-                continue
-        
-        # Fallback: ENTER no campo ativo
-        try:
-            self._log("Tentando ENTER no campo de pesquisa", "DEBUG")
-            ActionChains(self.driver).send_keys(Keys.ENTER).perform()
-            return True
-        except:
-            pass
+                pass
         
         self._log("Não foi possível clicar em 'Pesquisar'", "WARNING")
         return False
@@ -1666,7 +1666,7 @@ def safe_action(doc, descricao, func, max_retries=3):
             return True
         except Exception as e:
             if attempt < max_retries - 1:
-                log(doc, f"⚠️ Tentativa {attempt + 1} falhou, tentando novamente...")
+                log(doc, f"⚠️ Tentativa {attempt + 1} falhou, tentando novamente..."),
                 time.sleep(2 + attempt)
                 continue
             else:
@@ -3515,6 +3515,165 @@ def preencher_campos_cartao(js_engine, doc, dados):
     return ok
 
 
+def preencher_dados_cartao_por_indice(
+    js_engine, 
+    doc, 
+    indice_data=1,
+    indice_valor=2,
+    indice_lov_bandeira=10,
+    nome="TESTE NOME CARTÃO SELENIUM",
+    numero="4111111111111111",
+    autorizacao="123",
+    parcelas="1",
+    data_venda="30/10/2025",
+    valor="10.000,00",
+    bandeira_texto="BANDEIRA ELO CREDITO",
+    adicionar=True,
+    timeout=5
+):
+    """
+    Preenche todos os dados de um cartão de forma sequencial.
+    
+    Args:
+        js_engine: Instância do JSForceEngine
+        doc: Documento para logs
+        indice_data: Índice do campo de data (1-based)
+        indice_valor: Índice do campo de valor (1-based)
+        indice_lov_bandeira: Índice do botão LOV da bandeira
+        nome: Nome do titular do cartão
+        numero: Número do cartão
+        autorizacao: Código de autorização
+        parcelas: Quantidade de parcelas
+        data_venda: Data da venda (formato dd/mm/yyyy)
+        valor: Valor (com ou sem R$)
+        bandeira_texto: Texto da bandeira para buscar no LOV
+        adicionar: Se True, clica no botão "Adicionar" ao final
+        timeout: Timeout para operações
+    
+    Returns:
+        bool: True se tudo foi preenchido com sucesso, False caso contrário
+    """
+    try:
+        log(doc, f"🎴 Iniciando preenchimento de dados do cartão (índice data={indice_data}, valor={indice_valor})...")
+        
+        # 1. Abre a aba de Pagamento com Cartão
+        if not abrir_aba_pagamento_cartao(js_engine, doc):
+            log(doc, "❌ Falha ao abrir aba de Pagamento com Cartão")
+            return False
+        
+        # 2. Monta os dados do cartão
+        dados_cartao = {
+            "nome": nome,
+            "numero": numero,
+            "autorizacao": autorizacao,
+            "parcelas": parcelas
+        }
+        
+        # 3. Preenche os campos básicos do cartão
+        if not safe_action(
+            doc, 
+            "Preenchendo campos básicos do cartão",
+            lambda: preencher_campos_cartao(js_engine, doc, dados_cartao)
+        ):
+            log(doc, "❌ Falha ao preencher campos básicos do cartão")
+            return False
+        
+        # 4. Preenche a data de venda
+        if not safe_action(doc, f"Preenchendo Data de Venda (índice {indice_data})", lambda:
+            preencher_datepicker_por_indice_xpath(
+                js_engine, doc,
+                xpath_base="//input[@class='hasDatepicker chqf']",
+                indice=indice_data,
+                data_valor=data_venda,
+                descricao="Data de Venda"
+            )
+        ):
+            log(doc, "⚠️ Falha ao preencher data de venda (continuando...)")
+        
+        # 5. Preenche o valor
+        if not safe_action(doc, f"Preenchendo Valor (índice {indice_valor})", lambda:
+            preencher_campo_monetario_por_indice(
+                js_engine, doc,
+                xpath_base="//input[@type='text' and contains(@class,'chqf') and contains(@placeholder,'R$')]",
+                indice=indice_valor,
+                valor=valor,
+                descricao="Valor do Pagamento"
+            )
+        ):
+            log(doc, "⚠️ Falha ao preencher valor (continuando...)")
+        
+        # 6. Seleciona a bandeira via LOV
+        lov_handler = LOVHandler(js_engine, doc)
+        if not safe_action(doc, f"Selecionando Bandeira '{bandeira_texto}'", lambda:
+            lov_handler.open_and_select(
+                btn_index=indice_lov_bandeira,
+                search_text=bandeira_texto,
+                result_text=bandeira_texto
+            )
+        ):
+            log(doc, "❌ Falha ao selecionar bandeira")
+            return False
+        
+        # 7. Clica no botão "Adicionar" se solicitado
+        if adicionar:
+            if not safe_action(doc, "Adicionando cartão", lambda:
+                js_engine.force_click(
+                    "//a[@class='btModel btGray btAddCartao' and contains(normalize-space(.),'Adicionar')]", 
+                    by_xpath=True
+                )
+            ):
+                log(doc, "❌ Falha ao clicar em 'Adicionar'")
+                return False
+            
+            time.sleep(0.5)
+            encontrar_mensagem_alerta()
+        
+        log(doc, "✅ Dados do cartão preenchidos com sucesso!")
+        return True
+        
+    except Exception as e:
+        log(doc, f"❌ Erro ao preencher dados do cartão: {e}")
+        return False
+
+
+# ==== EXEMPLOS DE USO ====
+
+# Exemplo 1: Cartão de Crédito ELO
+"""
+preencher_dados_cartao_por_indice(
+    js_engine, doc,
+    indice_data=1,
+    indice_valor=2,
+    indice_lov_bandeira=10,
+    nome="TESTE NOME CARTÃO SELENIUM",
+    numero="4111111111111111",
+    autorizacao="123",
+    parcelas="1",
+    data_venda="30/10/2025",
+    valor="10.000,00",
+    bandeira_texto="BANDEIRA ELO CREDITO",
+    adicionar=True
+)
+"""
+
+# Exemplo 2: Cartão de Débito SIPAG
+"""
+preencher_dados_cartao_por_indice(
+    js_engine, doc,
+    indice_data=1,
+    indice_valor=3,  # Valor é o 3º campo agora
+    indice_lov_bandeira=10,
+    nome="TESTE NOME CARTÃO SELENIUM",
+    numero="4111111111111111",
+    autorizacao="123",
+    parcelas="1",
+    data_venda="30/10/2025",
+    valor="10.000,00",
+    bandeira_texto="SIPAG - DÉBITO",
+    adicionar=True
+)
+"""
+
 # ==== EXECUÇÃO DO TESTE ====
 def executar_teste():
     """Execução principal do teste com JS forçado e proteção anti-timeout"""
@@ -3606,14 +3765,14 @@ def executar_teste():
 
         # Formas de pagamento
         formas_pagamento = [
-            ("Dinheiro", "//input[@class='valor vDinheiro']", "10000,00"),
-            ("Cartão de Debito", "//input[@class='valor vDebito']", "10000,00"),
-            ("Cartão de Credito", "//input[@class='valor vCredito']", "10000,00"),
-            ("Depósito", "//input[@class='valor vDeposito']", "10000,00"),
-            ("Boleto", "//input[@class='valor vBoleto']", "10000,00"),
-            ("Cheque", "//input[@class='valor vCheque']", "10000,00"),
-            ("PIX", "//input[@class='valor vPIX']", "10000,00"),
-            ("Transferência", "//input[@class='valor vTransferencia']", "10000,00"),
+            ("Dinheiro", "//input[@class='valor vDinheiro']", "4,00"),
+            ("Cartão de Debito", "//input[@class='valor vDebito']", "4,00"),
+            ("Cartão de Credito", "//input[@class='valor vCredito']", "4,00"),
+            ("Depósito", "//input[@class='valor vDeposito']", "4,00"),
+            ("Boleto", "//input[@class='valor vBoleto']", "4,00"),
+            ("Cheque", "//input[@class='valor vCheque']", "4,00"),
+            ("PIX", "//input[@class='valor vPIX']", "3,00"),
+            ("Transferência", "//input[@class='valor vTransferencia']", "2,99"),
         ]
 
         for nome, xpath, valor in formas_pagamento:
@@ -3688,101 +3847,37 @@ def executar_teste():
 
         encontrar_mensagem_alerta()
 
-        safe_action(doc, "Abrindo aba de Pagamento com Cartão", 
-                    lambda: abrir_aba_pagamento_cartao(js_engine, doc))
 
-
-        # Monta os dados do cartão
-        dados_cartao = {
-            "nome": "TESTE NOME CARTÃO SELENIUM",
-            "numero": "4111111111111111",
-            "autorizacao": "123",
-            "parcelas": "1"
-        }
-
-
-
-        # Preenche os campos
-        resultado = safe_action(
-            doc, 
-            "Preenchendo campos do cartão",
-            lambda: preencher_campos_cartao(js_engine, doc, dados_cartao)
+        preencher_dados_cartao_por_indice(
+            js_engine, doc,
+            indice_data=1,
+            indice_valor=2,
+            indice_lov_bandeira=10,
+            nome="TESTE NOME CARTÃO SELENIUM",
+            numero="4111111111111111",
+            autorizacao="123",
+            parcelas="1",
+            data_venda="30/10/2025",
+            valor="4,00",
+            bandeira_texto="BANDEIRA ELO CREDITO",
+            adicionar=True
         )
-
-        safe_action(doc, "Preenchendo Data de Venda", lambda:
-            js_engine.force_fill("//input[@class='hasDatepicker chqf']", "30/10/2025", by_xpath=True)
-        )
-
-        safe_action(doc, "Preenchendo Valor", lambda:
-            js_engine.force_fill("//input[@type='text' and contains(@class,'chqf') and contains(@placeholder,'R$')]", "R$ 10.000.00", by_xpath=True)
-        )
-
-        if not resultado:
-            log(doc, "❌ Falha ao preencher campos do cartão")
-            return False
-        
-        safe_action(doc, "Selecionando Bandeira", lambda:
-            lov_handler.open_and_select(
-                btn_index=10,
-                search_text="BANDEIRA ELO CREDITO",
-                result_text="BANDEIRA ELO CREDITO"
-            )
-        )
-        
-
-        safe_action(doc, "Adicionando", lambda:
-                js_engine.force_click("//a[@class='btModel btGray btAddCartao' and contains(normalize-space(.),'Adicionar')]", by_xpath=True)
-            )
-        time.sleep(0.5)
-
-
         encontrar_mensagem_alerta()
 
-        # Monta os dados do cartão
-        dados_cartao = {
-            "nome": "TESTE NOME CARTÃO SELENIUM",
-            "numero": "4111111111111111",
-            "autorizacao": "123",
-            "parcelas": "1"
-        }
-
-
-
-        # Preenche os campos
-        resultado = safe_action(
-            doc, 
-            "Preenchendo campos do cartão",
-            lambda: preencher_campos_cartao(js_engine, doc, dados_cartao)
+        preencher_dados_cartao_por_indice(
+            js_engine, doc,
+            indice_data=1,
+            indice_valor=2,  # Valor é o 3º campo agora
+            indice_lov_bandeira=10,
+            nome="TESTE NOME CARTÃO SELENIUM",
+            numero="4111111111111111",
+            autorizacao="123",
+            parcelas="1",
+            data_venda="30/10/2025",
+            valor="4,00",
+            bandeira_texto="SIPAG - DÉBITO",
+            adicionar=True
         )
-        
-        safe_action(doc, "Preenchendo Data de Venda", lambda:
-            js_engine.force_fill("//input[@class='hasDatepicker chqf']", "30/10/2025", by_xpath=True)
-        )
-
-        safe_action(doc, "Preenchendo Valor", lambda:
-            js_engine.force_fill("//input[@type='text' and contains(@class,'chqf') and contains(@placeholder,'R$')]", "R$ 10.000.00", by_xpath=True)
-        )
-
-        if not resultado:
-            log(doc, "❌ Falha ao preencher campos do cartão")
-            return False
-        
-        
-        safe_action(doc, "Selecionando Bandeira", lambda:
-            lov_handler.open_and_select(
-                btn_index=10,
-                search_text="SIPAG - DÉBITO",
-                result_text="SIPAG - DÉBITO"
-            )
-        )
-        
-
-
-        safe_action(doc, "Adicionando", lambda:
-                js_engine.force_click("//a[@class='btModel btGray btAddCartao' and contains(normalize-space(.),'Adicionar')]", by_xpath=True)
-            )
-        time.sleep(0.5)
-
 
         encontrar_mensagem_alerta()
         
@@ -3794,17 +3889,10 @@ def executar_teste():
 
 
         encontrar_mensagem_alerta()
-
-
-        safe_action(doc, "Recusando Geração de Nota Fiscal", lambda:
-                js_engine.force_click("//a[@id='BtNo' and @class='btModel btGray btno' and normalize-space()='Não']", by_xpath=True)
-            )
-        time.sleep(5)
-
     
         safe_action(doc, "Clicando em 'Nova Venda'", lambda:
             js_engine.force_click(
-                "(//a[@class='btCancelarCaixa' and contains(normalize-space(.), ' Nova Venda')])[1]",
+                "//a[@class='btCancelarCaixa' and span[@class='sprites sp-novaVenda'] and normalize-space(text())='Nova Venda (F8)']",
                 by_xpath=True
             )
         )
@@ -3820,11 +3908,11 @@ def executar_teste():
 
 
         # ===== LOV COM PROTEÇÃO =====
-        safe_action(doc, "Selecionando Pessoa", lambda:
+        safe_action(doc, "Selecionando Plano Empresa", lambda:
             lov_handler.open_and_select(
-                btn_index=0,
-                search_text="TESTANDO PESSOA TITULAR",
-                result_text="TESTANDO PESSOA TITULAR"
+                btn_index=1,
+                search_text="PLANO EMPRESA CONTRATANTE CASSIANO",
+                result_text="PLANO EMPRESA CONTRATANTE CASSIANO"
             )
         )
         
@@ -3856,11 +3944,8 @@ def executar_teste():
             ("Dinheiro", "//input[@class='valor vDinheiro']", "10000,00"),
             ("Cartão de Debito", "//input[@class='valor vDebito']", "10000,00"),
             ("Cartão de Credito", "//input[@class='valor vCredito']", "10000,00"),
-            ("Depósito", "//input[@class='valor vDeposito']", "10000,00"),
             ("Boleto", "//input[@class='valor vBoleto']", "10000,00"),
             ("Cheque", "//input[@class='valor vCheque']", "10000,00"),
-            ("PIX", "//input[@class='valor vPIX']", "10000,00"),
-            ("Transferência", "//input[@class='valor vTransferencia']", "10000,00"),
         ]
 
         for nome, xpath, valor in formas_pagamento:
@@ -3937,101 +4022,37 @@ def executar_teste():
 
         encontrar_mensagem_alerta()
 
-        safe_action(doc, "Abrindo aba de Pagamento com Cartão", 
-                    lambda: abrir_aba_pagamento_cartao(js_engine, doc))
-
-
-        # Monta os dados do cartão
-        dados_cartao = {
-            "nome": "TESTE NOME CARTÃO SELENIUM",
-            "numero": "4111111111111111",
-            "autorizacao": "123",
-            "parcelas": "1"
-        }
-
-
-
-        # Preenche os campos
-        resultado = safe_action(
-            doc, 
-            "Preenchendo campos do cartão",
-            lambda: preencher_campos_cartao(js_engine, doc, dados_cartao)
-        )
-
-        safe_action(doc, "Preenchendo Data de Venda", lambda:
-            js_engine.force_fill("//input[@class='hasDatepicker chqf']", "30/10/2025", by_xpath=True)
-        )
-
-        safe_action(doc, "Preenchendo Valor", lambda:
-            js_engine.force_fill("//input[@type='text' and contains(@class,'chqf') and contains(@placeholder,'R$ ')]", "R$ 10.000.00", by_xpath=True)
-        )
-
-        if not resultado:
-            log(doc, "❌ Falha ao preencher campos do cartão")
-            return False
         
-        safe_action(doc, "Selecionando Bandeira", lambda:
-            lov_handler.open_and_select(
-                btn_index=10,
-                search_text="BANDEIRA ELO CREDITO",
-                result_text="BANDEIRA ELO CREDITO"
-            )
+        preencher_dados_cartao_por_indice(
+            js_engine, doc,
+            indice_data=1,
+            indice_valor=2,
+            indice_lov_bandeira=10,
+            nome="TESTE NOME CARTÃO SELENIUM",
+            numero="4111111111111111",
+            autorizacao="123",
+            parcelas="1",
+            data_venda="30/10/2025",
+            valor="10000,00",
+            bandeira_texto="BANDEIRA ELO CREDITO",
+            adicionar=True
         )
-        
-
-        safe_action(doc, "Adicionando", lambda:
-                js_engine.force_click("//a[@class='btModel btGray btAddCartao' and contains(normalize-space(.),'Adicionar')]", by_xpath=True)
-            )
-        time.sleep(0.5)
-
-
         encontrar_mensagem_alerta()
 
-        # Monta os dados do cartão
-        dados_cartao = {
-            "nome": "TESTE NOME CARTÃO SELENIUM",
-            "numero": "4111111111111111",
-            "autorizacao": "123",
-            "parcelas": "1"
-        }
-
-
-
-        # Preenche os campos
-        resultado = safe_action(
-            doc, 
-            "Preenchendo campos do cartão",
-            lambda: preencher_campos_cartao(js_engine, doc, dados_cartao)
+        preencher_dados_cartao_por_indice(
+            js_engine, doc,
+            indice_data=1,
+            indice_valor=2,  
+            indice_lov_bandeira=10,
+            nome="TESTE NOME CARTÃO SELENIUM",
+            numero="4111111111111111",
+            autorizacao="123",
+            parcelas="1",
+            data_venda="30/10/2025",
+            valor="10000,00",
+            bandeira_texto="SIPAG - DÉBITO",
+            adicionar=True
         )
-        
-        safe_action(doc, "Preenchendo Data de Venda", lambda:
-            js_engine.force_fill("//input[@class='hasDatepicker chqf']", "30/10/2025", by_xpath=True)
-        )
-
-        safe_action(doc, "Preenchendo Valor", lambda:
-            js_engine.force_fill("//input[@type='text' and contains(@class,'chqf') and contains(@placeholder,'R$ ')]", "R$ 10.000.00", by_xpath=True)
-        )
-
-        if not resultado:
-            log(doc, "❌ Falha ao preencher campos do cartão")
-            return False
-        
-        
-        safe_action(doc, "Selecionando Bandeira", lambda:
-            lov_handler.open_and_select(
-                btn_index=10,
-                search_text="SIPAG - DÉBITO",
-                result_text="SIPAG - DÉBITO"
-            )
-        )
-        
-
-
-        safe_action(doc, "Adicionando", lambda:
-                js_engine.force_click("//a[@class='btModel btGray btAddCartao' and contains(normalize-space(.),'Adicionar')]", by_xpath=True)
-            )
-        time.sleep(0.5)
-
 
         encontrar_mensagem_alerta()
         
