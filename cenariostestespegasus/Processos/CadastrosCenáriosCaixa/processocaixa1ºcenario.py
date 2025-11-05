@@ -42,7 +42,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Controle de Caixa - Caixa – Cenário 1: Rotina parcial de Fluxo de Caixa")
+doc.add_paragraph("Controle de Caixa - Caixa – Cenário 1: Rotina parcial de Fluxo de Caixa ⭢ Abertura do Caixa, Adição de Produtos, Títulos, Nova Venda, Pagamento e Fechamento do Caixa.")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -4066,11 +4066,6 @@ def executar_teste():
         encontrar_mensagem_alerta()
 
 
-        safe_action(doc, "Recusando Geração de Nota Fiscal", lambda:
-                js_engine.force_click("//a[@id='BtNo' and @class='btModel btGray btno' and normalize-space()='Não']", by_xpath=True)
-            )
-        time.sleep(5)
-
     
 
         safe_action(doc, "Clicando em 'Fechar Caixa'", lambda:
@@ -4081,7 +4076,7 @@ def executar_teste():
         safe_action(doc, "Fechando Caixa", lambda:
                 js_engine.force_click("//a[@class='btModel btGray btyes' and normalize-space()='Fechar Caixa' and .//span[contains(@class,'sp-salvar')]]", by_xpath=True)
             )
-        time.sleep(40)
+        time.sleep(25)
         fechar_abas_extras_e_verificar_alerta(js_engine.driver, doc)
 
         safe_action(doc, "Gerando Relatório", lambda:
