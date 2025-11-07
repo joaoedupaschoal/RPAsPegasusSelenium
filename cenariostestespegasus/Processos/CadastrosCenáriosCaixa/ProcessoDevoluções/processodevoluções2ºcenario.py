@@ -42,7 +42,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Controle de Caixa - Devoluções – Cenário 1: Rotina parcial de Devoluções - Filtros Utilizados: CPF/CNPJ, Número do Contrato, Data Inicial e Data Final.")
+doc.add_paragraph("Controle de Caixa - Devoluções – Cenário 2: Rotina parcial de Devoluções - Nº da OS, Data inicial e Final")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -2020,7 +2020,7 @@ def finalizar_relatorio():
     """Salva relatório e fecha driver"""
     global driver, doc
     
-    nome_arquivo = f"relatorio_devolucoes_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_devolucoes_cenario_2_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     
     try:
         doc.save(nome_arquivo)
@@ -4484,11 +4484,9 @@ def executar_teste():
         
         time.sleep(5)
 
-        safe_action(doc, "Preenchendo CPF", lambda:
-            js_engine.force_fill("//input[@maxlength='14']", "504.571.668-94", by_xpath=True)
-        )
-        safe_action(doc, "Preenchendo Número do Contrato", lambda:
-            js_engine.force_fill("//input[@class='nContrato']", "57", by_xpath=True)
+
+        safe_action(doc, "Preenchendo Número da O.S.", lambda:
+            js_engine.force_fill("//input[@class='nPedido']", "201818", by_xpath=True)
         )
 
 
