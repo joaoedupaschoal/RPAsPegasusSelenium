@@ -42,7 +42,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Controle de Caixa - Devoluções – Cenário 1: Rotina parcial de Devoluções - Filtros Utilizados: CPF/CNPJ, Número do Contrato, Data Inicial e Data Final.")
+doc.add_paragraph("Cremação - Cadastro de Cremação – Cenário 1: Preenchimento completo e salvamento")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -2020,7 +2020,7 @@ def finalizar_relatorio():
     """Salva relatório e fecha driver"""
     global driver, doc
     
-    nome_arquivo = f"relatorio_devolucoes_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio__processo_cremacao_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     
     try:
         doc.save(nome_arquivo)
@@ -4273,6 +4273,88 @@ def clicar_botao_limpar_por_indice(js_engine, doc, indice=1, timeout=5):
         return False
 
 
+def preencher_datepicker_por_indice(indice_campo, data_valor, max_tentativas=5):
+    """Preenche datepicker pelo índice com estratégias múltiplas"""
+    def acao():
+        if not isinstance(indice_campo, int) or indice_campo < 0:
+            raise ValueError(f"Índice inválido: {indice_campo}")
+            
+        if not data_valor or not isinstance(data_valor, str):
+            raise ValueError(f"Data inválida: {data_valor}")
+        
+        tentativa = 0
+        while tentativa < max_tentativas:
+            tentativa += 1
+            
+            try:
+                campos = encontrar_campos_datepicker()
+                
+                if not campos:
+                    if tentativa < max_tentativas:
+                        log(doc, f"⚠️ Nenhum campo datepicker encontrado, tentativa {tentativa}/{max_tentativas}", 'WARN')
+                        time.sleep(2)
+                        continue
+                    raise Exception("Nenhum campo datepicker encontrado na página")
+                
+                if indice_campo >= len(campos):
+                    raise Exception(f"Índice {indice_campo} inválido. Encontrados {len(campos)} campos")
+                
+                campo_info = campos[indice_campo]
+                elemento = campo_info['elemento']
+                campo_id = campo_info['id']
+                
+                log(doc, f"🎯 Tentativa {tentativa}: Preenchendo datepicker {indice_campo} (ID: {campo_id}) com '{data_valor}'")
+                
+                # Verifica se já está preenchido corretamente
+                if validar_data_preenchida(elemento, data_valor):
+                    log(doc, f"✅ Campo {indice_campo} já está preenchido corretamente!")
+                    return True
+                
+                # Estratégias específicas para datepicker
+                estrategias = [
+                    lambda: _datepicker_jquery(campo_id, data_valor),
+                    lambda: _datepicker_javascript(elemento, data_valor),
+                    lambda: _datepicker_actionchains(elemento, data_valor),
+                    lambda: _datepicker_tradicional(elemento, data_valor)
+                ]
+                
+                for i, estrategia in enumerate(estrategias, 1):
+                    try:
+                        log(doc, f"   Aplicando estratégia {i} para datepicker...")
+                        estrategia()
+                        time.sleep(1)
+                        
+                        # Verifica se funcionou
+                        if validar_data_preenchida(elemento, data_valor):
+                            valor_atual = elemento.get_attribute('value')
+                            log(doc, f"✅ Datepicker preenchido com estratégia {i}: '{valor_atual}'")
+                            return True
+                        else:
+                            log(doc, f"⚠️ Estratégia {i} não preencheu corretamente", 'WARN')
+                            
+                    except Exception as e:
+                        log(doc, f"⚠️ Estratégia {i} falhou: {e}", 'WARN')
+                        continue
+                
+                # Se chegou aqui, nenhuma estratégia funcionou nesta tentativa
+                if tentativa < max_tentativas:
+                    log(doc, f"⚠️ Tentativa {tentativa} falhou, tentando novamente em 2s...", 'WARN')
+                    time.sleep(2)
+                    continue
+                
+            except Exception as e:
+                if tentativa < max_tentativas:
+                    log(doc, f"⚠️ Erro na tentativa {tentativa}: {e}, tentando novamente...", 'WARN')
+                    time.sleep(2)
+                    continue
+                else:
+                    raise
+        
+        raise Exception(f"Falha ao preencher datepicker {indice_campo} após {max_tentativas} tentativas")
+    
+    return acao
+
+
 
 def clicar_sim_ate_sumir(js_engine, doc, index=0, timeout=15, pausa=0.5):
     """
@@ -4438,6 +4520,172 @@ def clicar_sim_ate_sumir(js_engine, doc, index=0, timeout=15, pausa=0.5):
 
 
 
+
+def selecionar_opcao(selector, texto):
+    def acao():
+        select_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+        Select(select_element).select_by_visible_text(texto)
+    return acao
+
+
+def safe_scroll_and_interact(selector, action_type="click", value=None, timeout=10, by_xpath=False):
+    """Rola até o elemento e interage com ele de forma robusta."""
+    global driver, doc
+    if driver is None:
+        return None
+    try:
+        by_type = By.XPATH if by_xpath else By.CSS_SELECTOR
+        element = WebDriverWait(driver, timeout).until(EC.presence_of_element_located((by_type, selector)))
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", element)
+        time.sleep(0.5)
+        if action_type in ["click", "send_keys"]:
+            element = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((by_type, selector)))
+        if action_type == "click":
+            element.click()
+        elif action_type == "send_keys" and value:
+            element.clear()
+            element.send_keys(value)
+        elif action_type == "select" and value:
+            Select(element).select_by_visible_text(value)
+        return element
+    except Exception as e:
+        log(doc, f"❌ Erro ao interagir com elemento {selector}: {e}")
+        return None
+
+# ==== DATEPICKER ====
+def encontrar_campos_datepicker():
+    global driver
+    seletores = [
+        "input.hasDatepicker",
+        "input[id^='dp']",
+        "input[class*='datepicker']",
+        ".hasDatepicker",
+        "[data-provide='datepicker']"
+    ]
+    campos = []
+    for seletor in seletores:
+        try:
+            for elemento in driver.find_elements(By.CSS_SELECTOR, seletor):
+                if elemento.is_displayed():
+                    cid = elemento.get_attribute('id')
+                    if not any(c.get('id') == cid for c in campos):
+                        campos.append({'elemento': elemento, 'id': cid})
+        except:
+            continue
+    log(doc, f"📊 Encontrados {len(campos)} campos datepicker")
+    return campos
+
+def _datepicker_jquery(campo_id, data_valor):
+    global driver
+    resultado = driver.execute_script("""
+        var campoId = arguments[0], valor = arguments[1];
+        if (typeof jQuery === 'undefined') return 'jQuery não disponível';
+        var $campo = $('#' + campoId);
+        if (!$campo.length) return 'Campo não encontrado: ' + campoId;
+        try {
+            if ($campo.hasClass('hasDatepicker')) { $campo.datepicker('setDate', valor); }
+            else { $campo.val(valor); }
+            $campo.trigger('input').trigger('change').trigger('blur');
+            return $campo.val();
+        } catch(e) { return 'Erro: ' + e.message; }
+    """, campo_id, data_valor)
+    if isinstance(resultado, str) and 'Erro' in resultado:
+        raise Exception(f"jQuery falhou: {resultado}")
+
+def _datepicker_javascript(elemento, data_valor):
+    global driver
+    driver.execute_script("""
+        var campo = arguments[0], valor = arguments[1];
+        campo.focus(); campo.value = ''; campo.value = valor;
+        ['input','change','blur','keyup'].forEach(ev => campo.dispatchEvent(new Event(ev,{bubbles:true})));
+    """, elemento, data_valor)
+
+def _datepicker_actionchains(elemento, data_valor):
+    global driver
+    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", elemento)
+    ActionChains(driver).move_to_element(elemento).click().perform()
+    time.sleep(0.3)
+    ActionChains(driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
+    ActionChains(driver).send_keys(Keys.DELETE).perform()
+    time.sleep(0.2)
+    for ch in data_valor:
+        ActionChains(driver).send_keys(ch).perform()
+        time.sleep(0.03)
+    ActionChains(driver).send_keys(Keys.TAB).perform()
+
+
+
+def _datepicker_tradicional(elemento, data_valor):
+    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", elemento)
+    elemento.click(); time.sleep(0.2); elemento.clear()
+    elemento.send_keys(data_valor); elemento.send_keys(Keys.TAB)
+
+def preencher_datepicker_persistente(indice_campo, data_valor, max_tentativas=10, timeout=30):
+    """Preenche datepicker com várias estratégias e valida."""
+    inicio_tempo = time.time()
+    tentativa = 0
+
+    def validar_data_preenchida(el, data_esperada):
+        try:
+            val = (el.get_attribute('value') or '').strip()
+            if not val: return False
+            if val == data_esperada or data_esperada in val: return True
+            formatos = [
+                '%d/%m/%Y %H:%M', '%d/%m/%Y %H:%M:%S',  # <- COM HORA
+                '%d/%m/%Y', '%m/%d/%Y', '%Y-%m-%d', '%d-%m-%Y'
+            ]
+            for f in formatos:
+                try:
+                    d1 = datetime.strptime(val, f)
+                    d2 = datetime.strptime(data_esperada, f)
+                    if d1 == d2: return True
+                except:
+                    continue
+            return False
+        except:
+            return False
+
+    while tentativa < max_tentativas and (time.time() - inicio_tempo) < timeout:
+        tentativa += 1
+        try:
+            log(doc, f"🔄 Tentativa {tentativa}/{max_tentativas} para campo {indice_campo}")
+            campos = encontrar_campos_datepicker()
+            if not campos:
+                time.sleep(1); continue
+            if indice_campo >= len(campos):
+                time.sleep(1); continue
+
+            info = campos[indice_campo]
+            elemento, campo_id = info['elemento'], info['id']
+
+            if validar_data_preenchida(elemento, data_valor):
+                log(doc, f"✅ Campo {indice_campo} já está preenchido corretamente!")
+                return True
+
+            estrategias = [
+                lambda: _datepicker_jquery(campo_id, data_valor),
+                lambda: _datepicker_javascript(elemento, data_valor),
+                lambda: _datepicker_actionchains(elemento, data_valor),
+                lambda: _datepicker_tradicional(elemento, data_valor),
+            ]
+            for acao in estrategias:
+                try:
+                    acao(); time.sleep(0.4)
+                    if validar_data_preenchida(elemento, data_valor):
+                        log(doc, f"✅ Campo {indice_campo} preenchido!")
+                        return True
+                except Exception as e:
+                    log(doc, f"   ⚠️ Estratégia falhou: {e}")
+
+            log(doc, "❌ Tentativa falhou; tentando novamente...")
+            time.sleep(1.2)
+
+        except Exception as e:
+            log(doc, f"❌ Erro na tentativa {tentativa}: {e}")
+            time.sleep(1)
+
+    raise Exception(f"Falha ao preencher datepicker {indice_campo} após {tentativa} tentativas em {int(time.time()-inicio_tempo)}s")
+
 # ==== EXECUÇÃO DO TESTE ====
 def executar_teste():
     """Execução principal do teste com JS forçado e proteção anti-timeout"""
@@ -4470,80 +4718,112 @@ def executar_teste():
         safe_action(doc, "Abrindo menu (F3)", abrir_menu)
         
         # ===== CAIXA =====
-        safe_action(doc, "Acessando Caixa", lambda:
-            js_engine.force_click('/html/body/div[15]/ul/li[8]/img', by_xpath=True)
+        safe_action(doc, "Acessando Cremação", lambda:
+            js_engine.force_click('/html/body/div[15]/ul/li[19]/img', by_xpath=True)
         )
         
         time.sleep(3)
         
-        safe_action(doc, "Clicando em 'Devoluções'", lambda:
+        safe_action(doc, "Clicando em 'Nova Cremação'", lambda:
             js_engine.force_click(
-                '#gsCaixa > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(2) > a > span'
+                '#gsRateio > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span'
             )
         )
         
         time.sleep(5)
 
-        safe_action(doc, "Preenchendo CPF", lambda:
-            js_engine.force_fill("//input[@maxlength='14']", "504.571.668-94", by_xpath=True)
+
+        safe_action(doc, "Selecionando Falecido", lambda:
+            lov_handler.open_and_select(
+                btn_index=0,
+                search_text="FALECIDO TÍTULOS",
+                result_text="FALECIDO TÍTULOS"
+            )
         )
-        safe_action(doc, "Preenchendo Número do Contrato", lambda:
-            js_engine.force_fill("//input[@class='nContrato']", "113190", by_xpath=True)
-        )
 
-
-
-        
-        safe_action(doc, "Preenchendo Data Inicial", 
-                   preencher_datepicker_por_indice(0, "10/11/2025"))
-
-        
-        safe_action(doc, "Preenchendo Data Final", 
-                   preencher_datepicker_por_indice(1, "10/11/2025"))
 
 
         safe_action(doc, "Pesquisando", lambda: (
-            js_engine.force_click("(//a[@class='btModel btGray btfind'])[1]", by_xpath=True),
-            time.sleep(1)
+            js_engine.force_click("(//a[@class='btModel btGray'])[1]", by_xpath=True),
+            time.sleep(5)
         ))
 
-
-        safe_action(doc, "Clicando em 'Detalhes da Venda' e capturando screenshot", lambda: (
-            js_engine.force_click("//span[contains(@class,'sp-dadosDinamicos') and contains(@title,'Detalhes da Venda')]", by_xpath=True),
-            time.sleep(1)
-        ))
-
-
-        safe_action(doc, "Fechando aba: 'Detalhes da Venda'", lambda:
-            fechar_detalhes_venda(js_engine, doc)
+        safe_action(doc, "Preenchendo Nome do Pai", lambda:
+            js_engine.force_fill("//input[@class='nomePaiFalecido']", "TESTE NOME DO PAI", by_xpath=True)
+        )
+        safe_action(doc, "Preenchendo Nome da Mãe", lambda:
+            js_engine.force_fill("//input[@class='nomeMaeFalecido']", "TESTE NOME DA MÃE", by_xpath=True)
         )
 
 
-        safe_action(doc, "Estornando primeira Venda", lambda:
-            clicar_sp_delete_por_indice(js_engine, doc, indice=1)
-        )
 
-
-        safe_action(doc, "Selecionando Motivo Estorno", lambda:
+        safe_action(doc, "Selecionando Responsável", lambda:
             lov_handler.open_and_select(
                 btn_index=1,
-                search_text="ESTORNO DE PAGAMENTO",
-                result_text="ESTORNO DE PAGAMENTO"
+                search_text="JOÃO EDUARDO JUSTINO PASCHOAL",
+                result_text="JOÃO EDUARDO JUSTINO PASCHOAL"
             )
         )
+
+        safe_action(doc, "Selecionando Opção 'Não' no campo 'Tem marca passo?'", selecionar_opcao(
+            "#gsRateio > div.wdTelas > div.telaConsulta.telaCremacao > div.content.clearfix.overflow.overflowY > div > div:nth-child(4) > div > div:nth-child(1) > select",
+            "Não"
+        ))
+
+
+        safe_action(doc, "Selecionando Opção 'Sim' no campo 'Pronto atendimento'", selecionar_opcao(
+            "#gsRateio > div.wdTelas > div.telaConsulta.telaCremacao > div.content.clearfix.overflow.overflowY > div > div:nth-child(4) > div > div:nth-child(2) > select",
+            "Sim"
+        ))
+
+
+        safe_action(doc, "Selecionando Sala", lambda:
+            lov_handler.open_and_select(
+                btn_index=2,
+                search_text="SALA TESTE SELENIUM AUTOMATIZADO",
+                result_text="SALA TESTE SELENIUM AUTOMATIZADO"
+            )
+        )
+
+
+        safe_action(doc, "Selecionando Funerária", lambda:
+            lov_handler.open_and_select(
+                btn_index=1,
+                search_text="FUNERÁRIA JOÃO TESTE",
+                result_text="FUNERÁRIA JOÃO TESTE"
+            )
+        )
+
+        
+        safe_action(doc, "Preenchendo Nota Fiscal", lambda:
+            js_engine.force_fill("//input[@class='notaFiscal']", "TESTE NOTA FISCAL", by_xpath=True)
+        )
+
+
+
+        
+        safe_action(doc, "Preenchendo Data Inicial de Renovação", 
+                   preencher_datepicker_por_indice(4, "15/06/2026"))
+
+   
+        safe_action(doc, "Preenchendo Data Final de Renovação", 
+                   preencher_datepicker_por_indice(5, "15/06/2026"))
+
+
+
+        safe_action(doc, "Preenchendo campo 'Tipos'", lambda:
+            js_engine.force_fill("//input[@class='notaFiscal']", "TESTE CAMPO TIPOS", by_xpath=True)
+        )
+
+        safe_action(doc, "Preenchendo Número do Contrato", lambda:
+            js_engine.force_fill("//input[@class='fc isList' and contains(@sref='100208')]", "TESTE NOTA FISCAL", by_xpath=True)
+        )
+
         safe_action(doc, "Clicando em 'Salvar'", lambda:
             clicar_todos_salvar(js_engine, doc)
         )
-        safe_action(doc, "Confirmando estorno", lambda:
-            clicar_sim_ate_sumir(js_engine, doc, index=0, timeout=15, pausa=0.5)
-        )
-
+        time.sleep(3)
         encontrar_mensagem_alerta()
-        time.sleep(60)
-
-        safe_action(doc, "Limpando campos", lambda:
-            clicar_botao_limpar_por_indice(js_engine, doc, indice=1)
-        )
 
 
         safe_action(doc, "Fechando modal do Caixa", lambda:

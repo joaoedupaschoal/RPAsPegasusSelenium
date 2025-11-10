@@ -42,7 +42,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Controle de Caixa - Devoluções – Cenário 1: Rotina parcial de Devoluções - Filtros Utilizados: CPF/CNPJ, Número do Contrato, Data Inicial e Data Final.")
+doc.add_paragraph("Telemedicina - Configurações Ailine – Cenário 1: Preenchimento completo e salvamento.")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -2020,7 +2020,7 @@ def finalizar_relatorio():
     """Salva relatório e fecha driver"""
     global driver, doc
     
-    nome_arquivo = f"relatorio_devolucoes_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_telemedicina_ailine_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     
     try:
         doc.save(nome_arquivo)
@@ -4438,6 +4438,71 @@ def clicar_sim_ate_sumir(js_engine, doc, index=0, timeout=15, pausa=0.5):
 
 
 
+def selecionar_opcao(selector, texto):
+    def acao():
+        select_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+        Select(select_element).select_by_visible_text(texto)
+    return acao
+
+
+
+
+# ==== CLICAR ROBUSTO ====
+def clicar_elemento_robusto(driver, wait, seletor_css, timeout=10):
+    global doc
+    try:
+        elem = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, seletor_css)))
+        try:
+            driver.execute_script("""
+                document.querySelectorAll('.modal, .overlay, .blockUI, .toast, .tooltip, [role="dialog"], [data-overlay]')
+                .forEach(e => { if (getComputedStyle(e).position === 'fixed') e.style.display = 'none'; });
+            """)
+        except Exception:
+            pass
+        driver.execute_script("arguments[0].scrollIntoView({block:'center', inline:'center'});", elem)
+        time.sleep(0.2)
+        try:
+            elem = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, seletor_css)))
+            elem.click()
+            return True
+        except (TimeoutException, ElementClickInterceptedException, StaleElementReferenceException):
+            pass
+        try:
+            elem = driver.find_element(By.CSS_SELECTOR, seletor_css)
+            ActionChains(driver).move_to_element(elem).pause(0.05).click().perform()
+            return True
+        except Exception:
+            pass
+        try:
+            elem = driver.find_element(By.CSS_SELECTOR, seletor_css)
+            driver.execute_script("arguments[0].click();", elem)
+            return True
+        except Exception:
+            pass
+        try:
+            elem = driver.find_element(By.CSS_SELECTOR, seletor_css)
+            driver.execute_script("""
+                const el = arguments[0];
+                function fire(type){ el.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,view:window})); }
+                el.focus(); fire('mouseover'); fire('mousedown'); fire('mouseup'); fire('click');
+            """, elem)
+            return True
+        except Exception:
+            pass
+        try:
+            elem = driver.find_element(By.CSS_SELECTOR, seletor_css)
+            ActionChains(driver).move_to_element_with_offset(elem, 1, 1).click().perform()
+            return True
+        except Exception:
+            pass
+        log(doc, f"❌ Não foi possível clicar em: {seletor_css}")
+        return False
+    except Exception as e:
+        log(doc, f"❌ Erro ao clicar robusto: {e}")
+        return False
+
+
+
 # ==== EXECUÇÃO DO TESTE ====
 def executar_teste():
     """Execução principal do teste com JS forçado e proteção anti-timeout"""
@@ -4470,84 +4535,58 @@ def executar_teste():
         safe_action(doc, "Abrindo menu (F3)", abrir_menu)
         
         # ===== CAIXA =====
-        safe_action(doc, "Acessando Caixa", lambda:
-            js_engine.force_click('/html/body/div[15]/ul/li[8]/img', by_xpath=True)
+        safe_action(doc, "Acessando Telemedicina", lambda:
+            js_engine.force_click('/html/body/div[15]/ul/li[37]/img', by_xpath=True)
         )
         
         time.sleep(3)
         
-        safe_action(doc, "Clicando em 'Devoluções'", lambda:
+        safe_action(doc, "Clicando em 'Configurações Ailine'", lambda:
             js_engine.force_click(
-                '#gsCaixa > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(2) > a > span'
+                '#gsTelemedicina > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li > a > span'
             )
         )
         
         time.sleep(5)
 
-        safe_action(doc, "Preenchendo CPF", lambda:
-            js_engine.force_fill("//input[@maxlength='14']", "504.571.668-94", by_xpath=True)
-        )
-        safe_action(doc, "Preenchendo Número do Contrato", lambda:
-            js_engine.force_fill("//input[@class='nContrato']", "113190", by_xpath=True)
-        )
+        safe_action(doc, "Selecionando Opção 'Sim' no campo 'Celular Obrigatório'", selecionar_opcao(
+            "#gsTelemedicina > div.wdTelas > div.telaCadastro.clearfix.telaConfiguracaoAiline > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_grupoDadosObrigatorios > div > div > div:nth-child(2) > select",
+            "Sim"
+        ))
 
-
-
-        
-        safe_action(doc, "Preenchendo Data Inicial", 
-                   preencher_datepicker_por_indice(0, "10/11/2025"))
-
-        
-        safe_action(doc, "Preenchendo Data Final", 
-                   preencher_datepicker_por_indice(1, "10/11/2025"))
-
-
-        safe_action(doc, "Pesquisando", lambda: (
-            js_engine.force_click("(//a[@class='btModel btGray btfind'])[1]", by_xpath=True),
-            time.sleep(1)
+        safe_action(doc, "Selecionando Opção 'Sim' no campo 'E-mail Obrigatório'", selecionar_opcao(
+            "#gsTelemedicina > div.wdTelas > div.telaCadastro.clearfix.telaConfiguracaoAiline > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_grupoDadosObrigatorios > div > div > div:nth-child(3) > select",
+            "Sim"
         ))
 
 
-        safe_action(doc, "Clicando em 'Detalhes da Venda' e capturando screenshot", lambda: (
-            js_engine.force_click("//span[contains(@class,'sp-dadosDinamicos') and contains(@title,'Detalhes da Venda')]", by_xpath=True),
-            time.sleep(1)
+
+        safe_action(doc, "Preenchendo o campo: 'Parcelas em atraso para excluir o paciente'", lambda:
+            js_engine.force_fill("#gsTelemedicina > div.wdTelas > div.telaCadastro.clearfix.telaConfiguracaoAiline > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_grupoParametrizacoes > div > div > div > input", "3", by_xpath=False)
+        )
+
+        safe_action(doc, "Selecionando Opção 'Inativo' no campo 'Status do Contrato'", selecionar_opcao(
+            "#gsTelemedicina > div.wdTelas > div.telaCadastro.clearfix.telaConfiguracaoAiline > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_grupoStatusContrato > div.group_grupoStatusContrato.clearfix.grupoHolder.lista > div > div > select",
+            "Inativo"
         ))
 
 
-        safe_action(doc, "Fechando aba: 'Detalhes da Venda'", lambda:
-            fechar_detalhes_venda(js_engine, doc)
-        )
-
-
-        safe_action(doc, "Estornando primeira Venda", lambda:
-            clicar_sp_delete_por_indice(js_engine, doc, indice=1)
-        )
-
-
-        safe_action(doc, "Selecionando Motivo Estorno", lambda:
-            lov_handler.open_and_select(
-                btn_index=1,
-                search_text="ESTORNO DE PAGAMENTO",
-                result_text="ESTORNO DE PAGAMENTO"
-            )
-        )
-        safe_action(doc, "Clicando em 'Salvar'", lambda:
-            clicar_todos_salvar(js_engine, doc)
-        )
-        safe_action(doc, "Confirmando estorno", lambda:
-            clicar_sim_ate_sumir(js_engine, doc, index=0, timeout=15, pausa=0.5)
+        safe_action(doc, "Adicionando'", lambda:
+            clicar_elemento_robusto(driver, wait, "#gsTelemedicina > div.wdTelas > div.telaCadastro.clearfix.telaConfiguracaoAiline > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_grupoStatusContrato > div.btnListHolder > a.btAddGroup > span")
         )
 
         encontrar_mensagem_alerta()
-        time.sleep(60)
+        time.sleep(5)
 
-        safe_action(doc, "Limpando campos", lambda:
-            clicar_botao_limpar_por_indice(js_engine, doc, indice=1)
+        safe_action(doc, "Clicando em 'Salvar'", lambda:
+            clicar_elemento_robusto(driver, wait, "#gsTelemedicina > div.wdTelas > div.telaCadastro.clearfix.telaConfiguracaoAiline > div.btnHolder > a.btModel.btGray.btsave")
         )
 
 
-        safe_action(doc, "Fechando modal do Caixa", lambda:
-            js_engine.force_click('#gsCaixa > div.wdTop.ui-draggable-handle > div > a')
+        encontrar_mensagem_alerta()
+
+        safe_action(doc, "Fechando modal Telemedicina", lambda:
+            js_engine.force_click('#gsTelemedicina > div.wdTop.ui-draggable-handle > div.wdClose > a')
         )
 
         log(doc, "🎉 Teste concluído com sucesso!")
