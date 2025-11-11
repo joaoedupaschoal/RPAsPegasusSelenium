@@ -5549,11 +5549,15 @@ def executar_teste():
             time.sleep(2)
         ))
 
-        time.sleep(60)
+        safe_action(doc, "Recusando geração de Ordem de Serviço", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#BtNo"))).click(),
+        ))
+
         clicar_buscar_por_indice(js_engine, doc, indice=1)
 
         time.sleep(20)
-
+        
         safe_action(doc, "Preenchendo Nome do Pai", lambda:
             js_engine.force_fill("//input[@class='nomePaiFalecido']", "TESTE NOME DO PAI", by_xpath=True)
         )
