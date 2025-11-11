@@ -4602,7 +4602,7 @@ def main():
     global doc
     
     try:
-        log(doc, "🚀 Iniciando teste de Fluxo de Caixa")
+        log(doc, "🚀 Iniciando teste de Configurações Ailine Telemedicina")
         log(doc, "=" * 70)
 
         

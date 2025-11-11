@@ -42,7 +42,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Telemedicina - Configurações Ailine – Cenário 1: Preenchimento completo e salvamento.")
+doc.add_paragraph("Cremação - Cadastro de Cremação – Cenário 5: Pesquisa sem seleção do Falecido, com a finalidade de rastreamento do disparo de mensagens de alerta pelo sistema.")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -2020,7 +2020,7 @@ def finalizar_relatorio():
     """Salva relatório e fecha driver"""
     global driver, doc
     
-    nome_arquivo = f"relatorio_telemedicina_ailine_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio__processo_cremacao_cenario_5_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     
     try:
         doc.save(nome_arquivo)
@@ -3268,6 +3268,39 @@ def clicar_botao_voltar_por_indice(js_engine, doc, indice=1, timeout=5):
         log(doc, f"⚠️ Falha ao clicar no botão 'Voltar (ESC)' (índice {indice}): {e}")
         return False
 
+def clicar_buscar_por_indice(js_engine, doc, indice=1, timeout=5):
+    """
+    Clica no botão 'Buscar' pelo índice informado (1-based).
+    Conta e exibe quantos botões existem antes do clique.
+    Usa js_engine.force_click() e registra log.
+    """
+    xpath_base = "//a[contains(@class,'btModel btGray') and contains(normalize-space(.),'Buscar')]"
+    xpath_indexado = f"({xpath_base})[{indice}]"
+
+    try:
+        # Conta quantos botões existem
+        elementos = js_engine.driver.find_elements("xpath", xpath_base)
+        total = len(elementos)
+        log(doc, f"🔍 Foram encontrados {total} botão(ões) 'Buscar' na tela.")
+
+        if total == 0:
+            log(doc, "⚠️ Nenhum botão 'Buscar' foi encontrado.")
+            return False
+        if indice > total:
+            log(doc, f"⚠️ Índice {indice} inválido — só existem {total} botão(ões).")
+            return False
+
+        log(doc, f"🎯 Clicando no botão 'Buscar' (índice {indice})...")
+        js_engine.force_click(xpath_indexado, by_xpath=True)
+        js_engine.wait_ajax_complete(timeout)
+        log(doc, f"✅ Clique no botão 'Buscar' (índice {indice}) realizado com sucesso.")
+        return True
+
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao clicar no botão 'Buscar' (índice {indice}): {e}")
+        return False
+
+
 def clicar_pesquisar_por_indice(js_engine, doc, indice=1, timeout=5):
     """
     Clica no botão 'Pesquisar' pelo índice informado (1-based).
@@ -4024,7 +4057,7 @@ def clicar_todos_salvar(js_engine, doc, pausa_entre=0.5, timeout=5):
     Usa js_engine.force_click() e registra log detalhado.
     """
 
-    xpath_base = "//a[contains(@class,'btModel') and contains(@class,'btGray') and contains(@class,'btSave') and contains(normalize-space(.),'Salvar')]"
+    xpath_base = "//a[contains(@class,'btModel') and contains(@class,'btGray') and contains(normalize-space(.),'Salvar')]"
 
     try:
         elementos = js_engine.driver.find_elements("xpath", xpath_base)
@@ -4273,6 +4306,88 @@ def clicar_botao_limpar_por_indice(js_engine, doc, indice=1, timeout=5):
         return False
 
 
+def preencher_datepicker_por_indice(indice_campo, data_valor, max_tentativas=5):
+    """Preenche datepicker pelo índice com estratégias múltiplas"""
+    def acao():
+        if not isinstance(indice_campo, int) or indice_campo < 0:
+            raise ValueError(f"Índice inválido: {indice_campo}")
+            
+        if not data_valor or not isinstance(data_valor, str):
+            raise ValueError(f"Data inválida: {data_valor}")
+        
+        tentativa = 0
+        while tentativa < max_tentativas:
+            tentativa += 1
+            
+            try:
+                campos = encontrar_campos_datepicker()
+                
+                if not campos:
+                    if tentativa < max_tentativas:
+                        log(doc, f"⚠️ Nenhum campo datepicker encontrado, tentativa {tentativa}/{max_tentativas}", 'WARN')
+                        time.sleep(2)
+                        continue
+                    raise Exception("Nenhum campo datepicker encontrado na página")
+                
+                if indice_campo >= len(campos):
+                    raise Exception(f"Índice {indice_campo} inválido. Encontrados {len(campos)} campos")
+                
+                campo_info = campos[indice_campo]
+                elemento = campo_info['elemento']
+                campo_id = campo_info['id']
+                
+                log(doc, f"🎯 Tentativa {tentativa}: Preenchendo datepicker {indice_campo} (ID: {campo_id}) com '{data_valor}'")
+                
+                # Verifica se já está preenchido corretamente
+                if validar_data_preenchida(elemento, data_valor):
+                    log(doc, f"✅ Campo {indice_campo} já está preenchido corretamente!")
+                    return True
+                
+                # Estratégias específicas para datepicker
+                estrategias = [
+                    lambda: _datepicker_jquery(campo_id, data_valor),
+                    lambda: _datepicker_javascript(elemento, data_valor),
+                    lambda: _datepicker_actionchains(elemento, data_valor),
+                    lambda: _datepicker_tradicional(elemento, data_valor)
+                ]
+                
+                for i, estrategia in enumerate(estrategias, 1):
+                    try:
+                        log(doc, f"   Aplicando estratégia {i} para datepicker...")
+                        estrategia()
+                        time.sleep(1)
+                        
+                        # Verifica se funcionou
+                        if validar_data_preenchida(elemento, data_valor):
+                            valor_atual = elemento.get_attribute('value')
+                            log(doc, f"✅ Datepicker preenchido com estratégia {i}: '{valor_atual}'")
+                            return True
+                        else:
+                            log(doc, f"⚠️ Estratégia {i} não preencheu corretamente", 'WARN')
+                            
+                    except Exception as e:
+                        log(doc, f"⚠️ Estratégia {i} falhou: {e}", 'WARN')
+                        continue
+                
+                # Se chegou aqui, nenhuma estratégia funcionou nesta tentativa
+                if tentativa < max_tentativas:
+                    log(doc, f"⚠️ Tentativa {tentativa} falhou, tentando novamente em 2s...", 'WARN')
+                    time.sleep(2)
+                    continue
+                
+            except Exception as e:
+                if tentativa < max_tentativas:
+                    log(doc, f"⚠️ Erro na tentativa {tentativa}: {e}, tentando novamente...", 'WARN')
+                    time.sleep(2)
+                    continue
+                else:
+                    raise
+        
+        raise Exception(f"Falha ao preencher datepicker {indice_campo} após {max_tentativas} tentativas")
+    
+    return acao
+
+
 
 def clicar_sim_ate_sumir(js_engine, doc, index=0, timeout=15, pausa=0.5):
     """
@@ -4438,6 +4553,7 @@ def clicar_sim_ate_sumir(js_engine, doc, index=0, timeout=15, pausa=0.5):
 
 
 
+
 def selecionar_opcao(selector, texto):
     def acao():
         select_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
@@ -4445,63 +4561,163 @@ def selecionar_opcao(selector, texto):
     return acao
 
 
-
-
-# ==== CLICAR ROBUSTO ====
-def clicar_elemento_robusto(driver, wait, seletor_css, timeout=10):
-    global doc
+def safe_scroll_and_interact(selector, action_type="click", value=None, timeout=10, by_xpath=False):
+    """Rola até o elemento e interage com ele de forma robusta."""
+    global driver, doc
+    if driver is None:
+        return None
     try:
-        elem = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, seletor_css)))
-        try:
-            driver.execute_script("""
-                document.querySelectorAll('.modal, .overlay, .blockUI, .toast, .tooltip, [role="dialog"], [data-overlay]')
-                .forEach(e => { if (getComputedStyle(e).position === 'fixed') e.style.display = 'none'; });
-            """)
-        except Exception:
-            pass
-        driver.execute_script("arguments[0].scrollIntoView({block:'center', inline:'center'});", elem)
-        time.sleep(0.2)
-        try:
-            elem = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, seletor_css)))
-            elem.click()
-            return True
-        except (TimeoutException, ElementClickInterceptedException, StaleElementReferenceException):
-            pass
-        try:
-            elem = driver.find_element(By.CSS_SELECTOR, seletor_css)
-            ActionChains(driver).move_to_element(elem).pause(0.05).click().perform()
-            return True
-        except Exception:
-            pass
-        try:
-            elem = driver.find_element(By.CSS_SELECTOR, seletor_css)
-            driver.execute_script("arguments[0].click();", elem)
-            return True
-        except Exception:
-            pass
-        try:
-            elem = driver.find_element(By.CSS_SELECTOR, seletor_css)
-            driver.execute_script("""
-                const el = arguments[0];
-                function fire(type){ el.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,view:window})); }
-                el.focus(); fire('mouseover'); fire('mousedown'); fire('mouseup'); fire('click');
-            """, elem)
-            return True
-        except Exception:
-            pass
-        try:
-            elem = driver.find_element(By.CSS_SELECTOR, seletor_css)
-            ActionChains(driver).move_to_element_with_offset(elem, 1, 1).click().perform()
-            return True
-        except Exception:
-            pass
-        log(doc, f"❌ Não foi possível clicar em: {seletor_css}")
-        return False
+        by_type = By.XPATH if by_xpath else By.CSS_SELECTOR
+        element = WebDriverWait(driver, timeout).until(EC.presence_of_element_located((by_type, selector)))
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", element)
+        time.sleep(0.5)
+        if action_type in ["click", "send_keys"]:
+            element = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((by_type, selector)))
+        if action_type == "click":
+            element.click()
+        elif action_type == "send_keys" and value:
+            element.clear()
+            element.send_keys(value)
+        elif action_type == "select" and value:
+            Select(element).select_by_visible_text(value)
+        return element
     except Exception as e:
-        log(doc, f"❌ Erro ao clicar robusto: {e}")
-        return False
+        log(doc, f"❌ Erro ao interagir com elemento {selector}: {e}")
+        return None
+
+# ==== DATEPICKER ====
+def encontrar_campos_datepicker():
+    global driver
+    seletores = [
+        "input.hasDatepicker",
+        "input[id^='dp']",
+        "input[class*='datepicker']",
+        ".hasDatepicker",
+        "[data-provide='datepicker']"
+    ]
+    campos = []
+    for seletor in seletores:
+        try:
+            for elemento in driver.find_elements(By.CSS_SELECTOR, seletor):
+                if elemento.is_displayed():
+                    cid = elemento.get_attribute('id')
+                    if not any(c.get('id') == cid for c in campos):
+                        campos.append({'elemento': elemento, 'id': cid})
+        except:
+            continue
+    log(doc, f"📊 Encontrados {len(campos)} campos datepicker")
+    return campos
+
+def _datepicker_jquery(campo_id, data_valor):
+    global driver
+    resultado = driver.execute_script("""
+        var campoId = arguments[0], valor = arguments[1];
+        if (typeof jQuery === 'undefined') return 'jQuery não disponível';
+        var $campo = $('#' + campoId);
+        if (!$campo.length) return 'Campo não encontrado: ' + campoId;
+        try {
+            if ($campo.hasClass('hasDatepicker')) { $campo.datepicker('setDate', valor); }
+            else { $campo.val(valor); }
+            $campo.trigger('input').trigger('change').trigger('blur');
+            return $campo.val();
+        } catch(e) { return 'Erro: ' + e.message; }
+    """, campo_id, data_valor)
+    if isinstance(resultado, str) and 'Erro' in resultado:
+        raise Exception(f"jQuery falhou: {resultado}")
+
+def _datepicker_javascript(elemento, data_valor):
+    global driver
+    driver.execute_script("""
+        var campo = arguments[0], valor = arguments[1];
+        campo.focus(); campo.value = ''; campo.value = valor;
+        ['input','change','blur','keyup'].forEach(ev => campo.dispatchEvent(new Event(ev,{bubbles:true})));
+    """, elemento, data_valor)
+
+def _datepicker_actionchains(elemento, data_valor):
+    global driver
+    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", elemento)
+    ActionChains(driver).move_to_element(elemento).click().perform()
+    time.sleep(0.3)
+    ActionChains(driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
+    ActionChains(driver).send_keys(Keys.DELETE).perform()
+    time.sleep(0.2)
+    for ch in data_valor:
+        ActionChains(driver).send_keys(ch).perform()
+        time.sleep(0.03)
+    ActionChains(driver).send_keys(Keys.TAB).perform()
 
 
+
+def _datepicker_tradicional(elemento, data_valor):
+    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", elemento)
+    elemento.click(); time.sleep(0.2); elemento.clear()
+    elemento.send_keys(data_valor); elemento.send_keys(Keys.TAB)
+
+def preencher_datepicker_persistente(indice_campo, data_valor, max_tentativas=10, timeout=30):
+    """Preenche datepicker com várias estratégias e valida."""
+    inicio_tempo = time.time()
+    tentativa = 0
+
+    def validar_data_preenchida(el, data_esperada):
+        try:
+            val = (el.get_attribute('value') or '').strip()
+            if not val: return False
+            if val == data_esperada or data_esperada in val: return True
+            formatos = [
+                '%d/%m/%Y %H:%M', '%d/%m/%Y %H:%M:%S',  # <- COM HORA
+                '%d/%m/%Y', '%m/%d/%Y', '%Y-%m-%d', '%d-%m-%Y'
+            ]
+            for f in formatos:
+                try:
+                    d1 = datetime.strptime(val, f)
+                    d2 = datetime.strptime(data_esperada, f)
+                    if d1 == d2: return True
+                except:
+                    continue
+            return False
+        except:
+            return False
+
+    while tentativa < max_tentativas and (time.time() - inicio_tempo) < timeout:
+        tentativa += 1
+        try:
+            log(doc, f"🔄 Tentativa {tentativa}/{max_tentativas} para campo {indice_campo}")
+            campos = encontrar_campos_datepicker()
+            if not campos:
+                time.sleep(1); continue
+            if indice_campo >= len(campos):
+                time.sleep(1); continue
+
+            info = campos[indice_campo]
+            elemento, campo_id = info['elemento'], info['id']
+
+            if validar_data_preenchida(elemento, data_valor):
+                log(doc, f"✅ Campo {indice_campo} já está preenchido corretamente!")
+                return True
+
+            estrategias = [
+                lambda: _datepicker_jquery(campo_id, data_valor),
+                lambda: _datepicker_javascript(elemento, data_valor),
+                lambda: _datepicker_actionchains(elemento, data_valor),
+                lambda: _datepicker_tradicional(elemento, data_valor),
+            ]
+            for acao in estrategias:
+                try:
+                    acao(); time.sleep(0.4)
+                    if validar_data_preenchida(elemento, data_valor):
+                        log(doc, f"✅ Campo {indice_campo} preenchido!")
+                        return True
+                except Exception as e:
+                    log(doc, f"   ⚠️ Estratégia falhou: {e}")
+
+            log(doc, "❌ Tentativa falhou; tentando novamente...")
+            time.sleep(1.2)
+
+        except Exception as e:
+            log(doc, f"❌ Erro na tentativa {tentativa}: {e}")
+            time.sleep(1)
+
+    raise Exception(f"Falha ao preencher datepicker {indice_campo} após {tentativa} tentativas em {int(time.time()-inicio_tempo)}s")
 
 # ==== EXECUÇÃO DO TESTE ====
 def executar_teste():
@@ -4535,58 +4751,28 @@ def executar_teste():
         safe_action(doc, "Abrindo menu (F3)", abrir_menu)
         
         # ===== CAIXA =====
-        safe_action(doc, "Acessando Telemedicina", lambda:
-            js_engine.force_click('/html/body/div[15]/ul/li[37]/img', by_xpath=True)
+        safe_action(doc, "Acessando Cremação", lambda:
+            js_engine.force_click('/html/body/div[15]/ul/li[19]/img', by_xpath=True)
         )
         
         time.sleep(3)
         
-        safe_action(doc, "Clicando em 'Configurações Ailine'", lambda:
+        safe_action(doc, "Clicando em 'Nova Cremação'", lambda:
             js_engine.force_click(
-                '#gsTelemedicina > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li > a > span'
+                '#gsRateio > div.wdTelas > div.telaInicial.clearfix.overflow.overflowY > ul > li:nth-child(1) > a > span'
             )
         )
         
         time.sleep(5)
 
-        safe_action(doc, "Selecionando Opção 'Sim' no campo 'Celular Obrigatório'", selecionar_opcao(
-            "#gsTelemedicina > div.wdTelas > div.telaCadastro.clearfix.telaConfiguracaoAiline > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_grupoDadosObrigatorios > div > div > div:nth-child(2) > select",
-            "Sim"
-        ))
-
-        safe_action(doc, "Selecionando Opção 'Sim' no campo 'E-mail Obrigatório'", selecionar_opcao(
-            "#gsTelemedicina > div.wdTelas > div.telaCadastro.clearfix.telaConfiguracaoAiline > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_grupoDadosObrigatorios > div > div > div:nth-child(3) > select",
-            "Sim"
-        ))
-
-
-
-        safe_action(doc, "Preenchendo o campo: 'Parcelas em atraso para excluir o paciente'", lambda:
-            js_engine.force_fill("#gsTelemedicina > div.wdTelas > div.telaCadastro.clearfix.telaConfiguracaoAiline > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_grupoParametrizacoes > div > div > div > input", "3", by_xpath=False)
-        )
-
-        safe_action(doc, "Selecionando Opção 'Inativo' no campo 'Status do Contrato'", selecionar_opcao(
-            "#gsTelemedicina > div.wdTelas > div.telaCadastro.clearfix.telaConfiguracaoAiline > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_grupoStatusContrato > div.group_grupoStatusContrato.clearfix.grupoHolder.lista > div > div > select",
-            "Inativo"
-        ))
-
-
-        safe_action(doc, "Adicionando'", lambda:
-            clicar_elemento_robusto(driver, wait, "#gsTelemedicina > div.wdTelas > div.telaCadastro.clearfix.telaConfiguracaoAiline > div.catWrapper > div > div > div.groupHolder.clearfix.grupo_grupoStatusContrato > div.btnListHolder > a.btAddGroup > span")
-        )
-
-        encontrar_mensagem_alerta()
-        time.sleep(5)
-
-        safe_action(doc, "Clicando em 'Salvar'", lambda:
-            clicar_elemento_robusto(driver, wait, "#gsTelemedicina > div.wdTelas > div.telaCadastro.clearfix.telaConfiguracaoAiline > div.btnHolder > a.btModel.btGray.btsave")
-        )
-
+        clicar_buscar_por_indice(js_engine, doc, indice=1)
 
         encontrar_mensagem_alerta()
 
-        safe_action(doc, "Fechando modal Telemedicina", lambda:
-            js_engine.force_click('#gsTelemedicina > div.wdTop.ui-draggable-handle > div.wdClose > a')
+
+
+        safe_action(doc, "Fechando modal de Cremação", lambda:
+            js_engine.force_click('#gsRateio > div.wdTop.ui-draggable-handle > div > a')
         )
 
         log(doc, "🎉 Teste concluído com sucesso!")
@@ -4603,7 +4789,7 @@ def main():
     global doc
     
     try:
-        log(doc, "🚀 Iniciando teste de Configurações Ailine Telemedicina")
+        log(doc, "🚀 Iniciando teste de Fluxo de Cremação")
         log(doc, "=" * 70)
 
         

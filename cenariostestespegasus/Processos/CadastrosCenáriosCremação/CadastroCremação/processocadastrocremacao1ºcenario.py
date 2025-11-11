@@ -91,6 +91,27 @@ def gerar_datas_validas(hora_padrao="00:00", dias_fim=0):
     dias_fim=0
 )
 
+
+# ==== GERAÇÃO DE DADOS ====
+nome_completo = "FALECIDO TESTE SELENIUM AUTOMATIZADO"
+cpf = CPF().generate()
+rg = fake.rg()
+data_expedicao = fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%d/%m/%Y")
+data_nascimento = fake.date_of_birth(minimum_age=18, maximum_age=60).strftime("%d/%m/%Y")
+email = fake.email()
+telefone1 = fake.phone_number()
+telefone2 = fake.phone_number()
+telefone3 = fake.phone_number()
+cidade = fake.city()
+pais = fake.country()
+nome_pai = fake.first_name()
+nome_mae = fake.first_name()
+profissao = fake.job()
+data_admissao = fake.date_between(start_date='-10y', end_date='today').strftime('%d/%m/%Y')
+carteira_trabalho = ''.join(str(random.randint(0, 9)) for _ in range(7))
+pis = ''.join(str(random.randint(0, 9)) for _ in range(11))
+
+
 # ==== UTILITÁRIOS DE LOG ====
 def log(doc, msg):
     print(msg)
@@ -101,6 +122,8 @@ def _sanitize_filename(name: str) -> str:
     name = re.sub(r"[<>:\"/\\|?*']", "_", name)
     name = re.sub(r"_+", "_", name)
     return name[:120]
+
+
 
 def take_screenshot(driver, doc, nome):
     if driver is None:
@@ -3268,6 +3291,39 @@ def clicar_botao_voltar_por_indice(js_engine, doc, indice=1, timeout=5):
         log(doc, f"⚠️ Falha ao clicar no botão 'Voltar (ESC)' (índice {indice}): {e}")
         return False
 
+def clicar_buscar_por_indice(js_engine, doc, indice=1, timeout=5):
+    """
+    Clica no botão 'Buscar' pelo índice informado (1-based).
+    Conta e exibe quantos botões existem antes do clique.
+    Usa js_engine.force_click() e registra log.
+    """
+    xpath_base = "//a[contains(@class,'btModel btGray') and contains(normalize-space(.),'Buscar')]"
+    xpath_indexado = f"({xpath_base})[{indice}]"
+
+    try:
+        # Conta quantos botões existem
+        elementos = js_engine.driver.find_elements("xpath", xpath_base)
+        total = len(elementos)
+        log(doc, f"🔍 Foram encontrados {total} botão(ões) 'Buscar' na tela.")
+
+        if total == 0:
+            log(doc, "⚠️ Nenhum botão 'Buscar' foi encontrado.")
+            return False
+        if indice > total:
+            log(doc, f"⚠️ Índice {indice} inválido — só existem {total} botão(ões).")
+            return False
+
+        log(doc, f"🎯 Clicando no botão 'Buscar' (índice {indice})...")
+        js_engine.force_click(xpath_indexado, by_xpath=True)
+        js_engine.wait_ajax_complete(timeout)
+        log(doc, f"✅ Clique no botão 'Buscar' (índice {indice}) realizado com sucesso.")
+        return True
+
+    except Exception as e:
+        log(doc, f"⚠️ Erro ao clicar no botão 'Buscar' (índice {indice}): {e}")
+        return False
+
+
 def clicar_pesquisar_por_indice(js_engine, doc, indice=1, timeout=5):
     """
     Clica no botão 'Pesquisar' pelo índice informado (1-based).
@@ -4024,7 +4080,7 @@ def clicar_todos_salvar(js_engine, doc, pausa_entre=0.5, timeout=5):
     Usa js_engine.force_click() e registra log detalhado.
     """
 
-    xpath_base = "//a[contains(@class,'btModel') and contains(@class,'btGray') and contains(@class,'btSave') and contains(normalize-space(.),'Salvar')]"
+    xpath_base = "//a[contains(@class,'btModel') and contains(@class,'btGray') and contains(normalize-space(.),'Salvar')]"
 
     try:
         elementos = js_engine.driver.find_elements("xpath", xpath_base)
@@ -4686,6 +4742,568 @@ def preencher_datepicker_persistente(indice_campo, data_valor, max_tentativas=10
 
     raise Exception(f"Falha ao preencher datepicker {indice_campo} após {tentativa} tentativas em {int(time.time()-inicio_tempo)}s")
 
+
+
+def abrir_modal_e_selecionar(btn_selector, pesquisa_selector, termo_pesquisa, btn_pesquisar_selector, resultado_xpath):
+    """Abre modal e seleciona um item"""
+    def acao():
+        # Abre o modal
+        open_lov = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, btn_selector)))
+        open_lov.click()
+        time.sleep(3)
+
+        # Aguarda campo pesquisa
+        campo_pesquisa = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, pesquisa_selector)))
+        campo_pesquisa.clear()
+        campo_pesquisa.send_keys(termo_pesquisa)
+
+        # Clica pesquisar
+        pesquisar = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, btn_pesquisar_selector)))
+        pesquisar.click()
+        time.sleep(3)
+        pesquisar.click()
+        time.sleep(3)
+
+        # Espera o resultado e clica
+        wait.until(EC.element_to_be_clickable((By.XPATH, resultado_xpath)))
+        resultado = driver.find_element(By.XPATH, resultado_xpath)
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", resultado)
+        time.sleep(0.2)
+        resultado.click()
+
+    return acao
+
+
+# ==== SCROLL CORRIGIDO - PRINCIPAL CORREÇÃO ====
+def scroll_to_element_safe(elemento_ou_seletor, by_type=By.CSS_SELECTOR):
+    """Scroll seguro até elemento com validação robusta"""
+    global driver
+    
+    if driver is None:
+        log(doc, "⚠️ Driver não disponível para scroll", 'WARN')
+        return False
+    
+    try:
+        # Se for seletor, encontra o elemento
+        if isinstance(elemento_ou_seletor, str):
+            elemento = aguardar_elemento(elemento_ou_seletor, 10, 'present', by_type)
+        else:
+            elemento = elemento_ou_seletor
+        
+        if elemento is None:
+            log(doc, "⚠️ Elemento não encontrado para scroll", 'WARN')
+            return False
+        
+        # Verifica se elemento é válido antes de fazer scroll
+        if not elemento.is_displayed():
+            log(doc, "⚠️ Elemento não está visível para scroll", 'WARN')
+            return False
+        
+        # Estratégias de scroll em ordem de preferência
+        scroll_strategies = [
+            # Estratégia 1: JavaScript com verificação prévia
+            lambda: driver.execute_script("""
+                var element = arguments[0];
+                if (element && typeof element.scrollIntoView === 'function') {
+                    element.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                        inline: 'center'
+                    });
+                    return true;
+                } else {
+                    return false;
+                }
+            """, elemento),
+            
+            # Estratégia 2: ActionChains
+            lambda: ActionChains(driver).move_to_element(elemento).perform(),
+            
+            # Estratégia 3: JavaScript alternativo
+            lambda: driver.execute_script("""
+                var element = arguments[0];
+                if (element) {
+                    element.scrollIntoView();
+                    window.scrollBy(0, -100);
+                }
+            """, elemento),
+            
+            # Estratégia 4: Scroll da página até o elemento
+            lambda: driver.execute_script("""
+                var element = arguments[0];
+                if (element) {
+                    var rect = element.getBoundingClientRect();
+                    var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    var targetY = rect.top + scrollTop - (window.innerHeight / 2);
+                    window.scrollTo(0, targetY);
+                }
+            """, elemento)
+        ]
+        
+        for i, strategy in enumerate(scroll_strategies, 1):
+            try:
+                log(doc, f"   Tentando estratégia de scroll {i}...")
+                result = strategy()
+                
+                # Para estratégia 1, verifica resultado
+                if i == 1 and result is False:
+                    log(doc, f"   Estratégia {i}: elemento não suporta scrollIntoView", 'WARN')
+                    continue
+                
+                time.sleep(0.8)  # Aguarda scroll completar
+                
+                # Verifica se elemento ainda está acessível
+                if elemento.is_displayed() and elemento.is_enabled():
+                    log(doc, f"✅ Scroll realizado com estratégia {i}")
+                    return True
+                else:
+                    log(doc, f"   Estratégia {i}: elemento não ficou acessível", 'WARN')
+                    continue
+                    
+            except Exception as e:
+                log(doc, f"   Estratégia {i} de scroll falhou: {str(e)[:100]}...", 'WARN')
+                continue
+        
+        log(doc, "⚠️ Todas as estratégias de scroll falharam", 'WARN')
+        return False
+        
+    except Exception as e:
+        log(doc, f"⚠️ Erro geral no scroll: {e}", 'WARN')
+        return False
+
+
+
+def _sanitize_timeout(t):
+    """Garante timeout válido"""
+    if not isinstance(t, (int, float)) or t <= 0:
+        return TIMEOUT_DEFAULT
+    return max(5, min(120, t))  # Entre 5 e 120 segundos
+
+
+# ==== AGUARDAR ELEMENTO MELHORADO ====
+def aguardar_elemento(seletor, timeout=TIMEOUT_DEFAULT, condicao='clickable', by_type=By.CSS_SELECTOR):
+    """Função centralizada para aguardar elementos com diferentes condições"""
+    global driver, wait
+    
+    if driver is None:
+        raise Exception("Driver não inicializado")
+    
+    timeout = _sanitize_timeout(timeout)
+    
+    condicoes = {
+        'present': EC.presence_of_element_located,
+        'visible': EC.visibility_of_element_located,
+        'clickable': EC.element_to_be_clickable,
+        'invisible': EC.invisibility_of_element_located
+    }
+    
+    if condicao not in condicoes:
+        condicao = 'clickable'
+    
+    try:
+        wait_obj = WebDriverWait(driver, timeout)
+        elemento = wait_obj.until(condicoes[condicao]((by_type, seletor)))
+        return elemento
+    except TimeoutException:
+        log(doc, f"❌ Timeout aguardando elemento: {seletor} (condição: {condicao}, timeout: {timeout}s)", 'ERROR')
+        raise TimeoutException(f"Elemento não encontrado: {seletor} (condição: {condicao})")
+    except Exception as e:
+        log(doc, f"❌ Erro aguardando elemento {seletor}: {e}", 'ERROR')
+        raise
+
+# ==== SCROLL CORRIGIDO - PRINCIPAL CORREÇÃO ====
+def scroll_to_element_safe(elemento_ou_seletor, by_type=By.CSS_SELECTOR):
+    """Scroll seguro até elemento com validação robusta"""
+    global driver
+    
+    if driver is None:
+        log(doc, "⚠️ Driver não disponível para scroll", 'WARN')
+        return False
+    
+    try:
+        # Se for seletor, encontra o elemento
+        if isinstance(elemento_ou_seletor, str):
+            elemento = aguardar_elemento(elemento_ou_seletor, 10, 'present', by_type)
+        else:
+            elemento = elemento_ou_seletor
+        
+        if elemento is None:
+            log(doc, "⚠️ Elemento não encontrado para scroll", 'WARN')
+            return False
+        
+        # Verifica se elemento é válido antes de fazer scroll
+        if not elemento.is_displayed():
+            log(doc, "⚠️ Elemento não está visível para scroll", 'WARN')
+            return False
+        
+        # Estratégias de scroll em ordem de preferência
+        scroll_strategies = [
+            # Estratégia 1: JavaScript com verificação prévia
+            lambda: driver.execute_script("""
+                var element = arguments[0];
+                if (element && typeof element.scrollIntoView === 'function') {
+                    element.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                        inline: 'center'
+                    });
+                    return true;
+                } else {
+                    return false;
+                }
+            """, elemento),
+            
+            # Estratégia 2: ActionChains
+            lambda: ActionChains(driver).move_to_element(elemento).perform(),
+            
+            # Estratégia 3: JavaScript alternativo
+            lambda: driver.execute_script("""
+                var element = arguments[0];
+                if (element) {
+                    element.scrollIntoView();
+                    window.scrollBy(0, -100);
+                }
+            """, elemento),
+            
+            # Estratégia 4: Scroll da página até o elemento
+            lambda: driver.execute_script("""
+                var element = arguments[0];
+                if (element) {
+                    var rect = element.getBoundingClientRect();
+                    var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    var targetY = rect.top + scrollTop - (window.innerHeight / 2);
+                    window.scrollTo(0, targetY);
+                }
+            """, elemento)
+        ]
+        
+        for i, strategy in enumerate(scroll_strategies, 1):
+            try:
+                log(doc, f"   Tentando estratégia de scroll {i}...")
+                result = strategy()
+                
+                # Para estratégia 1, verifica resultado
+                if i == 1 and result is False:
+                    log(doc, f"   Estratégia {i}: elemento não suporta scrollIntoView", 'WARN')
+                    continue
+                
+                time.sleep(0.8)  # Aguarda scroll completar
+                
+                # Verifica se elemento ainda está acessível
+                if elemento.is_displayed() and elemento.is_enabled():
+                    log(doc, f"✅ Scroll realizado com estratégia {i}")
+                    return True
+                else:
+                    log(doc, f"   Estratégia {i}: elemento não ficou acessível", 'WARN')
+                    continue
+                    
+            except Exception as e:
+                log(doc, f"   Estratégia {i} de scroll falhou: {str(e)[:100]}...", 'WARN')
+                continue
+        
+        log(doc, "⚠️ Todas as estratégias de scroll falharam", 'WARN')
+        return False
+        
+    except Exception as e:
+        log(doc, f"⚠️ Erro geral no scroll: {e}", 'WARN')
+        return False
+
+
+
+# ==== SISTEMA DATEPICKER MELHORADO ====
+def encontrar_campos_datepicker():
+    """Encontra todos os campos datepicker na página"""
+    global driver
+    
+    if driver is None:
+        return []
+    
+    seletores_datepicker = [
+        "input.hasDatepicker",
+        "input[id^='dp']",
+        "input[maxlength='10'][grupo='']",
+        "input[type='text'][maxlength='10']",
+        "input[class*='datepicker']",
+        ".hasDatepicker"
+    ]
+    
+    campos_encontrados = []
+    
+    for seletor in seletores_datepicker:
+        try:
+            elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
+            for elemento in elementos:
+                if elemento.is_displayed() and elemento.is_enabled():
+                    info = {
+                        'elemento': elemento,
+                        'id': elemento.get_attribute('id') or f"dp_{len(campos_encontrados)}",
+                        'seletor_usado': seletor,
+                        'maxlength': elemento.get_attribute('maxlength'),
+                        'placeholder': elemento.get_attribute('placeholder')
+                    }
+                    # Evita duplicatas
+                    if not any(c['id'] == info['id'] for c in campos_encontrados):
+                        campos_encontrados.append(info)
+        except Exception as e:
+            log(doc, f"⚠️ Erro ao buscar campos datepicker com {seletor}: {e}", 'WARN')
+            continue
+    
+    log(doc, f"📊 Encontrados {len(campos_encontrados)} campos datepicker")
+    return campos_encontrados
+
+def _datepicker_jquery(campo_id, data_valor):
+    """Estratégia jQuery para datepicker"""
+    global driver
+    
+    resultado = driver.execute_script("""
+        var campoId = arguments[0], valor = arguments[1];
+        if (typeof jQuery === 'undefined') return 'jQuery não disponível';
+        var $campo = $('#' + campoId);
+        if (!$campo.length) return 'Campo não encontrado: ' + campoId;
+        try {
+            if ($campo.hasClass('hasDatepicker')) { 
+                $campo.datepicker('setDate', valor); 
+            } else { 
+                $campo.val(valor); 
+            }
+            $campo.trigger('input').trigger('change').trigger('blur');
+            return $campo.val();
+        } catch(e) { 
+            return 'Erro: ' + e.message; 
+        }
+    """, campo_id, data_valor)
+    
+    if isinstance(resultado, str) and ('Erro' in resultado or 'não disponível' in resultado):
+        raise Exception(f"jQuery falhou: {resultado}")
+
+def _datepicker_javascript(elemento, data_valor):
+    """Estratégia JavaScript para datepicker"""
+    global driver
+    
+    driver.execute_script("""
+        var campo = arguments[0], valor = arguments[1];
+        campo.focus(); 
+        campo.value = ''; 
+        campo.value = valor;
+        ['input','change','blur','keyup'].forEach(ev => 
+            campo.dispatchEvent(new Event(ev, {bubbles: true}))
+        );
+    """, elemento, data_valor)
+
+def _datepicker_actionchains(elemento, data_valor):
+    """Estratégia ActionChains para datepicker"""
+    global driver
+    
+    scroll_to_element_safe(elemento)
+    time.sleep(0.5)
+    
+    ActionChains(driver).move_to_element(elemento).click().perform()
+    time.sleep(0.5)
+    ActionChains(driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
+    time.sleep(0.3)
+    ActionChains(driver).send_keys(Keys.DELETE).perform()
+    time.sleep(0.3)
+    
+    for char in data_valor:
+        ActionChains(driver).send_keys(char).perform()
+        time.sleep(0.05)
+    
+    ActionChains(driver).send_keys(Keys.TAB).perform()
+
+def _datepicker_tradicional(elemento, data_valor):
+    """Estratégia tradicional para datepicker"""
+    scroll_to_element_safe(elemento)
+    time.sleep(0.5)
+    elemento.click()
+    time.sleep(0.5)
+    elemento.clear()
+    elemento.send_keys(data_valor)
+    elemento.send_keys(Keys.TAB)
+
+def validar_data_preenchida(elemento, data_esperada):
+    """Valida se a data foi preenchida corretamente"""
+    try:
+        if elemento is None:
+            return False
+            
+        val = (elemento.get_attribute('value') or '').strip()
+        if not val:
+            return False
+            
+        if val == data_esperada or data_esperada in val:
+            return True
+            
+        # Tenta comparar datas em diferentes formatos
+        formatos = [
+            '%d/%m/%Y %H:%M', '%d/%m/%Y %H:%M:%S',
+            '%d/%m/%Y', '%m/%d/%Y', '%Y-%m-%d', '%d-%m-%Y'
+        ]
+        
+        for formato in formatos:
+            try:
+                d1 = datetime.strptime(val, formato)
+                d2 = datetime.strptime(data_esperada, formato)
+                if d1 == d2:
+                    return True
+            except:
+                continue
+                
+        return False
+        
+    except Exception:
+        return False
+
+
+
+
+
+def preencher_datepicker_por_indice(indice_campo, data_valor, max_tentativas=5):
+    """Preenche datepicker pelo índice com estratégias múltiplas"""
+    def acao():
+        if not isinstance(indice_campo, int) or indice_campo < 0:
+            raise ValueError(f"Índice inválido: {indice_campo}")
+            
+        if not data_valor or not isinstance(data_valor, str):
+            raise ValueError(f"Data inválida: {data_valor}")
+        
+        tentativa = 0
+        while tentativa < max_tentativas:
+            tentativa += 1
+            
+            try:
+                campos = encontrar_campos_datepicker()
+                
+                if not campos:
+                    if tentativa < max_tentativas:
+                        log(doc, f"⚠️ Nenhum campo datepicker encontrado, tentativa {tentativa}/{max_tentativas}", 'WARN')
+                        time.sleep(2)
+                        continue
+                    raise Exception("Nenhum campo datepicker encontrado na página")
+                
+                if indice_campo >= len(campos):
+                    raise Exception(f"Índice {indice_campo} inválido. Encontrados {len(campos)} campos")
+                
+                campo_info = campos[indice_campo]
+                elemento = campo_info['elemento']
+                campo_id = campo_info['id']
+                
+                log(doc, f"🎯 Tentativa {tentativa}: Preenchendo datepicker {indice_campo} (ID: {campo_id}) com '{data_valor}'")
+                
+                # Verifica se já está preenchido corretamente
+                if validar_data_preenchida(elemento, data_valor):
+                    log(doc, f"✅ Campo {indice_campo} já está preenchido corretamente!")
+                    return True
+                
+                # Estratégias específicas para datepicker
+                estrategias = [
+                    lambda: _datepicker_jquery(campo_id, data_valor),
+                    lambda: _datepicker_javascript(elemento, data_valor),
+                    lambda: _datepicker_actionchains(elemento, data_valor),
+                    lambda: _datepicker_tradicional(elemento, data_valor)
+                ]
+                
+                for i, estrategia in enumerate(estrategias, 1):
+                    try:
+                        log(doc, f"   Aplicando estratégia {i} para datepicker...")
+                        estrategia()
+                        time.sleep(1)
+                        
+                        # Verifica se funcionou
+                        if validar_data_preenchida(elemento, data_valor):
+                            valor_atual = elemento.get_attribute('value')
+                            log(doc, f"✅ Datepicker preenchido com estratégia {i}: '{valor_atual}'")
+                            return True
+                        else:
+                            log(doc, f"⚠️ Estratégia {i} não preencheu corretamente", 'WARN')
+                            
+                    except Exception as e:
+                        log(doc, f"⚠️ Estratégia {i} falhou: {e}", 'WARN')
+                        continue
+                
+                # Se chegou aqui, nenhuma estratégia funcionou nesta tentativa
+                if tentativa < max_tentativas:
+                    log(doc, f"⚠️ Tentativa {tentativa} falhou, tentando novamente em 2s...", 'WARN')
+                    time.sleep(2)
+                    continue
+                
+            except Exception as e:
+                if tentativa < max_tentativas:
+                    log(doc, f"⚠️ Erro na tentativa {tentativa}: {e}, tentando novamente...", 'WARN')
+                    time.sleep(2)
+                    continue
+                else:
+                    raise
+        
+        raise Exception(f"Falha ao preencher datepicker {indice_campo} após {max_tentativas} tentativas")
+    
+    return acao
+
+
+
+def preencher_campo_data(selector, valor):
+    def acao():
+        campo = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+        campo.click()
+        campo.send_keys(valor)
+        time.sleep(0.2)
+    return acao
+
+
+# ==== CLICAR ROBUSTO ====
+def clicar_elemento_robusto(driver, wait, seletor_css, timeout=10):
+    global doc
+    try:
+        elem = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, seletor_css)))
+        try:
+            driver.execute_script("""
+                document.querySelectorAll('.modal, .overlay, .blockUI, .toast, .tooltip, [role="dialog"], [data-overlay]')
+                .forEach(e => { if (getComputedStyle(e).position === 'fixed') e.style.display = 'none'; });
+            """)
+        except Exception:
+            pass
+        driver.execute_script("arguments[0].scrollIntoView({block:'center', inline:'center'});", elem)
+        time.sleep(0.2)
+        try:
+            elem = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, seletor_css)))
+            elem.click()
+            return True
+        except (TimeoutException, ElementClickInterceptedException, StaleElementReferenceException):
+            pass
+        try:
+            elem = driver.find_element(By.CSS_SELECTOR, seletor_css)
+            ActionChains(driver).move_to_element(elem).pause(0.05).click().perform()
+            return True
+        except Exception:
+            pass
+        try:
+            elem = driver.find_element(By.CSS_SELECTOR, seletor_css)
+            driver.execute_script("arguments[0].click();", elem)
+            return True
+        except Exception:
+            pass
+        try:
+            elem = driver.find_element(By.CSS_SELECTOR, seletor_css)
+            driver.execute_script("""
+                const el = arguments[0];
+                function fire(type){ el.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,view:window})); }
+                el.focus(); fire('mouseover'); fire('mousedown'); fire('mouseup'); fire('click');
+            """, elem)
+            return True
+        except Exception:
+            pass
+        try:
+            elem = driver.find_element(By.CSS_SELECTOR, seletor_css)
+            ActionChains(driver).move_to_element_with_offset(elem, 1, 1).click().perform()
+            return True
+        except Exception:
+            pass
+        log(doc, f"❌ Não foi possível clicar em: {seletor_css}")
+        return False
+    except Exception as e:
+        log(doc, f"❌ Erro ao clicar robusto: {e}")
+        return False
+
+
 # ==== EXECUÇÃO DO TESTE ====
 def executar_teste():
     """Execução principal do teste com JS forçado e proteção anti-timeout"""
@@ -4733,20 +5351,211 @@ def executar_teste():
         time.sleep(5)
 
 
-        safe_action(doc, "Selecionando Falecido", lambda:
-            lov_handler.open_and_select(
-                btn_index=0,
-                search_text="FALECIDO TÍTULOS",
-                result_text="FALECIDO TÍTULOS"
-            )
+        safe_action(doc, "Abrindo Lov", lambda: (
+            js_engine.force_click("#gsRateio > div.wdTelas > div.telaConsulta.telaCremacao > div.filters > div > div:nth-child(1) > div > div > a", by_xpath=False),
+            time.sleep(1)
+        ))
+        safe_action(doc, "Criando novo Registro de Óbito", lambda:
+            clicar_elemento_robusto(driver, wait, 'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(4) > a')
         )
 
 
 
-        safe_action(doc, "Pesquisando", lambda: (
-            js_engine.force_click("(//a[@class='btModel btGray'])[1]", by_xpath=True),
-            time.sleep(5)
+        safe_action(doc, "Abrindo Lov de Pessoas", lambda: (
+            js_engine.force_click("#cg_23 > div.wdTelas > div > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(6) > div > a", by_xpath=False),
+            time.sleep(1)
         ))
+        safe_action(doc, "Criando novo Registro de Óbito", lambda:
+            clicar_elemento_robusto(driver, wait, 'body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(3) > a')
+        )
+
+
+        safe_action(doc, "Preenchendo Nome Completo", lambda: (
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(2) > input"))).send_keys(nome_completo)
+        ))
+
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+
+        safe_action(doc, "Selecionando Tipo de Pessoa", selecionar_opcao(
+            "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(3) > select",
+            "Física"
+        ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Selecionando Tipo de Documento", selecionar_opcao(
+            "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div:nth-child(2) > div:nth-child(4) > select",
+            "Carteira de Identidade Classista"
+        ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Preenchendo Número do Documento", lambda: (
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(1) > input"))).send_keys(rg)
+        ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Preenchendo Data de Expedição", preencher_campo_data("input.dataExpedicao", data_expedicao))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Preenchendo CPF", lambda: (
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(3) > input"))).click(),
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosPessoais.categoriaHolder > div > div > div.formRow.divPessoaFISICA > div:nth-child(3) > input"))).send_keys(cpf)
+
+    ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Acessando aba Dados Complementares", lambda: (
+            wait.until(EC.element_to_be_clickable((By.LINK_TEXT, "Dados Complementares"))).click(),
+            time.sleep(1)
+        ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Selecionando Estado Civil", selecionar_opcao(
+            "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(1) > select",
+            "Solteiro"
+        ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Selecionando Sexo", selecionar_opcao(
+            "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(2) > select",
+            "Feminino"
+        ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Preenchendo E-mail", lambda: (
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(9) > input"))).send_keys(email)
+        ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Preenchendo Data de Nascimento", preencher_campo_data("input.dataNascimento", data_nascimento))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Preenchendo Telefone 1", lambda: (
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(5) > input"))).send_keys(telefone1)
+        ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Preenchendo Telefone 2", lambda: (
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(6) > input"))).send_keys(telefone2)
+        ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Preenchendo Telefone 3", lambda: (
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(7) > input"))).send_keys(telefone3)
+        ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Preenchendo Cidade de Nascimento", lambda: (
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(11) > input"))).send_keys(cidade)
+        ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Preenchendo País de Nascimento", lambda: (
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(12) > input"))).send_keys(pais)
+        ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Preenchendo Nome do Pai", lambda: (
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(13) > input"))).send_keys(nome_pai)
+        ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Preenchendo Nome da Mãe", lambda: (
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(14) > input"))).send_keys(nome_mae)
+        ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Preenchendo Profissão", lambda: (
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.catWrapper > div > div.cat_dadosComplementares.categoriaHolder > div > div > div > div:nth-child(16) > input"))).send_keys(profissao)
+        ))
+        safe_action(doc, "Forçando retorno à tela de Cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#cg_1 > div.wdTop.ui-draggable-handle > h2"))).click(),
+        ))
+        safe_action(doc, "Salvando cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#cg_1 > div.wdTelas > div > div.btnHolder > a.btModel.btGray.btsave"))).click(),
+            time.sleep(2)
+        ))
+        encontrar_mensagem_alerta()
+        time.sleep(5)
+        
+        safe_action(doc, "Preenchendo Data de Falecimento", 
+                   preencher_datepicker_por_indice(0, "09/11/2025"))
+
+   
+        safe_action(doc, "Preenchendo Data de Sepultamento", 
+                   preencher_datepicker_por_indice(1, "15/12/2025"))
+
+        safe_action(doc, "Preenchendo Derclaração de Óbito", lambda:
+            js_engine.force_fill("#cg_23 > div.wdTelas > div > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(45) > input", "123", by_xpath=False)
+        )
+        safe_action(doc, "Selecionando Declarante", abrir_modal_e_selecionar(
+            '#cg_23 > div.wdTelas > div > div.catWrapper > div > div > div:nth-child(2) > div > div:nth-child(2) > div > a',
+            "#txtPesquisa",
+            'JOÃO EDUARDO JUSTINO PASCHOAL',
+            "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > a",
+            "//td[contains(text(), 'JOÃO EDUARDO JUSTINO PASCHOAL')]"
+        ))
+
+
+    
+
+        safe_action(doc, "Selecionando Tipo de Óbito", selecionar_opcao(
+            "#cg_23 > div.wdTelas > div > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(46) > select",
+            "Particular"
+        ))
+        safe_action(doc, "Selecionando Grau Parentesco", selecionar_opcao(
+            "#cg_23 > div.wdTelas > div > div.catWrapper > div > div > div:nth-child(1) > div > div:nth-child(49) > select",
+            "Agregado"
+        ))
+        safe_action(doc, "Salvando cadastro", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#cg_23 > div.wdTelas > div > div.btnHolder > a.btModel.btGray.btsave"))).click(),
+            time.sleep(2)
+        ))
+
+        safe_action(doc, "Recusando geração de Ordem de Serviço", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#BtNo"))).click(),
+        ))
+        clicar_buscar_por_indice(js_engine, doc, indice=1)
+
+        time.sleep(20)
 
         safe_action(doc, "Preenchendo Nome do Pai", lambda:
             js_engine.force_fill("//input[@class='nomePaiFalecido']", "TESTE NOME DO PAI", by_xpath=True)
@@ -4755,15 +5564,14 @@ def executar_teste():
             js_engine.force_fill("//input[@class='nomeMaeFalecido']", "TESTE NOME DA MÃE", by_xpath=True)
         )
 
+        safe_action(doc, "Selecionando Responsável", abrir_modal_e_selecionar(
+            '#gsRateio > div.wdTelas > div.telaConsulta.telaCremacao > div.content.clearfix.overflow.overflowY > div > div.groupHolder.group_cepResponsavel > div:nth-child(2) > div:nth-child(1) > div > a',
+            "#txtPesquisa",
+            'JOÃO EDUARDO JUSTINO PASCHOAL',
+            "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > a",
+            "//td[contains(text(), 'JOÃO EDUARDO JUSTINO PASCHOAL')]"
+        ))
 
-
-        safe_action(doc, "Selecionando Responsável", lambda:
-            lov_handler.open_and_select(
-                btn_index=1,
-                search_text="JOÃO EDUARDO JUSTINO PASCHOAL",
-                result_text="JOÃO EDUARDO JUSTINO PASCHOAL"
-            )
-        )
 
         safe_action(doc, "Selecionando Opção 'Não' no campo 'Tem marca passo?'", selecionar_opcao(
             "#gsRateio > div.wdTelas > div.telaConsulta.telaCremacao > div.content.clearfix.overflow.overflowY > div > div:nth-child(4) > div > div:nth-child(1) > select",
@@ -4776,27 +5584,28 @@ def executar_teste():
             "Sim"
         ))
 
+        safe_action(doc, "Selecionando Sala", abrir_modal_e_selecionar(
+            '#gsRateio > div.wdTelas > div.telaConsulta.telaCremacao > div.content.clearfix.overflow.overflowY > div > div:nth-child(4) > div > div:nth-child(3) > div > a',
+            "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
+            'SALA TESTE SELENIUM AUTOMATIZADO',
+            "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(4) > a",
+            "//td[contains(text(), 'SALA TESTE SELENIUM AUTOMATIZADO')]"
+        ))
 
-        safe_action(doc, "Selecionando Sala", lambda:
-            lov_handler.open_and_select(
-                btn_index=2,
-                search_text="SALA TESTE SELENIUM AUTOMATIZADO",
-                result_text="SALA TESTE SELENIUM AUTOMATIZADO"
-            )
-        )
 
 
-        safe_action(doc, "Selecionando Funerária", lambda:
-            lov_handler.open_and_select(
-                btn_index=1,
-                search_text="FUNERÁRIA JOÃO TESTE",
-                result_text="FUNERÁRIA JOÃO TESTE"
-            )
-        )
+        safe_action(doc, "Selecionando Funerária", abrir_modal_e_selecionar(
+            '#gsRateio > div.wdTelas > div.telaConsulta.telaCremacao > div.content.clearfix.overflow.overflowY > div > div:nth-child(4) > div > div:nth-child(4) > div > a',
+            "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > input",
+            'FUNERÁRIA JOÃO TESTE',
+            "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(4) > a",
+            "//td[contains(text(), 'FUNERÁRIA JOÃO TESTE')]"
+        ))
+
 
         
         safe_action(doc, "Preenchendo Nota Fiscal", lambda:
-            js_engine.force_fill("//input[@class='notaFiscal']", "TESTE NOTA FISCAL", by_xpath=True)
+            js_engine.force_fill("//input[@class='notaFiscal']", "1", by_xpath=True)
         )
 
 
@@ -4812,23 +5621,36 @@ def executar_teste():
 
 
         safe_action(doc, "Preenchendo campo 'Tipos'", lambda:
-            js_engine.force_fill("//input[@class='notaFiscal']", "TESTE CAMPO TIPOS", by_xpath=True)
+            js_engine.force_fill("//input[@type='text' and @ref='100208' and @class='fc isList' and @maxlength='22' and contains(@style,'width: 140px')]", "TESTE CAMPO TIPOS", by_xpath=True)
         )
 
-        safe_action(doc, "Preenchendo Número do Contrato", lambda:
-            js_engine.force_fill("//input[@class='fc isList' and contains(@sref='100208')]", "TESTE NOTA FISCAL", by_xpath=True)
-        )
 
-        safe_action(doc, "Clicando em 'Salvar'", lambda:
-            clicar_todos_salvar(js_engine, doc)
-        )
-        time.sleep(3)
+        campo = "#gsRateio > div.wdTelas > div.telaConsulta.telaCremacao > div.content.clearfix.overflow.overflowY > div > div.formRow.rAlign > a:nth-child(2)"
+        scroll_to_element_safe(campo)   
+
+
+        safe_action(doc, "Clacando em 'Salvar'", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#gsRateio > div.wdTelas > div.telaConsulta.telaCremacao > div.content.clearfix.overflow.overflowY > div > div.formRow.rAlign > a:nth-child(2)"))).click(),
+        ))
         encontrar_mensagem_alerta()
 
 
-        safe_action(doc, "Fechando modal do Caixa", lambda:
-            js_engine.force_click('#gsCaixa > div.wdTop.ui-draggable-handle > div > a')
+        safe_action(doc, "Fechando modal de Cremação", lambda:
+            js_engine.force_click('#gsRateio > div.wdTop.ui-draggable-handle > div > a')
         )
+
+
+        safe_action(doc, "Recusando digitalização de Documentos", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#BtNo"))).click(),
+        ))
+        time.sleep(2)
+
+        safe_action(doc, "Recusando geração de Ordem de Serviço", lambda: (
+            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
+                "#BtNo"))).click(),
+        ))
 
         log(doc, "🎉 Teste concluído com sucesso!")
         return True
@@ -4844,7 +5666,7 @@ def main():
     global doc
     
     try:
-        log(doc, "🚀 Iniciando teste de Fluxo de Caixa")
+        log(doc, "🚀 Iniciando teste de Fluxo de Cremação")
         log(doc, "=" * 70)
 
         
