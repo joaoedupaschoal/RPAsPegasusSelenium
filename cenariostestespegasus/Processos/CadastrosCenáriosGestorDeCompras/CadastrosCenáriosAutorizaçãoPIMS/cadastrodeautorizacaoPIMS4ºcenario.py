@@ -100,7 +100,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== INICIALIZAÇÃO DE VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Autorização PIMS - Gestor de Compras – Cenário 4: Preenchimento completo e efetuação de Pedido Direto")
+doc.add_paragraph("Autorização PIMS - Gestor de Compras – Cenário 4: Preenchimento completo e realização de Pedido Direto")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()

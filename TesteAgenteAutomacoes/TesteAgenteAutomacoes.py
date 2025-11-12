@@ -2107,34 +2107,468 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
         },
     },
     "processos": {
-        "1": {"label": "Cenários do Processo: Gestor de Cemitérios", "scenarios": {}},
-        "2": {"label": "Cenários do Processo: Gestor de Financeiro", "scenarios": {}},
-        "3": {"label": "Cenários do Processo: Gestor de Compras", "scenarios": {}},
-        "4": {
-            "label": "Cenários das consultas de Histórico de falecidos",
+        "1": {"label": "Cenários do Processo: Gestor de Cemitérios", "scenarios": {
+            "Vou fazer ainda"
+        }},
+        "2": {
+            "label": "Cenários do Processo: Gestor de Financeiro",
             "scenarios": {
                 "1": {
-                    "label": "Cenário teste Histórico de falecidos 1: TESTE CENARIO 1",
-                    "file": BASE_SCRIPTS / "historico_falecidos" / "cenario_1.py",  # ajuste este caminho conforme sua pasta real
+                    "label": "Cenários de Geração de Títulos",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Rotina completa de Geração de Títulos.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeTítulos" / "consultadegeraçaodetitulos1ºcenario",
+                        },
+                    },
                 },
                 "2": {
-                    "label": "Cenário teste Histórico de falecidos 2: TESTE CENARIO 2",
-                    "file": BASE_SCRIPTS / "historico_falecidos" / "cenario_2.py",
+                    "label": "Cenários de Geração de Boletos Únicos",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Rotina completa de Geração de Título Único.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorFinanceiro" / "CadastrosCenáriosGeraçãoBoletoÚnico" / "consultadegeraçaodetitulosunicos1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Rotina completa de Geração de Título Único SEM preencher o Vencimento",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorFinanceiro" / "CadastrosCenáriosGeraçãoBoletoÚnico" / "consultadegeraçaodetitulosunicos2ºcenario.py",
+                        },
+                        "3": {
+                            "label": "Cenário 3: Rotina completa de Geração de Título Único e cancelamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorFinanceiro" / "CadastrosCenáriosGeraçãoBoletoÚnico" / "consultadegeraçaodetitulosunicos3ºcenario.py",
+                        },
+                        "4": {
+                            "label": "Cenário 4: Rotina de validação da mensagem de alerta disparada por causa da obrigatoriedade de filtros",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorFinanceiro" / "CadastrosCenáriosGeraçãoBoletoÚnico" / "consultadegeraçaodetitulosunicos4ºcenario.py",
+                        },
+                    },
                 },
                 "3": {
-                    "label": "Cenário teste Histórico de falecidos 3: TESTE CENARIO 3",
-                    "file": BASE_SCRIPTS / "historico_falecidos" / "cenario_3.py",
-                },
-                "4": {
-                    "label": "Cenário teste Histórico de falecidos 4: TESTE CENARIO 4",
-                    "file": BASE_SCRIPTS / "historico_falecidos" / "cenario_4.py",
+                    "label": "Cenários de Geração de Boletos",
+                    "scenarios": {
+                            "1": {
+                                "label": "Filtros Utilizados — Pessoa / Tipo Parcela / Reimpressão",
+                                "scenarios": {
+                                    "1": {
+                                        "label": "Cenário 1: Consulta e geração de boletos com filtro Pessoa / Tipo Parcela / Reimpressão (1º cenário).",
+                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Filtros_Utilizados__Pessoa_TipoParcela_Reimpressão" / "consultadegeracaodeboletos1ºcenario.py",
+                                    },
+                                    "2": {
+                                        "label": "Cenário 2: Consulta e geração de boletos com filtro Pessoa / Tipo Parcela / Reimpressão (2º cenário).",
+                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Filtros_Utilizados__Pessoa_TipoParcela_Reimpressão" / "consultadegeracaodeboletos2ºcenario.py",
+                                    },
+                                    "3": {
+                                        "label": "Cenário 3: Consulta e geração de boletos com filtro Pessoa / Tipo Parcela / Reimpressão (3º cenário).",
+                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Filtros_Utilizados__Pessoa_TipoParcela_Reimpressão" / "consultadegeracaodeboletos3ºcenario.py",
+                                    },
+                                    "4": {
+                                        "label": "Cenário 4: Consulta e geração de boletos com filtro Pessoa / Tipo Parcela / Reimpressão (4º cenário).",
+                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Filtros_Utilizados__Pessoa_TipoParcela_Reimpressão" / "consultadegeracaodeboletos4ºcenario.py",
+                                },
+                            },
+                        },
+                    },   
                 },
             },
         },
-        "5": {"label": "Cenários do Processo: Títulos", "scenarios": {}},
-    },
+        "3": {"label": "Cenários do Processo: Gestor de Compras",
+            "scenarios": {
+                "1": {
+                    "label": "Cenários de Cadastro de PIMS",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Cenário 1: Preenchimento completo e salvamento",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosPIMS" / "cadastrodePIMS1ºcenario",
+                        },
+                        "1": {
+                            "label": "Cenário 2: Preenchimento completo e cancelamento",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosPIMS" / "cadastrodePIMS2ºcenario",
+                        },
+                        "1": {
+                            "label": "Cenário 3: Não preencherá a aba Informações PIMS, para verificar se o sistema está disparando a mensagem de alerta corretamente.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosPIMS" / "cadastrodePIMS3ºcenario",
+                        },
+                    },
+                },
+                "2": {
+                    "label": "Cenários da Consulta de PIMS",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Preenchimento completo e realização da Consulta",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "ConsultaCenáriosPIMS" / "consultadePIMS1ºcenario.py",
+                        },
+                    },
+                },
+                "3": {
+                    "label": "Cenários da Autorização de PIMS",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Preenchimento completo e Autorização.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosAutorizaçãoPIMS" / "cadastrodeautorizacaoPIMS1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Preenchimento completo e Negação.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosAutorizaçãoPIMS" / "cadastrodeautorizacaoPIMS2ºcenario.py",
+                        },
+                        "3": {
+                            "label": "Cenário 3: Preenchimento completo e envio ao Almoxerifado.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosAutorizaçãoPIMS" / "cadastrodeautorizacaoPIMS3ºcenario.py",
+                        },
+                        "4": {
+                            "label": "Cenário 4: Preenchimento completo e realização de Pedido Direto",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosAutorizaçãoPIMS" / "cadastrodeautorizacaoPIMS4ºcenario.py",
+                        },
+                    },
+                },
+                "4": {
+                    "label": "Cenários de Cotação",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Preenchimento completo e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosCotação" / "cadastrodecotação1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Preenchimento completo e cancelamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosCotação" / "cadastrodecotação2ºcenario.py",
+                        },
+                        "3": {
+                            "label": "Cenário 3: Preenchimento completo e envio de E-mail.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosCotação" / "cadastrodecotação3ºcenario.py",
+                        },
+                        "4": {
+                            "label": "Cenário 4: Preenchimento completo e salvamento de várias cotações.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosCotação" / "cadastrodecotação4ºcenario.py",
+                        },
+                    },
+                },
+                "5": {
+                    "label": "Cenários de Autorização de Pedido de Compra",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Preenchimento completo e Autorização",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosAutorizaçãoPedidosCompra" / "cadastrodeautorizacaopedidosdecompra1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 1: Rotina completa e Negação.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosAutorizaçãoPedidosCompra" / "cadastrodeautorizacaopedidosdecompra2ºcenario.py",
+                        },
+                    },
+                },
+                "6": {
+                    "label": "Cenários de Pedido de Compra",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Rotina completa e cancelamento do Pedido.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "ConsultaCenáriosPedidoDeCompra" / "consultadepedidosdecompra1ºcenario.py",
+                        },
+                    },
+                },    
+            },
+        },
+        "4": {
+            "label": "Cenários do Processo: Caixa",
+            "scenarios": {
+                "1": {
+                    "label": "Cenários do Controle de Caixa",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Rotina parcial de Fluxo de Caixa ⭢ Nesse teste, o robô irá abrir o caixa e realizará 2 vendas: uma de um Título, e a outra de um produto. Após o processo, irá realizar o fechamento do caixa e a geração de relatórios",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCaixa" / "ProcessoEntrarNoCaixa" / "processocaixa1ºcenario",
+                        },
+                        "1": {
+                            "label": "Cenário 2: Rotina parcial de Fluxo de Caixa ⭢ Nesse teste, o robô irá efetuar os seguintes processos: Retirada do Caixa, Estorno de Venda, e Estorno Retirada",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCaixa" / "ProcessoEntrarNoCaixa" / "processocaixa2ºcenario",
+                        },
+                    },
+                },
+                "2": {
+                    "label": "Cenários de Devolução",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Rotina parcial de Devoluções - Filtros Utilizados: CPF/CNPJ, Número do Contrato, Data Inicial e Data Final.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCaixa" / "ProcessoDevoluções" / "processodevoluções1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Rotina parcial de Devoluções - Filtros Utilizados: Nº da OS, Data inicial e Final",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCaixa" / "ProcessoDevoluções" / "processodevoluções2ºcenario.py",
+                        },
+                        "3": {
+                            "label": "Cenário 3: Rotina parcial de Devoluções - Filtros Utilizados: Plano Empresa, Data Inicial e Data Final.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCaixa" / "ProcessoDevoluções" / "processodevoluções3ºcenario.py",
+                        },
+                    },
+                },
+            },
+        },
+        "5": {
+            "label": "Cenários do Processo: Rateio",
+            "scenarios": {
+                "1": {
+                    "label": "Cenários do Fechamento de Rateios",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Nesse teste, será realizado um fechamento de Rateio.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosRateio" / "CadastrosCenáriosFechamentoDeRateio" / "cadastrodefechamentoderateios1ºcenario",
+                        },
+                        "1": {
+                            "label": "Cenário 2: Nesse teste, o usuário irá realizar o Fechamento de um Rateio sem preencher nenhum campo para verificar se o sistema efetua o disparo das mensagens de alerta corretamente.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosRateio" / "CadastrosCenáriosFechamentoDeRateio" / "cadastrodefechamentoderateios2ºcenario",
+                        },
+                    },
+                },
+                "2": {
+                    "label": "Cenários do Reagrupamento de Rateios",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Nesse teste, será realizado um Reagrupamento de Rateio.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosRateio" / "CadastrosCenáriosReagrupamentodeRateios" / "cadastrodereagrupamentoderateios1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Nesse teste, será realizado um Reagrupamento de Rateio, verificando o disparo das mensagens de alerta do sistema.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosRateio" / "CadastrosCenáriosReagrupamentodeRateios" / "cadastrodereagrupamentoderateios2ºcenario.py",
+                        },
+                    },
+                },
+            },
+        },
+        "6": {
+            "label": "Cenários do Processo: Callcenter",
+            "scenarios": {
+                "1": {
+                    "label": "Cenários de Consulta de Registro de Chamadas",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Realização da consulta de Registro de Chamadas.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCallcenter" / "ConsultaCenáriosRegistrodeChamadas" / "consultaregistrodechamadas1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Nesse teste, o usuário irá realizar a consulta de um Registro de Chamadas sem preencher nenhum campo para verificar se o sistema efetua o disparo das mensagens de alerta corretamente.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCallcenter" / "ConsultaCenáriosRegistrodeChamadas" / "consultaregistrodechamadas2ºcenario.py",
+                        },
+                    },
+                },
+                "2": {
+                    "label": "Cenários de Consulta de Telecobrança",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Realização da consulta de Telecobrança.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCallcenter" / "ConsultaCenáriosTeleCobrança" / "consultatelecobrança1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Nesse teste, o usuário irá realizar a consulta de Telecobrança sem preencher nenhum campo para verificar se o sistema efetua o disparo das mensagens de alerta corretamente.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCallcenter" / "ConsultaCenáriosTeleCobrança" / "consultatelecobrança2ºcenario.py",
+                        },
+                    },
+                },
+                 "3": {
+                    "label": "Cenários de Consulta de Agenda de Cobrança",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Realização da consulta de Agenda de Cobrança.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCallcenter" / "ConsultaCenáriosTeleCobrança" / "consultaragendadecobrança1ºcenario.py",
+                        },
+                    },
+                },
+            },
+        },
+        "6": {
+            "label": "Cenários do Processo: Plano Empresa",
+            "scenarios": {
+                "1": {
+                    "label": "Cenários do Fechamento de Plano Empresa",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Nesse teste, o usuário irá realizar o fechamento de um Plano Empresa.",
+                            "file": BASE_SCRIPTS / "Processos" / "CenáriosPlanoEmpresa" / "PlanoEmpresaFechamento" / "processoplanoempresafechamento1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Nesse teste, o usuário irá cancelar o fechamento de um Plano Empresa.",
+                            "file": BASE_SCRIPTS / "Processos" / "CenáriosPlanoEmpresa" / "PlanoEmpresaFechamento" / "processoplanoempresafechamento2ºcenario.py",
+                        },
+                        "3": {
+                            "label": "Cenário 3: Nesse teste, o usuário irá preencherá apenas os campos obrigatórios para o fechamento de um Plano Empresa.",
+                            "file": BASE_SCRIPTS / "Processos" / "CenáriosPlanoEmpresa" / "PlanoEmpresaFechamento" / "processoplanoempresafechamento3ºcenario.py",
+                        },
+                        "4": {
+                            "label": "Cenário 4: Nesse teste, o usuário preencherá apenas os compos NÃO obrigatórios para verificar se o sistema dispara as mensagens de alerta corretamente.",
+                            "file": BASE_SCRIPTS / "Processos" / "CenáriosPlanoEmpresa" / "PlanoEmpresaFechamento" / "processoplanoempresafechamento4ºcenario.py",
+                        },
+                        "5": {
+                            "label": "Cenário 5: Nesse teste, o usuário tentará buscar um Plano Empresa sem Contratos, para verificar se o sistema efetua o disparo da mensagem de alerta corretamente.",
+                            "file": BASE_SCRIPTS / "Processos" / "CenáriosPlanoEmpresa" / "PlanoEmpresaFechamento" / "processoplanoempresafechamento5ºcenario.py",
+                        },
+                    },
+                },
+                "2": {
+                    "label": "Cenários de Consulta de Plano Empresa",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Nesse teste, o usuário irá realizar a Consulta de um Plano Empresa.",
+                            "file": BASE_SCRIPTS / "Processos" / "CenáriosPlanoEmpresa" / "ConsultaCenáriosPlanoEmpresa" / "consultaplanoempresa1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Nesse teste, o usuário irá realizar a consulta de um Plano Empresa sem preencher nenhum campo para verificar se o sistema efetua o disparo das mensagens de alerta corretamente.",
+                            "file": BASE_SCRIPTS / "Processos" / "CenáriosPlanoEmpresa" / "ConsultaCenáriosPlanoEmpresa" / "consultaplanoempresa2ºcenario.py",
+                        },
+                    },
+                },
+                "3": {
+                    "label": "Cenários de Estorno de Fechamento de Plano Empresa",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Nesse teste, o usuário irá realizar o Estorno de um fechamento de um Plano Empresa.",
+                            "file": BASE_SCRIPTS / "Processos" / "CenáriosPlanoEmpresa" / "PlanoEmpresaEstornoFechamento" / "processoplanoempresaestornofechamento1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Nesse teste, o usuário irá realizar o Estorno de um fechamento de um Plano Empresa sem preencher os campos, para verificar se o sistema está disparando as mensagens de alerta corretamente.",
+                            "file": BASE_SCRIPTS / "Processos" / "CenáriosPlanoEmpresa" / "PlanoEmpresaEstornoFechamento" / "processoplanoempresaestornofechamento2ºcenario.py",
+                        },
+                    },
+                },
+            },
+        },
+        "7": {
+            "label": "Cenários do Processo: Apoio Ortopédico",
+            "scenarios": {
+                "1": {
+                    "label": "Cenários da Locação de Equipamentos",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Preenchimento completo e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosApoioOrtopédico" / "CadastrosCenáriosLocaçãodeEquipamentos" / "cadastrodelocaçãodeequipamentos1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Preenchimento completo e cancelamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosApoioOrtopédico" / "CadastrosCenáriosLocaçãodeEquipamentos" / "cadastrodelocaçãodeequipamentos2ºcenario.py",
+                        },
+                        "3": {
+                            "label": "Cenário 3: Nesse teste será realizada a verificação de todas as mesnagens de alerta do cadastro.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosApoioOrtopédico" / "CadastrosCenáriosLocaçãodeEquipamentos" / "cadastrodelocaçãodeequipamentos3ºcenario.py",
+                        },
+                    },
+                },
+                "2": {
+                    "label": "Cenários de Devolução de Equipamentos",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Preenchimento completo e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosApoioOrtopédico" / "CadastrosCenáriosDevoluçãodeEquipamentos" / "cadastrodedevoluçãodeequipamentos1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Teste de disparo das mensagens de alerta e erro.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosApoioOrtopédico" / "CadastrosCenáriosDevoluçãodeEquipamentos" / "cadastrodedevoluçãodeequipamentos2ºcenario.py",
+                        },
+                    },
+                },
+                "3": {
+                    "label": "Cenários de Consulta de Locação de Equipamentos",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Consulta de Locação de Equipamentos.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosApoioOrtopédico" / "ConsultaCenáriosApoioOrtopédico" / "consultadelocaçãodeequipamentos1ºcenario.py",
+                        },
+                    },
+                },
+                "4": {
+                    "label": "Cenários de Manutenção de Equipamentos",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Preenchimento completo e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosApoioOrtopédico" / "CadastrosCenáriosManutençãodeEquipamentos" / "cadastromanutençãodeequipamentos1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Nesse teste, o usuário irá realizar a  Manutenção de Equipamentos sem preencher nenhum campo para verificar se o sistema efetua o disparo das mensagens de alerta corretamente.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosApoioOrtopédico" / "CadastrosCenáriosManutençãodeEquipamentos" / "cadastromanutençãodeequipamentos2ºcenario.py",
+                        },
+                    },
+                },
+            },
+        },
+        "8": {
+            "label": "Cenários do Processo: Agenda de Ambulância",
+            "scenarios": {
+                "1": {
+                    "label": "Cenários do Cadastro da Agenda de Ambulância",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Preenchimento completo e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosAgendaAmbulância" / "Cadastro" / "cadastrodeagendadeambulancia1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Preenchimento completo e cancelamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosAgendaAmbulância" / "Cadastro" / "cadastrodeagendadeambulancia2ºcenario.py",
+                        },
+                        "3": {
+                            "label": "Cenário 3: Preenchimento dos campos obrigatórios e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosAgendaAmbulância" / "Cadastro" / "cadastrodeagendadeambulancia3ºcenario.py",
+                        },
+                        "4": {
+                            "label": "Cenário 3: Preenchimento dos campos NÃO obrigatórios e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosAgendaAmbulância" / "Cadastro" / "cadastrodeagendadeambulancia4ºcenario.py",
+                        },
+                    },
+                },
+            },
+        },
+        "9": {
+            "label": "Cenários do Processo: CRM",
+            "scenarios": {
+                "1": {
+                    "label": "Cenários do Cadastro de Contato Externo",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Preenchimento completo e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCRM" / "CadastrosCenáriosContatoExterno" / "CRM_cadastrodecontatoexterno1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Preenchimento completo e cancelamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCRM" / "CadastrosCenáriosContatoExterno" / "CRM_cadastrodecontatoexterno2ºcenario.py",
+                        },
+                        "3": {
+                            "label": "Cenário 3: Preenchimento dos campos obrigatórios e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCRM" / "CadastrosCenáriosContatoExterno" / "CRM_cadastrodecontatoexterno3ºcenario.py",
+                        },
+                        "4": {
+                            "label": "Cenário 4: Cenário 4: Não preencherá a aba Cliente/Empresa, para verificar se o sistema está disparando a mensagem de alerta corretamente.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCRM" / "CadastrosCenáriosContatoExterno" / "CRM_cadastrodecontatoexterno4ºcenario.py",
+                        },
+                    },
+                },
+                "2": {
+                    "label": "Cenários do Consulta de Funil de Vendas/Pipeline",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Consulta teste no Funil de Vendas Pipeline.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCRM" / "CadastrosCenáriosFunildeVendasPipeline" / "CRM_consultafunildevendaspipeline1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Consulta teste no Funil de Vendas Pipeline: Não preencherá nenhum campo para verificar se o sistema está disparando a mensagem de alerta corretamente.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCRM" / "CadastrosCenáriosFunildeVendasPipeline" / "CRM_consultafunildevendaspipeline2ºcenario.py",
+                        },
+                    },
+                },
+            },
+        },
+        "10": {
+            "label": "Cenários do Processo: Telemedicina",
+            "scenarios": {
+                "1": {
+                    "label": "Cenários do Cadastro de Configurações Ailine",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Preenchimento completo e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosTelemedicina" / "CadastrosCenáriosConfiguraçõesAiline" / "processoconfiguracoesailine1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Preenchimento completo e cancelamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosTelemedicina" / "CadastrosCenáriosConfiguraçõesAiline" / "processoconfiguracoesailine2ºcenario.py",
+                        },
+                    },
+                },
+            },
+        },
+    }
 }
-
 
 # ---------- helpers de execução ----------
 

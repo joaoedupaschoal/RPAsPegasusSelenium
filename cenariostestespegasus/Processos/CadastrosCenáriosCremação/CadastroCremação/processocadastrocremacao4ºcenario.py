@@ -5557,7 +5557,7 @@ def executar_teste():
         clicar_buscar_por_indice(js_engine, doc, indice=1)
 
         time.sleep(20)
-        
+
         safe_action(doc, "Preenchendo Nome do Pai", lambda:
             js_engine.force_fill("//input[@class='nomePaiFalecido']", "TESTE NOME DO PAI", by_xpath=True)
         )
@@ -5623,7 +5623,6 @@ def executar_teste():
             wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
                 "#gsRateio > div.wdTelas > div.telaConsulta.telaCremacao > div.content.clearfix.overflow.overflowY > div > div.formRow.rAlign > a:nth-child(2)"))).click(),
         ))
-        time.sleep(3)
         encontrar_mensagem_alerta()
 
 

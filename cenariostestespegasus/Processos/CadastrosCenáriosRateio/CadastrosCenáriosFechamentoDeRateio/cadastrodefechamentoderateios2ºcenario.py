@@ -106,7 +106,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== INICIALIZAÇÃO DE VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Cadastro de Fechamento de Rateios - Rateio – Cenário 1: Nesse teste, o usuário irá realizar o Fechamento de um Rateio sem preencher nenhum campo para verificar se o sistema efetua o disparo das mensagens de alerta corretamente.")
+doc.add_paragraph("Cadastro de Fechamento de Rateios - Rateio – Cenário 2: Nesse teste, o usuário irá realizar o Fechamento de um Rateio sem preencher nenhum campo para verificar se o sistema efetua o disparo das mensagens de alerta corretamente.")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()

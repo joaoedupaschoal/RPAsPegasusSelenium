@@ -22,7 +22,7 @@ import pyautogui
 # Inicializações
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Consulta de PIMS - Gestor de Compras – Cenário 1: Preenchimento completo e salvamento")
+doc.add_paragraph("Consulta de PIMS - Gestor de Compras – Cenário 1: Preenchimento completo e realização da Consulta")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 driver = None
 wait = None

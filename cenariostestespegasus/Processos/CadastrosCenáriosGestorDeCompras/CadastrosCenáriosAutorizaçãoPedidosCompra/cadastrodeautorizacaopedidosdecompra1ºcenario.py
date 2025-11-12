@@ -1409,7 +1409,7 @@ def executar_teste():
 
         
         safe_action(doc, "Preenchendo Data Pedido Inicial", 
-                   preencher_datepicker_por_indice(0, "09/10/2022"))
+                   preencher_datepicker_por_indice(0, "09/10/1999"))
 
         
         safe_action(doc, "Preenchendo Data Pedido Final", 
@@ -1421,7 +1421,7 @@ def executar_teste():
         safe_action(doc, "Pesquisando...", lambda:
             wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(@class,'btPesquisar') and contains(.,'Pesquisar')]"))).click()
         )
-        time.sleep(5)
+        time.sleep(20)
 
 
         # Verificando lista de PIMS

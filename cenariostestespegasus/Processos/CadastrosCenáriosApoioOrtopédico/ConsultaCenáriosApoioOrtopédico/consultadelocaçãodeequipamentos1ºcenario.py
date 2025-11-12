@@ -56,7 +56,7 @@ fake.add_provider(BrasilProvider)
 
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE AUTOMATIZADO", 0)
-doc.add_paragraph("Consulta de Locação de Equipamentos - Apoio Ortopédico – Cenário 1")
+doc.add_paragraph("Consulta de Locação de Equipamentos - Apoio Ortopédico – Cenário 3")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -662,7 +662,7 @@ def finalizar_relatorio():
     """Finaliza e salva o relatório"""
     global driver, doc
     
-    nome_arquivo = f"relatorio_locacao_equipamentos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_consulta_locacao_equipamentos_cenario_3_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     
     try:
         doc.save(nome_arquivo)

@@ -42,7 +42,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Controle de Caixa - Devoluções – Cenário 2: Rotina parcial de Devoluções - Nº da OS, Data inicial e Final")
+doc.add_paragraph("Controle de Caixa - Devoluções – Cenário 2: Rotina parcial de Devoluções - Filtros Utilizados: Nº da OS, Data inicial e Final")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()

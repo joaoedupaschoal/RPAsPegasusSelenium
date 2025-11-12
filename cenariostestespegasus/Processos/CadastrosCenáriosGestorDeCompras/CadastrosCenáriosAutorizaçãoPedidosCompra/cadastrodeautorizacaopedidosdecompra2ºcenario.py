@@ -107,7 +107,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== INICIALIZAÇÃO DE VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Autorização de Pedido de Compra - Gestor de Compras – Cenário 2: Preenchimento completo e Autorização")
+doc.add_paragraph("Autorização de Pedido de Compra - Gestor de Compras – Cenário 2: Preenchimento completo e Negação")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -1421,7 +1421,7 @@ def executar_teste():
         safe_action(doc, "Pesquisando...", lambda:
             wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(@class,'btPesquisar') and contains(.,'Pesquisar')]"))).click()
         )
-        time.sleep(15)
+        time.sleep(20)
 
 
         # Verificando lista de PIMS

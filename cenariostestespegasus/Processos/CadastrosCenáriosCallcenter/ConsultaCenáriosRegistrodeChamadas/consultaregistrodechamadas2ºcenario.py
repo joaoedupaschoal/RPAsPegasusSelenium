@@ -107,7 +107,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== INICIALIZAÇÃO DE VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Consulta de Registro de Chamadas - Callcenter – Cenário 1: Nesse teste, o usuário irá realizar a consulta de um Registro de Chamadas sem preencher nenhum campo para verificar se o sistema efetua o disparo das mensagens de alerta corretamente.")
+doc.add_paragraph("Consulta de Registro de Chamadas - Callcenter – Cenário 2: Nesse teste, o usuário irá realizar a consulta de um Registro de Chamadas sem preencher nenhum campo para verificar se o sistema efetua o disparo das mensagens de alerta corretamente.")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -1387,7 +1387,7 @@ def finalizar_relatorio():
     global driver, doc
     
     try:
-        nome_arquivo = f"relatorio_callcenter_registro_de_chamadas_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+        nome_arquivo = f"relatorio_callcenter_registro_de_chamadas_cenario_2_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
         
         # Adiciona resumo final
         doc.add_paragraph("\n" + "="*50)
