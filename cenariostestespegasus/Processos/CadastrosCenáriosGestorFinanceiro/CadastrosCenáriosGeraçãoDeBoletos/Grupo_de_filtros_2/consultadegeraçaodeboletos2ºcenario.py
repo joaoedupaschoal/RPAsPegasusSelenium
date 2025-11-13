@@ -35,7 +35,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Geração de Boletos - Gestor Financeiro – Cenário 2: Rotina completa de Geração de Boletos - Tipo de Boleto: Carta")
+doc.add_paragraph("Geração de Boletos - Gestor Financeiro – Cenário 2: Rotina completa de Geração de Boletos - Filtros Utilizados: Tipo de Contrato, Pacote, Tipo de Mensalidade, Grupo de Rateio, Plano Empresa - Tipo de Boleto: Carta")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()

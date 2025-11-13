@@ -1939,6 +1939,7 @@ class LOVHandler:
         return False
     
 # ==== FUNÇÕES AUXILIARES ====
+
 def encontrar_mensagem_alerta():
     seletores = [
         (".alerts.salvo", "✅ Mensagem de Sucesso"),
@@ -1957,6 +1958,7 @@ def encontrar_mensagem_alerta():
 
     log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
+
 
 def safe_action(doc, descricao, func, max_retries=3):
     """Wrapper para ações com retry automático"""

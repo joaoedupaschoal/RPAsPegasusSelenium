@@ -588,32 +588,26 @@ def validar_registros_encontrados():
             'mensagem': f"Erro na validação, continuando: {e}"
         }
 
+
 def encontrar_mensagem_alerta():
-    """Procura mensagens de alerta do sistema"""
-    global driver
-    
-    if driver is None:
-        return None
-    
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
-        (".alert", "📢 Alerta"),
-        ("[class*='alert']", "📢 Notificação"),
+        (".alerts.salvo", "✅ Mensagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+        (".alerts.erro", "❌ Mensagem de Erro"),
     ]
-    
+
     for seletor, tipo in seletores:
         try:
             elemento = driver.find_element(By.CSS_SELECTOR, seletor)
             if elemento.is_displayed():
-                log(doc, f"{tipo}: {elemento.text}")
+                log(doc, f"📢 {tipo}: {elemento.text}")
                 return elemento
         except:
             continue
-    
+
     log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
+
 
 def ajustar_zoom():
     """Ajusta zoom da página"""

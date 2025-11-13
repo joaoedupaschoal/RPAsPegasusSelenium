@@ -1962,6 +1962,8 @@ class LOVHandler:
         return False
     
 # ==== FUNÇÕES AUXILIARES ====
+
+
 def encontrar_mensagem_alerta():
     seletores = [
         (".alerts.salvo", "✅ Mensagem de Sucesso"),

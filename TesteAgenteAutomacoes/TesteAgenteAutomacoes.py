@@ -104,6 +104,17 @@ except Exception:
 def clear_screen():
     os.system("cls" if IS_WINDOWS else "clear")
 
+def barra_progresso(atual: int, total: int, largura: int = 30):
+    """Desenha uma barra de progresso simples no console."""
+    if total <= 0:
+        total = 1
+    frac = atual / total
+    done = int(frac * largura)
+    bar = "#" * done + "-" * (largura - done)
+    pct = int(frac * 100)
+    print(f"[{atual:02d}/{total:02d}] [{bar}] {pct:3d}%")
+
+
 def show_loading():
     clear_screen()
     print("Carregando... Estamos preparando tudo pra você.", end="", flush=True)
@@ -1277,11 +1288,11 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                         "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemiterios2ºcenario.py",
                     },
                     "3": {
-                        "label": "Cenário 3: TESTE CENARIO 3",
+                        "label": "Cenário 3: Nesse teste, serão preenchidos APENAS os campos obrigatórios, e clicará em 'Salvar''.",
                         "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemiterios3ºcenario.py",
                     },
                     "4": {
-                        "label": "Cenário 4: TESTE CENARIO 4",
+                        "label": "Cenário 4: Nesse teste, serão preenchidos APENAS os campos NÃO obrigatórios, e clicará em 'Salvar', para disparo de alertas.",
                         "file": BASE_SCRIPTS / "CadastrosPrincipais" / "CadastrosCenáriosCemitérios" / "cadastrodecemiterios4ºcenario.py",
                     },
                 },
@@ -2107,18 +2118,24 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
         },
     },
     "processos": {
-        "1": {"label": "Cenários do Processo: Gestor de Cemitérios", "scenarios": {
-            "Vou fazer ainda"
-        }},
+        "1": {
+            "label": "Cenários do Processo: Gestor de Cemitérios",
+            "scenarios": {
+                "1": {
+                    "label": "Vou fazer ainda",
+                    "file": None
+                }
+            }
+        },
         "2": {
-            "label": "Cenários do Processo: Gestor de Financeiro",
+            "label": "Cenários do Processo: Gestor Financeiro",
             "scenarios": {
                 "1": {
                     "label": "Cenários de Geração de Títulos",
                     "scenarios": {
                         "1": {
                             "label": "Cenário 1: Rotina completa de Geração de Títulos.",
-                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeTítulos" / "consultadegeraçaodetitulos1ºcenario",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeTítulos" / "consultadegeraçaodetitulos1ºcenario.py",
                         },
                     },
                 },
@@ -2151,19 +2168,40 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                                 "scenarios": {
                                     "1": {
                                         "label": "Cenário 1: Consulta e geração de boletos com filtro Pessoa / Tipo Parcela / Reimpressão (1º cenário).",
-                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Filtros_Utilizados__Pessoa_TipoParcela_Reimpressão" / "consultadegeracaodeboletos1ºcenario.py",
+                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Grupo_de_filtros_1" / "consultadegeracaodeboletos1ºcenario.py",
                                     },
                                     "2": {
                                         "label": "Cenário 2: Consulta e geração de boletos com filtro Pessoa / Tipo Parcela / Reimpressão (2º cenário).",
-                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Filtros_Utilizados__Pessoa_TipoParcela_Reimpressão" / "consultadegeracaodeboletos2ºcenario.py",
+                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Grupo_de_filtros_1" / "consultadegeracaodeboletos2ºcenario.py",
                                     },
                                     "3": {
                                         "label": "Cenário 3: Consulta e geração de boletos com filtro Pessoa / Tipo Parcela / Reimpressão (3º cenário).",
-                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Filtros_Utilizados__Pessoa_TipoParcela_Reimpressão" / "consultadegeracaodeboletos3ºcenario.py",
+                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Grupo_de_filtros_1" / "consultadegeracaodeboletos3ºcenario.py",
                                     },
                                     "4": {
                                         "label": "Cenário 4: Consulta e geração de boletos com filtro Pessoa / Tipo Parcela / Reimpressão (4º cenário).",
-                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Filtros_Utilizados__Pessoa_TipoParcela_Reimpressão" / "consultadegeracaodeboletos4ºcenario.py",
+                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Grupo_de_filtros_1" / "consultadegeracaodeboletos4ºcenario.py",
+                                },
+                            },
+                        },
+                            "2": {
+                                "label": "Filtros Utilizados — Tipo de Contrato / Pacote / Tipo de Mensalidade / Grupo de Rateio / Plano Empresa /",
+                                "scenarios": {
+                                    "1": {  
+                                        "label": "Cenário 1: Consulta e geração de boletos com filtro Tipo de Contrato / Pacote / Tipo de Mensalidade / Grupo de Rateio / Plano Empresa (1º cenário).",
+                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Grupo_de_filtros_2" / "consultadegeracaodeboletos1ºcenario.py",
+                                    },
+                                    "2": {
+                                        "label": "Cenário 2: Consulta e geração de boletos com filtro Pessoa / Tipo Parcela / Reimpressão (2º cenário).",
+                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Grupo_de_filtros_2" / "consultadegeracaodeboletos2ºcenario.py",
+                                    },
+                                    "3": {
+                                        "label": "Cenário 3: Consulta e geração de boletos com filtro Pessoa / Tipo Parcela / Reimpressão (3º cenário).",
+                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Grupo_de_filtros_2" / "consultadegeracaodeboletos3ºcenario.py",
+                                    },
+                                    "4": {
+                                        "label": "Cenário 4: Consulta e geração de boletos com filtro Pessoa / Tipo Parcela / Reimpressão (4º cenário).",
+                                        "file": BASE_SCRIPTS / "CadastrosGestorFinanceiro" / "CadastrosCenáriosGeraçãoDeBoletos" / "Grupo_de_filtros_2" / "consultadegeracaodeboletos4ºcenario.py",
                                 },
                             },
                         },
@@ -2178,15 +2216,15 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                     "scenarios": {
                         "1": {
                             "label": "Cenário 1: Cenário 1: Preenchimento completo e salvamento",
-                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosPIMS" / "cadastrodePIMS1ºcenario",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosPIMS" / "cadastrodePIMS1ºcenario.py",
                         },
-                        "1": {
+                        "2": {
                             "label": "Cenário 2: Preenchimento completo e cancelamento",
-                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosPIMS" / "cadastrodePIMS2ºcenario",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosPIMS" / "cadastrodePIMS2ºcenario.py",
                         },
-                        "1": {
+                        "3": {
                             "label": "Cenário 3: Não preencherá a aba Informações PIMS, para verificar se o sistema está disparando a mensagem de alerta corretamente.",
-                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosPIMS" / "cadastrodePIMS3ºcenario",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosGestorDeCompras" / "CadastrosCenáriosPIMS" / "cadastrodePIMS3ºcenario.py",
                         },
                     },
                 },
@@ -2273,11 +2311,11 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                     "scenarios": {
                         "1": {
                             "label": "Cenário 1: Rotina parcial de Fluxo de Caixa ⭢ Nesse teste, o robô irá abrir o caixa e realizará 2 vendas: uma de um Título, e a outra de um produto. Após o processo, irá realizar o fechamento do caixa e a geração de relatórios",
-                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCaixa" / "ProcessoEntrarNoCaixa" / "processocaixa1ºcenario",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCaixa" / "ProcessoEntrarNoCaixa" / "processocaixa1ºcenario.py",
                         },
-                        "1": {
+                        "2": {
                             "label": "Cenário 2: Rotina parcial de Fluxo de Caixa ⭢ Nesse teste, o robô irá efetuar os seguintes processos: Retirada do Caixa, Estorno de Venda, e Estorno Retirada",
-                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCaixa" / "ProcessoEntrarNoCaixa" / "processocaixa2ºcenario",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCaixa" / "ProcessoEntrarNoCaixa" / "processocaixa2ºcenario.py",
                         },
                     },
                 },
@@ -2308,11 +2346,11 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                     "scenarios": {
                         "1": {
                             "label": "Cenário 1: Nesse teste, será realizado um fechamento de Rateio.",
-                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosRateio" / "CadastrosCenáriosFechamentoDeRateio" / "cadastrodefechamentoderateios1ºcenario",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosRateio" / "CadastrosCenáriosFechamentoDeRateio" / "cadastrodefechamentoderateios1ºcenario.py",
                         },
-                        "1": {
+                        "2": {
                             "label": "Cenário 2: Nesse teste, o usuário irá realizar o Fechamento de um Rateio sem preencher nenhum campo para verificar se o sistema efetua o disparo das mensagens de alerta corretamente.",
-                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosRateio" / "CadastrosCenáriosFechamentoDeRateio" / "cadastrodefechamentoderateios2ºcenario",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosRateio" / "CadastrosCenáriosFechamentoDeRateio" / "cadastrodefechamentoderateios2ºcenario.py",
                         },
                     },
                 },
@@ -2790,156 +2828,213 @@ def _snap_docx(roots: list[Path]) -> set[Path]:
 
 def _collect_scenarios(node: dict):
     out = []
+
     # cenários diretos (ordenar por código numérico)
-    if "scenarios" in node and isinstance(node["scenarios"], dict):
-        for code in sorted(node["scenarios"].keys(),
-                           key=lambda k: int(k) if str(k).isdigit() else str(k)):
-            scen = node["scenarios"][code]
+    scenarios = node.get("scenarios")
+    if isinstance(scenarios, dict):
+        for code in sorted(
+            scenarios.keys(),
+            key=lambda k: int(k) if str(k).isdigit() else str(k)
+        ):
+            scen = scenarios[code]
+            if not isinstance(scen, dict):
+                continue
+
             f = scen.get("file")
             if f:
+                # cenário "final" (tem arquivo)
                 out.append((scen.get("label", Path(f).stem), Path(f)))
-    # subgrupos
+            else:
+                # cenário "grupo" (ex.: Processos: Rateio → Fechamento/Reagrupamento)
+                out.extend(_collect_scenarios(scen))
+
+    # subgrupos (usados nos cadastros "Todos", etc.)
     if "groups" in node and isinstance(node["groups"], dict):
-        for _, sub in sorted(node["groups"].items(), key=lambda kv: kv[1].get("label","")):
+        # agora respeita a ordem que os grupos foram adicionados ao dict
+        for _, sub in node["groups"].items():
             if isinstance(sub, dict):
                 out.extend(_collect_scenarios(sub))
-    # itens numéricos (ex.: "24": {...})
+
+
+    # itens numéricos diretos no node (ex.: {"1": {...}, "2": {...}})
     num_keys = [k for k in node.keys() if isinstance(k, str) and k.isdigit()]
     for key in sorted(num_keys, key=int):
         v = node[key]
         if isinstance(v, dict):
             out.extend(_collect_scenarios(v))
+
     return out
 
+def executar_encadeado(node: dict, resumo_execucao: str = ""):
+    """
+    Executa TODOS os cenários encontrados em `node` em cadeia,
+    com barra de progresso, log de módulo e registro no QAReporter.
+    """
+    from pathlib import Path
+
+    scen_list = _collect_scenarios(node)
+    total = len(scen_list)
+
+    if total == 0:
+        print("\n[AVISO] Não há cenários neste nível.")
+        input("\nPressione Enter para voltar...")
+        return
+
+    label_node = node.get("label", "").strip() or "Execução Encadeada"
+    if not resumo_execucao:
+        resumo_execucao = label_node
+
+    print(f"\n[EXECUTAR EM CADEIA] {total} cenário(s) encontrado(s).\n")
+    print(f"Contexto: {resumo_execucao}")
+    print("Plano de execução:")
+    for i, (lbl, pth) in enumerate(scen_list, 1):
+        print(f"  [{i}/{total}] {lbl} -> {pth}")
+    print("")
+
+    reports_dir = Path.cwd() / "reports"
+    try:
+        username = os.getlogin()
+    except Exception:
+        username = "Runner"
+
+    rep = QAReporter(
+        out_dir=reports_dir,
+        environment="Homologação",
+        executor="Runner CLI",
+        system_version="v2025.09",
+        username=username
+    )
+    rep.start_run(summary=f"Execução em cadeia — {resumo_execucao}")
+
+    for idx, (label_exec, path_exec) in enumerate(scen_list, 1):
+        path_exec = Path(path_exec)
+
+        # módulo = pasta imediatamente acima do arquivo
+        modulo = path_exec.parent.name
+
+        print("\n" + "=" * 70)
+        print(f"MÓDULO: {modulo}")
+        print(f"CENÁRIO: {label_exec}")
+        barra_progresso(idx, total)
+        print("-" * 70)
+
+        h = rep.start_scenario(label_exec, test_type="CADASTRO")
+
+        try:
+            rc, status, err_msg, full_log = _run_cenario_and_classify(path_exec, idx, total)
+        except Exception as e:
+            rc, status, err_msg, full_log = (1, "ERROR", f"Falha no runner: {e}", "")
+
+        # Salvar log completo
+        try:
+            (reports_dir / "logs").mkdir(parents=True, exist_ok=True)
+            saved_log_path = reports_dir / "logs" / f"{path_exec.stem}_{idx:02d}.log"
+            saved_log_path.write_text(full_log, encoding="utf-8", errors="ignore")
+        except Exception:
+            saved_log_path = None
+
+        # Limpar mensagem de erro se contiver "realizada com sucesso"
+        if err_msg and "realizada com sucesso" in err_msg.lower():
+            err_msg = None
+
+        rep.finish_scenario(
+            h,
+            status=status,
+            error_message=err_msg,
+            extra={
+                "path": str(path_exec),
+                "returncode": rc,
+                "file_name": path_exec.name,
+                "logfile": str(saved_log_path) if saved_log_path else None,
+                "module": modulo,
+            }
+        )
+
+    rep.end_run()
+    docx_path = rep.save_docx("Relatorio_QA")
+    print(f"\nRelatório QA gerado: {docx_path}")
+    _abrir_arquivo(docx_path)
+
+    input("\nEncadeamento concluído. Pressione Enter para voltar...")
 
 
 # ===================== menus =====================
 
-def executar_menu_scripts(node: Any, breadcrumb: str = ""):
+def executar_menu_scripts(node: dict, breadcrumb: str = ""):
+    """
+    Exibe um menu para o usuário navegar entre scripts e executá-los individualmente
+    ou rodar todos encadeados (opção 0).
+    """
     while True:
         clear_screen()
-        label = node.get("label", "")
-        if label:
-            print(f"----- {label.upper()} -----\n")
+
+        label = node.get("label", "MENU")
+        scenarios = node.get("scenarios", {})
+        groups = node.get("groups", {})
+
+        # título
+        print(f"----- {label.upper()} -----\n")
         if breadcrumb:
             print("===== CAMINHO ATUAL =====")
-            print(breadcrumb)
-            print("")
+            print(f"> {breadcrumb}\n")
 
-        itens = {}
+        # opção 0 -> encadeado
+        print("Todos os Cenários encadeados (Digite 0)")
 
-        if "groups" in node:
-            for code, sub in node["groups"].items():
-                sub_label = sub.get("label", str(code))
-                print(f"{sub_label} (Digite {code})")
-                itens[str(code)] = (sub_label, sub)
+        # se houver grupos
+        if groups:
+            for k, v in groups.items():
+                print(f"{k} - {v.get('label', '').strip()}")
+        # se houver cenários finais
+        if scenarios:
+            for k, v in scenarios.items():
+                print(f"{k} - {v.get('label', '').strip()}")
 
-        for key in sorted([k for k in node.keys() if isinstance(k, str) and k.isdigit()], key=int):
-            item = node[key]
-            if isinstance(item, dict) and "label" in item:
-                print(f"{item['label']} (Digite {key})")
-                itens[key] = (item['label'], item)
-
-        if "scenarios" in node:
-            for code, scen in node["scenarios"].items():
-                print(f"{scen['label']} (Digite {code})")
-                itens[code] = (scen['label'], scen)
-
-        print("\nTodos os Cenários encadeados (Digite 0)")
-        print("<--- Voltar (X + Enter)")
-
+        print("\n<--- Voltar (X + Enter)")
         opt = read_input_with_hotkeys("\nDigite a opção desejada: ").upper()
 
+        # voltar
         if opt in ("X", "__BACK__"):
             return
-
+        
+        # encadeado
         if opt == "0":
-            scen_list = _collect_scenarios(node)
-            total = len(scen_list)
-            if total == 0:
-                print("\n[AVISO] Não há cenários neste nível.")
-                input("\nPressione Enter para voltar...")
+            executar_encadeado(node, resumo_execucao=breadcrumb or node.get("label", "Execução"))
+            continue
+
+        # opção pertence a grupos?
+        if opt in groups:
+            sub = groups[opt]
+            sub_label = sub.get("label", "")
+            novo_breadcrumb = f"{breadcrumb}/{sub_label}" if breadcrumb else sub_label
+            executar_menu_scripts(sub, novo_breadcrumb)
+            continue
+
+        # opção pertence a cenários finais?
+        if opt in scenarios:
+            cenario = scenarios[opt]
+            arquivo = cenario.get("file")
+            if not arquivo:
+                print("\n[ERRO] Cenário sem arquivo definido!")
+                time.sleep(1)
                 continue
 
-            print(f"\n[EXECUTAR EM CADEIA] {total} cenário(s) encontrado(s).\n")
-            print("Plano de execução:")
-            for i, (lbl, pth) in enumerate(scen_list, 1):
-                print(f"  [{i}/{total}] {lbl} -> {pth}")
-            print("")
+            clear_screen()
+            print(f"Executando: {cenario['label']}\n")
+            print(f"Arquivo: {arquivo}\n")
 
-            reports_dir = Path.cwd() / "reports"
-            try:
-                username = os.getlogin()
-            except Exception:
-                username = "Runner"
-
-            rep = QAReporter(
-                out_dir=reports_dir,
-                environment="Homologação",
-                executor="Runner CLI",
-                system_version="v2025.09",
-                username=username
+            # chama executor tradicional (único)
+            rc, status, err_msg, full_log = _run_cenario_and_classify(
+                Path(arquivo),
+                index=1,
+                total=1
             )
-            rep.start_run(summary=f"Execução em cadeia — {node.get('label','')}")
 
-            for idx, (label_exec, path_exec) in enumerate(scen_list, 1):
-                            h = rep.start_scenario(label_exec, test_type="CADASTRO")
-                            try:
-                                rc, status, err_msg, full_log = _run_cenario_and_classify(Path(path_exec), idx, total)
-                            except Exception as e:
-                                rc, status, err_msg, full_log = (1, "ERROR", f"Falha no runner: {e}", "")
-
-                            # Salvar log completo
-                            try:
-                                (reports_dir / "logs").mkdir(parents=True, exist_ok=True)
-                                saved_log_path = reports_dir / "logs" / f"{Path(path_exec).stem}_{idx:02d}.log"
-                                saved_log_path.write_text(full_log, encoding="utf-8", errors="ignore")
-                            except Exception:
-                                saved_log_path = None
-
-                            # Limpar mensagem de erro se contiver "realizada com sucesso"
-                            if err_msg and "realizada com sucesso" in err_msg.lower():
-                                err_msg = None
-
-                            # Finalizar cenário no relatório
-                            rep.finish_scenario(
-                                h,
-                                status=status,
-                                error_message=err_msg,
-                                extra={
-                                    "path": str(path_exec),
-                                    "returncode": rc,
-                                    "file_name": Path(path_exec).name,
-                                    "logfile": str(saved_log_path) if saved_log_path else None
-                                }
-                            )
-            rep.end_run()
-            docx_path = rep.save_docx("Relatorio_QA")
-            print(f"\nRelatório QA gerado: {docx_path}")
-            _abrir_arquivo(docx_path)
-
-            input("\nEncadeamento concluído. Pressione Enter para voltar...")
+            print("\nExecução finalizada.")
+            input("\nPressione Enter para voltar...")
             continue
 
-
-
-        if opt in itens:
-            item_label, item_data = itens[opt]
-
-            if isinstance(item_data, dict) and ("scenarios" in item_data or "groups" in item_data
-                                                or any(isinstance(k, str) and k.isdigit() for k in item_data.keys())):
-                executar_menu_scripts(item_data, f"{breadcrumb} > {item_label}")
-                continue
-
-            if isinstance(item_data, dict) and "file" in item_data:
-                # unitário: executa sem anúncio de relatório
-                _executar_cenario(item_data["file"], pause=True)
-                continue
-
-            print("\n[AVISO] Opção sem ação definida.")
-            time.sleep(0.8)
-            continue
-
+        # opção inválida
         print("\nOpção inválida.")
         time.sleep(0.8)
 
@@ -2948,7 +3043,7 @@ def menu_cadastros_principais(root: dict):
     if not cad_principais:
         clear_screen()
         print("[AVISO] Nenhum cadastro principal configurado.")
-        input("\nPressione Enter para voltar...")
+        input("\n<--- Voltar (X + Enter).")
         return
     executar_menu_scripts({"label": "Cadastros Principais", **cad_principais}, "> Cadastros > Cadastros Principais")
 
@@ -2957,9 +3052,92 @@ def menu_cadastros_adicionais(root: dict):
     if not cad_adicionais:
         clear_screen()
         print("[AVISO] Nenhum cadastro adicional configurado.")
-        input("\nPressione Enter para voltar...")
+        input("\n<--- Voltar (X + Enter)")
         return
     executar_menu_scripts({"label": "Cadastros Adicionais", **cad_adicionais}, "> Cadastros > Cadastros Adicionais")
+
+def mostrar_submenu_processos(titulo, scenarios):
+    while True:
+        exibir_menu_generico(titulo, scenarios)
+        print("\nTodos os Cenários encadeados (Digite 0)")
+
+        op = input("\nSelecione uma opção: ").strip().upper()
+
+        if op == "X":
+            break
+
+        if op == "0":
+            # Encadeia TODOS os cenários desse processo / submenu
+            node_tmp = {
+                "label": titulo,
+                "scenarios": scenarios
+            }
+            executar_menu_scripts(node_tmp, f"> Processos > {titulo}")
+            continue
+
+        if op not in scenarios:
+            print("Opção inválida.")
+            time.sleep(0.8)
+            continue
+
+        sub = scenarios[op]
+
+        # Se houver outro nível de 'scenarios' → navega mais um nível
+        if "scenarios" in sub:
+            mostrar_submenu_processos(sub["label"], sub["scenarios"])
+            continue
+
+        # Se chegar aqui → é um cenário final (EXECUTÁVEL)
+        arquivo = sub.get("file")
+
+        if arquivo:
+            clear_screen()
+            print(f"Executando: {sub['label']}\n")
+            print(f"Arquivo: {arquivo}\n")
+
+            try:
+                with open(arquivo, "r", encoding="utf-8") as f:
+                    code = compile(f.read(), arquivo, "exec")
+                    exec(code, globals())
+            except UnicodeDecodeError:
+                with open(arquivo, "r", encoding="latin-1") as f:
+                    code = compile(f.read(), arquivo, "exec")
+                    exec(code, globals())
+            except Exception as e:
+                print(f"Erro ao executar o cenário: {e}")
+
+            input("\n<--- Voltar (X + Enter)")
+        else:
+            input("\nCenário sem arquivo associado. Enter para voltar...")
+
+def mostrar_menu_processos(processos):
+    while True:
+        exibir_menu_generico("PROCESSOS", processos)
+        print("\nTodos os Cenários encadeados (Digite 0)")
+
+        op = input("\nSelecione uma opção: ").strip().upper()
+
+        if op == "X":
+            break
+
+        if op == "0":
+            # Encadeia TODOS os processos usando o mesmo runner dos cadastros
+            node_tmp = {"label": "Processos", **processos}
+            executar_menu_scripts(node_tmp, "> Processos")
+            continue
+
+        if op not in processos:
+            print("Opção inválida.")
+            time.sleep(0.8)
+            continue
+
+        menu = processos[op]
+
+        # Se possui sub-scenarios → abrir submenu
+        if "scenarios" in menu:
+            mostrar_submenu_processos(menu["label"], menu["scenarios"])
+        else:
+            input("\nNenhum cenário configurado. Enter para voltar...")
 
 def menu_tipo_cadastro(root: dict):
     while True:
@@ -2990,6 +3168,17 @@ def menu_tipo_cadastro(root: dict):
         print("\nOpção inválida.")
         time.sleep(0.8)
 
+def exibir_menu_generico(titulo, dados):
+    clear_screen()
+    print(f"----- {titulo} -----\n")
+
+    for key, item in dados.items():
+        label = item.get("label", "Sem título")
+        print(f"{key} - {label}")
+
+    print("\n<--- Voltar (X + Enter)")
+
+
 def menu_pos_login(root: dict):
     while True:
         clear_screen()
@@ -3000,22 +3189,49 @@ def menu_pos_login(root: dict):
         print("<--- Voltar (X + Enter)")
 
         opt = read_input_with_hotkeys("\nDigite a opção desejada: ").upper()
+
         if opt in ("X", "__BACK__"):
             clear_screen()
             print("Você está na raiz.\n")
             time.sleep(1)
             continue
+
+        # 0 = roda TUDO encadeado (Cadastros + Processos)
         if opt == "0":
             cad_root = root.get("cadastros", {})
-            executar_menu_scripts({"label": "Cadastros", **cad_root}, "> Cadastros")
+            proc_root = root.get("processos", {})
+
+            node_tmp = {"label": "Cadastros e Processos", "groups": {}}
+
+            cad_principais = cad_root.get("principais")
+            cad_adicionais = cad_root.get("adicionais")
+
+            # ordem: 1) Cadastros Principais  2) Cadastros Adicionais  3) Processos
+            if cad_principais:
+                node_tmp["groups"]["1"] = {
+                    "label": "1 - Cadastros Principais",
+                    **cad_principais
+                }
+            if cad_adicionais:
+                node_tmp["groups"]["2"] = {
+                    "label": "2 - Cadastros Adicionais",
+                    **cad_adicionais
+                }
+            if proc_root:
+                node_tmp["groups"]["3"] = {
+                    "label": "3 - Processos",
+                    **proc_root
+                }
+
+            executar_encadeado(node_tmp, resumo_execucao="Cadastros e Processos (Menu Principal)")
             continue
+
         if opt == "1":
-            menu_tipo_cadastro(root); continue
+            menu_tipo_cadastro(root)
+            continue
+
         if opt == "2":
-            clear_screen()
-            print("----- PROCESSOS -----\n")
-            print("(Ainda vou configurar)")
-            input("\nPressione Enter para voltar...")
+            mostrar_menu_processos(root.get("processos", {}))
             continue
 
         print("\nOpção inválida.")

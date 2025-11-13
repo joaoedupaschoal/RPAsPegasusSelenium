@@ -1302,37 +1302,26 @@ def validar_registros_encontrados(timeout=TIMEOUT_LONGO):
         return resultado
 
 # ==== UTILITÁRIOS DIVERSOS ====
+
 def encontrar_mensagem_alerta():
-    """Busca mensagens de alerta na página"""
-    global driver, doc
-    
-    if driver is None:
-        return None
-    
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
-        (".alert-success", "✅ Sucesso"),
-        (".alert-warning", "⚠️ Alerta"),
-        (".alert-danger", "❌ Erro"),
-        ("[class*='toast']", "📢 Notificação"),
+        (".alerts.salvo", "✅ Mensagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+        (".alerts.erro", "❌ Mensagem de Erro"),
     ]
-    
+
     for seletor, tipo in seletores:
         try:
-            elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
-            for elemento in elementos:
-                if elemento.is_displayed():
-                    texto = elemento.text.strip()
-                    if texto:
-                        log(doc, f"📢 {tipo}: {texto}")
-                        return elemento
-        except Exception as e:
-            log(doc, f"⚠️ Erro ao buscar alerta {seletor}: {e}", 'WARN')
+            elemento = driver.find_element(By.CSS_SELECTOR, seletor)
+            if elemento.is_displayed():
+                log(doc, f"📢 {tipo}: {elemento.text}")
+                return elemento
+        except:
             continue
-    
+
+    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
+
 
 def ajustar_zoom(zoom_level="90%"):
     """Ajusta zoom da página"""

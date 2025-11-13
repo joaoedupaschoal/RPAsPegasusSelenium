@@ -149,16 +149,12 @@ def finalizar_relatorio():
         except:
             pass
 
+
 def encontrar_mensagem_alerta():
-    global driver, doc
-    
-    if driver is None:
-        return None
-        
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
+        (".alerts.salvo", "✅ Mensagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+        (".alerts.erro", "❌ Mensagem de Erro"),
     ]
 
     for seletor, tipo in seletores:

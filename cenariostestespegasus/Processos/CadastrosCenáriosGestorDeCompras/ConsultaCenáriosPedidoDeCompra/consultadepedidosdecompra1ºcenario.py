@@ -683,14 +683,12 @@ def finalizar_relatorio():
             pass
 
 def encontrar_mensagem_alerta():
-    global driver, doc
-    if driver is None:
-        return None
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
+        (".alerts.salvo", "✅ Mensagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+        (".alerts.erro", "❌ Mensagem de Erro"),
     ]
+
     for seletor, tipo in seletores:
         try:
             elemento = driver.find_element(By.CSS_SELECTOR, seletor)
@@ -699,6 +697,7 @@ def encontrar_mensagem_alerta():
                 return elemento
         except:
             continue
+
     log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
 

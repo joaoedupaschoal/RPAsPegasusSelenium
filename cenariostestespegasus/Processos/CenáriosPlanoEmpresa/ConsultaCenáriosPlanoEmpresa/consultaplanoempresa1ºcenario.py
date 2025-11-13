@@ -826,9 +826,9 @@ class PlanoEmpresaTest:
     def find_alert_messages(self) -> Optional[WebElement]:
         """Procura por mensagens de alerta na página"""
         selectors = [
-            (".alerts.salvo", "✅ Sucesso"),
-            (".alerts.alerta", "⚠️ Alerta"),
-            (".alerts.erro", "❌ Erro"),
+            (".alerts.salvo", "✅ Mensagem de Sucesso"),
+            (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+            (".alerts.erro", "❌ Mensagem de Erro"),
         ]
         
         for selector, msg_type in selectors:

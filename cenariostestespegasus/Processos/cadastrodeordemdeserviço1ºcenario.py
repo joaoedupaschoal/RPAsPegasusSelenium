@@ -13,6 +13,7 @@ from faker.providers import BaseProvider
 from validate_docbr import CPF
 import random
 import time
+from docx import Document
 from datetime import datetime, timedelta
 # Inicializando o Faker
 fake = Faker()
@@ -25,7 +26,9 @@ from selenium import webdriver
 sys.stdout = open("log.txt", "w", encoding="utf-8")
 sys.stderr = sys.stdout  # Erros também vão para o mesmo arquivo
 
-
+def log(doc, msg):
+    print(msg)
+    doc.add_paragraph(msg)
 
 faker = Faker()
 numero_aleatorio = random.randint(1, 100)  # Gera um número aleatório entre 1 e 100
@@ -591,24 +594,25 @@ gerar_doc.click()
 
 
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+doc = Document()
 
 def encontrar_mensagem_alerta():
     seletores = [
-        (".alerts.salvo", "sucesso"),
-        (".alerts.alerta", "alerta"),
-        (".alerts.erro", "erro"),
+        (".alerts.salvo", "✅ Mensagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+        (".alerts.erro", "❌ Mensagem de Erro"),
     ]
 
     for seletor, tipo in seletores:
         try:
             elemento = driver.find_element(By.CSS_SELECTOR, seletor)
-            if elemento.is_displayed():  # garante que está visível
-                print(f"Mensagem de {tipo}:", elemento.text)
+            if elemento.is_displayed():
+                log(doc, f"📢 {tipo}: {elemento.text}")
                 return elemento
-        except NoSuchElementException:
+        except:
             continue
 
-    print("Nenhuma mensagem encontrada.")
+    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
 
 # Espera apenas pelo container de alertas como um todo (melhora desempenho)

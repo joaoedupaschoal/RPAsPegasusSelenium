@@ -53,6 +53,27 @@ def take_screenshot(driver, doc, nome):
         except Exception as e:
             log(doc, f"⚠️ Erro ao tirar screenshot {nome}: {e}")
 
+
+
+def encontrar_mensagem_alerta():
+    seletores = [
+        (".alerts.salvo", "✅ Mensagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+        (".alerts.erro", "❌ Mensagem de Erro"),
+    ]
+
+    for seletor, tipo in seletores:
+        try:
+            elemento = driver.find_element(By.CSS_SELECTOR, seletor)
+            if elemento.is_displayed():
+                log(doc, f"📢 {tipo}: {elemento.text}")
+                return elemento
+        except:
+            continue
+
+    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
+    return None
+
 def aguardar_overlay_sumir(timeout=15):
     t0 = time.time()
     while time.time() - t0 < timeout:
@@ -622,7 +643,8 @@ def executar_teste():
         time.sleep(2)
 
         log(doc, "🔍 Verificando mensagens de alerta...")
-        # Coloque uma função para verificar mensagens
+        encontrar_mensagem_alerta()
+
 
         return True
     except Exception as e:

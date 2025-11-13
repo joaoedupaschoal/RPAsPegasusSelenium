@@ -35,7 +35,7 @@ LOGIN_PASSWORD = "071999gs"
 # ==== VARIÁVEIS GLOBAIS ====
 doc = Document()
 doc.add_heading("RELATÓRIO DO TESTE", 0)
-doc.add_paragraph("Geração de Boletos - Gestor Financeiro – Cenário 2: Rotina completa de Geração de Boletos - Tipo de Boleto: Carnê")
+doc.add_paragraph("Geração de Boletos - Gestor Financeiro – Cenário 4: Rotina completa de Geração de Boletos - Filtros Utilizados: Pessoa, Tipo de Parcela, Reimpressão - Tipo de Boleto: Rateio")
 doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
 screenshot_registradas = set()
@@ -524,7 +524,7 @@ def executar_fluxo_boletos(js_engine, doc,
       2) Clica em 'Boleto Pegasus'.
          2.1) Se surgir o modal .telaModalTitulosPlanoEmpresa:
               - Fecha SOMENTE esse modal (sem índice) e segue o fluxo.
-      3) Seleciona 'Carnê', Conta, Instrução, clica Ok, confirma e retorna.
+      3) Seleciona 'Rateio', Conta, Instrução, clica Ok, confirma e retorna.
     Requisitos: safe_action, log, take_screenshot, validar_resultado_pesquisa,
                 selecionar_opcao_por_indice, clicar_ok_e_verificar_modal_confirmacao,
                 confirmar_modal_e_retornar_sistema, fechar_modal_com_retry.
@@ -608,8 +608,8 @@ def executar_fluxo_boletos(js_engine, doc,
 
 
     # ===== 3) FLUXO NORMAL DE GERAÇÃO DO BOLETO =====
-    safe_action(doc, "Selecionando a opção 'Carnê'", lambda: js_engine.force_click(
-        "//li[@tabindex='1' and @ref='carne' and @rel='undefined' and normalize-space(text())='Carne']",
+    safe_action(doc, "Selecionando a opção 'Rateio'", lambda: js_engine.force_click(
+        "//li[@tabindex='4']",
         by_xpath=True
     ))
 
@@ -678,7 +678,6 @@ def executar_fluxo_boletos(js_engine, doc,
     encontrar_mensagem_alerta()   # aqui roda sua detecção/cancelamento, se houver
     time.sleep(0.5)
     encontrar_mensagem_alerta()   # aqui roda sua detecção/cancelamento, se houver
-    
     # fallback: se não clicou nenhum, tenta um por índice
     if total_clicados == 0:
         js_engine.force_click(
@@ -1904,23 +1903,10 @@ class LOVHandler:
     def __init__(self, js_engine):
         self.js = js_engine
         self.doc = js_engine.doc
-
+    
     def open_and_select(self, btn_index=None, btn_xpath=None, search_text="", 
-                       result_text="", result_xpath=None, iframe_xpath=None, 
-                       modal_xpath=None, max_attempts=5):
-        """
-        Abre LOV, pesquisa e seleciona resultado usando JS forçado
-        
-        Args:
-            btn_index: Índice do botão LOV (0-based)
-            btn_xpath: XPath do botão LOV (alternativo ao btn_index)
-            search_text: Texto a pesquisar
-            result_text: Texto do resultado (usado se result_xpath não for fornecido)
-            result_xpath: XPath customizado para clicar no resultado (opcional)
-            iframe_xpath: XPath do iframe do modal (se houver)
-            modal_xpath: XPath específico do modal para garantir o contexto correto
-            max_attempts: Número máximo de tentativas
-        """
+                       result_text="", iframe_xpath=None, max_attempts=5):
+        """Abre LOV, pesquisa e seleciona resultado usando JS forçado"""
         
         log(self.doc, f"🔍 Processando LOV: '{search_text}' → '{result_text}'")
         
@@ -1950,7 +1936,7 @@ class LOVHandler:
                             EC.frame_to_be_available_and_switch_to_it((By.XPATH, iframe_xpath))
                         )
                         time.sleep(0.5)
-                    except Exception:
+                    except:
                         log(self.doc, "   ⚠️ Iframe não encontrado, continuando...")
                 
                 # PASSO 3: Aguarda modal carregar
@@ -1960,17 +1946,10 @@ class LOVHandler:
                 # PASSO 4: Preenche campo de pesquisa
                 log(self.doc, f"   ✏️ Pesquisando: '{search_text}'")
                 
-                # Se modal_xpath foi fornecido, usa como contexto
                 search_selectors = [
                     "//input[@id='txtPesquisa']",
                     "//input[@class='nomePesquisa']",
                 ]
-                
-                if modal_xpath:
-                    search_selectors = [
-                        f"{modal_xpath}//input[@id='txtPesquisa']",
-                        f"{modal_xpath}//input[@class='nomePesquisa']",
-                    ]
                 
                 search_filled = False
                 for selector in search_selectors:
@@ -1978,7 +1957,7 @@ class LOVHandler:
                         self.js.force_fill(selector, search_text, by_xpath=True)
                         search_filled = True
                         break
-                    except Exception:
+                    except:
                         continue
                 
                 if not search_filled:
@@ -1995,20 +1974,13 @@ class LOVHandler:
                     "//a[contains(normalize-space(.),'Buscar')]"
                 ]
                 
-                if modal_xpath:
-                    search_btn_selectors = [
-                        f"{modal_xpath}//a[contains(@class,'lpFind') and contains(normalize-space(.),'Pesquisar')]",
-                        f"{modal_xpath}//button[contains(normalize-space(.),'Pesquisar')]",
-                        f"{modal_xpath}//a[contains(normalize-space(.),'Buscar')]"
-                    ]
-                
                 search_clicked = False
                 for selector in search_btn_selectors:
                     try:
                         self.js.force_click(selector, by_xpath=True)
                         search_clicked = True
                         break
-                    except Exception:
+                    except:
                         continue
                 
                 if not search_clicked:
@@ -2021,18 +1993,8 @@ class LOVHandler:
                 # PASSO 7: Clica no resultado
                 log(self.doc, f"   🎯 Selecionando: '{result_text}'")
                 
-                # Se result_xpath foi fornecido, usa ele; caso contrário, usa result_text
-                if result_xpath:
-                    final_result_xpath = result_xpath
-                    if modal_xpath and not result_xpath.startswith(modal_xpath):
-                        final_result_xpath = f"{modal_xpath}{result_xpath}"
-                    log(self.doc, f"   📍 Usando XPath customizado: {final_result_xpath}")
-                else:
-                    final_result_xpath = f"//tr[td[contains(normalize-space(.), '{result_text}')]]"
-                    if modal_xpath:
-                        final_result_xpath = f"{modal_xpath}{final_result_xpath}"
-                
-                self.js.force_click(final_result_xpath, by_xpath=True)
+                result_xpath = f"//tr[td[contains(normalize-space(.), '{result_text}')]]"
+                self.js.force_click(result_xpath, by_xpath=True)
                 
                 time.sleep(1)
                 
@@ -2041,7 +2003,7 @@ class LOVHandler:
                     try:
                         self.js.driver.switch_to.default_content()
                         log(self.doc, "   ✅ Voltou para conteúdo principal")
-                    except Exception:
+                    except:
                         pass
                 
                 # PASSO 9: Aguarda modal fechar
@@ -2050,39 +2012,26 @@ class LOVHandler:
                 
                 log(self.doc, f"✅ LOV processado com sucesso!")
                 return True
-
+                
             except Exception as e:
-                # Log do erro e tentativa de cleanup antes de re-tentar
-                try:
-                    log(self.doc, f"❌ Tentativa {attempt + 1} falhou: {str(e)[:200]}")
-                except Exception:
-                    pass
-
-                # Tenta reverter para conteúdo principal e fechar modal se possível
+                log(self.doc, f"⚠️ Tentativa {attempt + 1} falhou: {str(e)[:150]}")
+                
+                # Cleanup
                 try:
                     self.js.driver.switch_to.default_content()
-                except Exception:
+                except:
                     pass
-
+                
                 try:
-                    # se o engine expôs um fechamento de modal, utiliza
-                    if hasattr(self.js, "force_modal_close"):
-                        self.js.force_modal_close()
-                except Exception:
+                    self.js.force_modal_close()
+                except:
                     pass
-
-                # Se houver mais tentativas, aguarda e continua; caso contrário, propaga
+                
                 if attempt < max_attempts - 1:
-                    try:
-                        log(self.doc, "🔄 Aguardando antes da próxima tentativa...")
-                    except Exception:
-                        pass
-                    time.sleep(1.5 + attempt * 0.5)
-                    continue
+                    time.sleep(2 + attempt * 0.5)
                 else:
-                    raise
-
-        # Se todas as tentativas falharem, retorna False
+                    raise Exception(f"Falha ao processar LOV após {max_attempts} tentativas: {e}")
+        
         return False
 
 
@@ -2174,7 +2123,7 @@ def finalizar_relatorio():
     """Salva relatório e fecha driver"""
     global driver, doc
     
-    nome_arquivo = f"relatorio_geracao_boletos_carne_cenario_1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"relatorio_geracao_boletos_rateio_cenario_4_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     
     try:
         doc.save(nome_arquivo)
@@ -3507,164 +3456,6 @@ def clicar_cancelar_por_indice_em_todos_modais(js_engine, doc, indice=1):
         return {"clicked": 0, "modalsWithTarget": 0, "modalsFound": 0, "error": str(e)}
 
 
-def open_and_select_2(self, btn_index=None, btn_xpath=None, search_text="",
-                    result_text="", iframe_xpath=None, max_attempts=5,
-                    select_index=0):
-    """
-    Abre LOV por índice/XPath, pesquisa, seleciona um resultado e confirma no botão
-    <a class="btModel btGreen btSelect">Selecionar</a> por índice.
-
-    Parâmetros:
-      - btn_index: índice (0-based) do botão que abre o LOV (classe 'sp-openLov')
-      - btn_xpath: XPath explícito do botão que abre o LOV (alternativo a btn_index)
-      - search_text: texto a digitar no campo de pesquisa do LOV
-      - result_text: texto (ou parte) da linha a clicar nos resultados
-      - iframe_xpath: XPath do iframe do LOV (se houver)
-      - max_attempts: tentativas do fluxo completo
-      - select_index: índice (0-based) do botão "Selecionar" dentro do LOV
-    """
-    log(self.doc, f"🔍 Processando LOV: '{search_text}' → '{result_text}'")
-
-    for attempt in range(max_attempts):
-        try:
-            log(self.doc, f"   Tentativa {attempt + 1}/{max_attempts}")
-
-            # PASSO 1: Clica no botão do LOV
-            if btn_index is not None:
-                btn_selector = f"(//a[@class='sprites sp-openLov'])[{btn_index + 1}]"
-                by_xpath = True
-            elif btn_xpath:
-                btn_selector = btn_xpath
-                by_xpath = True
-            else:
-                raise ValueError("btn_index ou btn_xpath deve ser fornecido")
-
-            log(self.doc, "   📌 Abrindo LOV...")
-            self.js.force_click(btn_selector, by_xpath=by_xpath)
-            time.sleep(1.0)
-
-            # PASSO 2: Entrar no iframe do LOV (se existir)
-            if iframe_xpath:
-                log(self.doc, "   🔄 Entrando no iframe...")
-                try:
-                    WebDriverWait(self.js.driver, 10).until(
-                        EC.frame_to_be_available_and_switch_to_it((By.XPATH, iframe_xpath))
-                    )
-                    time.sleep(0.3)
-                except Exception:
-                    log(self.doc, "   ⚠️ Iframe não encontrado, continuando...")
-
-            # PASSO 3: Aguarda modal/LOV carregar
-            self.js.wait_ajax_complete(10)
-            time.sleep(0.5)
-
-            # PASSO 4: Preenche o campo de pesquisa
-            log(self.doc, f"   ✏️ Pesquisando: '{search_text}'")
-            search_selectors = [
-                "//input[@id='txtPesquisa']",
-                "//input[@class='nomePesquisa']",
-                "//input[contains(@placeholder,'esquisa') or contains(@placeholder,'Pesquisar') or contains(@placeholder,'Buscar')]",
-            ]
-            search_filled = False
-            for selector in search_selectors:
-                try:
-                    self.js.force_fill(selector, search_text, by_xpath=True)
-                    search_filled = True
-                    break
-                except Exception:
-                    continue
-            if not search_filled:
-                raise Exception("Campo de pesquisa não encontrado")
-
-            time.sleep(0.3)
-
-            # PASSO 5: Clica em Pesquisar
-            log(self.doc, "   🔎 Executando pesquisa...")
-            search_btn_selectors = [
-                "//a[contains(@class,'lpFind') and contains(normalize-space(.),'Pesquisar')]",
-                "//button[contains(normalize-space(.),'Pesquisar')]",
-                "//a[contains(normalize-space(.),'Buscar')]",
-                "//button[contains(normalize-space(.),'Buscar')]"
-            ]
-            search_clicked = False
-            for selector in search_btn_selectors:
-                try:
-                    self.js.force_click(selector, by_xpath=True)
-                    search_clicked = True
-                    break
-                except Exception:
-                    continue
-            if not search_clicked:
-                raise Exception("Botão de pesquisa não encontrado")
-
-            # PASSO 6: Aguarda resultados
-            time.sleep(1.5)
-            self.js.wait_ajax_complete(15)
-
-            # PASSO 7: Clica na linha do resultado
-            log(self.doc, f"   🎯 Selecionando linha com: '{result_text}'")
-            result_xpath = f"//tr[td[contains(normalize-space(.), '{result_text}')]]"
-            self.js.force_click(result_xpath, by_xpath=True)
-            time.sleep(0.4)
-
-            # PASSO 8: Clica no botão 'Selecionar' por índice (permanece no iframe, se houver)
-            log(self.doc, f"   ✅ Confirmando com 'Selecionar' (índice {select_index})...")
-            selecionar_candidates = [
-                # Botão com classes típicas
-                f"(//a[contains(@class,'btModel') and contains(@class,'btGreen') and contains(@class,'btSelect') and normalize-space(.)='Selecionar'])[ {select_index + 1} ]",
-                # Fallback por texto
-                f"(//*[self::a or self::button][normalize-space(.)='Selecionar'])[ {select_index + 1} ]",
-            ]
-
-            selecionou = False
-            for sel_xpath in selecionar_candidates:
-                try:
-                    self.js.force_click(sel_xpath, by_xpath=True)
-                    selecionou = True
-                    break
-                except Exception:
-                    continue
-
-            if not selecionou:
-                raise Exception("Botão 'Selecionar' não encontrado pelo índice informado")
-
-            # PASSO 9: Aguarda fechamento do LOV/modal e processamento
-            time.sleep(0.7)
-            self.js.wait_ajax_complete(10)
-
-            # PASSO 10: Volta para o conteúdo principal (se estava em iframe)
-            if iframe_xpath:
-                try:
-                    self.js.driver.switch_to.default_content()
-                    log(self.doc, "   ⬅️ Voltou para conteúdo principal")
-                except Exception:
-                    pass
-
-            log(self.doc, "✅ LOV processado com sucesso!")
-            return True
-
-        except Exception as e:
-            log(self.doc, f"⚠️ Tentativa {attempt + 1} falhou: {str(e)[:180]}")
-
-            # Cleanup
-            try:
-                self.js.driver.switch_to.default_content()
-            except Exception:
-                pass
-            try:
-                self.js.force_modal_close()
-            except Exception:
-                pass
-
-            if attempt < max_attempts - 1:
-                time.sleep(2 + attempt * 0.5)
-            else:
-                raise Exception(f"Falha ao processar LOV após {max_attempts} tentativas: {e}")
-
-    return False
- 
-
-
 def selecionar_opcao_por_indice(
     indice_select: int,
     indice_opcao: int,
@@ -3963,57 +3754,19 @@ def executar_teste():
         )
         
         time.sleep(5)
-                # ===== TIPO DE CONTRATO =====
-        safe_action(doc, "Selecionando Tipo de Contrato", lambda:
+        
+        # ===== CONTRATANTE/TITULAR =====
+        safe_action(doc, "Selecionando Pessoa", lambda:
             lov_handler.open_and_select(
-                btn_index=1,
-                search_text="TIPO DE CONTRATO TÍTULOS",
-                result_xpath="//tr[td[contains(text(),'TIPO DE CONTRATO TÍTULOS')]]",
-                modal_xpath="//div[@id='lov_10040']/ancestor::div[contains(@class,'modal') and contains(@class,'overflow')]"
+                btn_index=0,
+                search_text="TESTE APROVACAO",
+                result_text="TESTE APROVACAO"
             )
         )
 
-        # ===== PACOTE =====
-        safe_action(doc, "Selecionando Pacote", lambda:
-            lov_handler.open_and_select(
-                btn_index=2,
-                search_text="PACOTE COM SEPULTAMENTO",
-                result_text="PACOTE COM SEPULTAMENTO",
-                modal_xpath="//div[@id='lov_undefined']/ancestor::div[contains(@class,'modal') and contains(@class,'overflow')]"
-            )
+        safe_action(doc, "Selecionando Opção: 'Em aberto'", lambda:
+            selecionar_opcao_select("//select[@class='tipoParcela']", "Em aberto")
         )
-
-        # ===== TIPO DE MENSALIDADE =====
-        safe_action(doc, "Selecionando Tipo de Mensalidade", lambda:
-            lov_handler.open_and_select(
-                btn_index=3,
-                search_text="TIPO MENSALIDADE TÍTULOS",
-                result_xpath="//tr[td[@ref='1'][contains(text(),'TIPO MENSALIDADE TÍTULOS')]]",
-                modal_xpath="//div[@id='lov_10027']/ancestor::div[contains(@class,'modal') and contains(@class,'overflow')]",
-                select_index=0  # Clica no primeiro botão "Selecionar"
-            )
-        )
-
-        # ===== GRUPO DE RATEIO =====
-        safe_action(doc, "Selecionando Grupo de Rateio", lambda:
-            lov_handler.open_and_select(
-                btn_index=4,
-                search_text="GRUPO DE RATEIO TÍTULOS",
-                result_xpath="//tr[td[@ref='1'][contains(text(),'GRUPO DE RATEIO TÍTULOS')]]",
-                modal_xpath="//div[@id='lov_10051']/ancestor::div[contains(@class,'modal') and contains(@class,'overflow')]"
-            )
-        )
-
-        # ===== PLANO EMPRESA =====
-        safe_action(doc, "Selecionando Plano Empresa", lambda:
-            lov_handler.open_and_select(
-                btn_index=5,
-                search_text="PLANO EMPRESA CONTRATANTE CASSIANO",
-                result_text="PLANO EMPRESA CONTRATANTE CASSIANO",
-                modal_xpath="//div[@id='lov_10055']/ancestor::div[contains(@class,'modal') and contains(@class,'overflow')]"
-            )
-        )
-
 
         # ===== BUSCAR =====
         safe_action(doc, "Clicando em Pesquisar", lambda:

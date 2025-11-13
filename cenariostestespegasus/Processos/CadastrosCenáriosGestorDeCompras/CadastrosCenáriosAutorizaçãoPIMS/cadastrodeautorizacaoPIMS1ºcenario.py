@@ -375,14 +375,12 @@ def finalizar_relatorio():
             pass
 
 def encontrar_mensagem_alerta():
-    global driver, doc
-    if driver is None:
-        return None
     seletores = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
+        (".alerts.salvo", "✅ Mensagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+        (".alerts.erro", "❌ Mensagem de Erro"),
     ]
+
     for seletor, tipo in seletores:
         try:
             elemento = driver.find_element(By.CSS_SELECTOR, seletor)
@@ -391,6 +389,7 @@ def encontrar_mensagem_alerta():
                 return elemento
         except:
             continue
+
     log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
 
@@ -1040,21 +1039,21 @@ def executar_teste():
 
 
         safe_action(doc, "Selecionando Departamento", selecionar_opcao_xpath(
-            "/html/body/div[18]/div[1]/div[2]/div/div[5]/select",
-            "Teste"
+            "/html/body/div[19]/div[1]/div[2]/div/div[5]/select",
+            "Comercial"
         ))
 
         safe_action(doc, "Selecionando Status", selecionar_opcao_xpath(
-            "/html/body/div[18]/div[1]/div[2]/div/div[6]/select",
+            "/html/body/div[19]/div[1]/div[2]/div/div[6]/select",
             "Solicitado"
         ))
 
 
 
         safe_action(doc, "Pesquisando...", lambda:
-            wait.until(EC.element_to_be_clickable((By.XPATH, '/html/body/div[18]/div[1]/div[2]/div/div[7]/a'))).click()
+            wait.until(EC.element_to_be_clickable((By.XPATH, '/html/body/div[19]/div[1]/div[2]/div/div[7]/a'))).click()
         )
-        time.sleep(5)
+        time.sleep(10)
 
         # Verificando lista de PIMS
         log(doc, "🔄 Verificando lista de PIMS...")

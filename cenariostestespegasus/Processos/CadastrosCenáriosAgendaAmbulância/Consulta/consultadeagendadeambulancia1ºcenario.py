@@ -225,37 +225,26 @@ def ajustar_zoom(nivel=90):
         log(doc, f"⚠️ Erro ao ajustar zoom: {e}", 'WARN')
         return False
 
+
 def encontrar_mensagem_alerta():
-    """Sistema melhorado de detecção de alertas do sistema"""
-    global driver, doc
-    
-    if driver is None:
-        return None
-        
-    seletores_alerta = [
-        (".alerts.salvo", "✅ Sucesso"),
-        (".alerts.alerta", "⚠️ Alerta"),
-        (".alerts.erro", "❌ Erro"),
-        (".message.success", "✅ Sucesso"),
-        (".message.error", "❌ Erro"),
-        (".message.warning", "⚠️ Aviso"),
-        ("[class*='alert'][class*='success']", "✅ Sucesso"),
-        ("[class*='alert'][class*='error']", "❌ Erro"),
-        ("[class*='alert'][class*='warning']", "⚠️ Aviso"),
+    seletores = [
+        (".alerts.salvo", "✅ Mensagem de Sucesso"),
+        (".alerts.alerta", "⚠️ Mensagem de Alerta"),
+        (".alerts.erro", "❌ Mensagem de Erro"),
     ]
 
-    for seletor, tipo in seletores_alerta:
+    for seletor, tipo in seletores:
         try:
-            elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
-            for elemento in elementos:
-                if elemento.is_displayed() and elemento.text.strip():
-                    log(doc, f"📢 {tipo}: {elemento.text.strip()}")
-                    return elemento
-        except Exception as e:
+            elemento = driver.find_element(By.CSS_SELECTOR, seletor)
+            if elemento.is_displayed():
+                log(doc, f"📢 {tipo}: {elemento.text}")
+                return elemento
+        except:
             continue
 
-    log(doc, "ℹ️ Nenhuma mensagem de sistema detectada", 'DEBUG')
+    log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
+
 
 # ==== FUNÇÕES DE INTERAÇÃO ROBUSTAS ====
 def aguardar_elemento(seletor, timeout=TIMEOUT_DEFAULT, condicao='clickable', by_type=By.CSS_SELECTOR):
