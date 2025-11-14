@@ -5626,17 +5626,6 @@ def executar_teste():
         encontrar_mensagem_alerta()
 
 
-        safe_action(doc, "Recusando digitalização de Documentos", lambda: (
-            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
-                "#BtNo"))).click(),
-        ))
-        time.sleep(2)
-
-        safe_action(doc, "Recusando geração de Ordem de Serviço", lambda: (
-            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
-                "#BtNo"))).click(),
-        ))
-
 
         safe_action(doc, "Fechando modal de Cremação", lambda:
             js_engine.force_click('#gsRateio > div.wdTop.ui-draggable-handle > div > a')

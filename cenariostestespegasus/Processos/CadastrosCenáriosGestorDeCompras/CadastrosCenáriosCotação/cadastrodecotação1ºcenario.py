@@ -1162,7 +1162,7 @@ def executar_teste():
         safe_action(doc, "Buscando cotações", lambda:
             wait.until(EC.element_to_be_clickable((By.XPATH, "//a[contains(normalize-space(.), 'Buscar')]"))).click()
         )
-        time.sleep(20)
+        time.sleep(30)
         # Após clicar em "Buscar"
 
  

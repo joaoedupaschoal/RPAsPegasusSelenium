@@ -83,15 +83,28 @@ def main():
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
         time.sleep(2)
 
+
     def abrir_menu():
-        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2)
-        campo = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']")))
-        campo.click()
-        campo.send_keys("Comissão")
-        
-        elemento = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[7]/a")))
-        elemento.click()
-        time.sleep(4)
+            termo_pesquisa = "Comissão"
+            # Tenta abrir a busca rápida com F2; se falhar, tenta apenas focar o campo de busca
+            try:
+                driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2)
+            except Exception:
+                # não é crítico — apenas continue para localizar o campo de busca
+                pass
+
+            campo = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']")))
+            campo.click()
+            try:
+                campo.clear()
+            except Exception:
+                # alguns inputs não suportam clear(); ignora se houver erro
+                pass
+            campo.send_keys(termo_pesquisa)
+            # usa normalize-space para evitar problemas com espaços e garantir correspondência exata do texto
+            wait.until(EC.element_to_be_clickable((By.XPATH, f"//li[a[normalize-space(text())='{termo_pesquisa}']]"))).click()
+            time.sleep(2)
+
 
     def acessar_formulario():
         cadastrar = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 

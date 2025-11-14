@@ -1243,12 +1243,12 @@ def executar_teste():
         safe_action(doc, "Preenchendo todos os valores e quantidades (padrão)", lambda:
             preencher_todos_valores_e_quantidades(driver, wait, valor_padrao="10,00", quantidade_padrao="2")
         )
-
+        time.sleep(2)
 
         safe_action(doc, "Cancelando", lambda:
             driver.execute_script(
                 "arguments[0].click();",
-                driver.find_element(By.XPATH, "//a[contains(normalize-space(.), 'Cancelar')]")
+                driver.find_element(By.XPATH, "//a[@class='btModel btGray btsave fRight' and normalize-space()='Cancelar']")
             )
         )
         time.sleep(2)

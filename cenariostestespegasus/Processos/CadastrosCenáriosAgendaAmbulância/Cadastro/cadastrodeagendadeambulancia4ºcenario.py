@@ -247,7 +247,9 @@ def clicar_elemento_robusto(selector):
             raise Exception(f"Não foi possível clicar no elemento: {selector}")
     return acao
 
-def preencher_campo_com_retry(driver, wait, seletor, valor, max_tentativas=3):
+
+
+def preencher_campo_com_retry(driver, wait, seletor, valor, max_tentativas=5):
     """Tenta preencher o campo com diferentes métodos até conseguir"""
     global doc
     

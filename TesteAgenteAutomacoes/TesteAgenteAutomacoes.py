@@ -2409,7 +2409,42 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                 },
             },
         },
-        "6": {
+        "7": {
+            "label": "Cenários do Processo: Cremação",
+            "scenarios": {
+                "1": {
+                    "label": "Cenários do Cadastro de uma Nova Cremação",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Preenchimento completo e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCremação" / "CadastroCremação" / "processocadastrocremacao1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Preenchimento completo e cancelamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCremação" / "CadastroCremação" / "processocadastrocremacao2ºcenario.py",
+                        },
+                        "3": {
+                            "label": "Cenário 3: Preenchimento dos campos obrigatórios e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCremação" / "CadastroCremação" / "processocadastrocremacao3ºcenario.py",
+                        },
+                        "4": {
+                            "label": "Cenário 4: Preenchimento dos campos NÃO obrigatórios e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCremação" / "CadastroCremação" / "processocadastrocremacao4ºcenario.py",
+                        },
+                    },
+                },
+                "2": {
+                    "label": "Cenários do Consulta de Cremação",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Realização da consulta de Telecobrança.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosCremação" / "ConsultaCremação" / "processoconsultacremacao1ºcenario.py",
+                        },
+                    },
+                },
+            },
+        },
+        "8": {
             "label": "Cenários do Processo: Plano Empresa",
             "scenarios": {
                 "1": {
@@ -2465,7 +2500,7 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                 },
             },
         },
-        "7": {
+        "9": {
             "label": "Cenários do Processo: Apoio Ortopédico",
             "scenarios": {
                 "1": {
@@ -2522,7 +2557,7 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                 },
             },
         },
-        "8": {
+        "10": {
             "label": "Cenários do Processo: Agenda de Ambulância",
             "scenarios": {
                 "1": {
@@ -2548,7 +2583,7 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                 },
             },
         },
-        "9": {
+        "11": {
             "label": "Cenários do Processo: CRM",
             "scenarios": {
                 "1": {
@@ -2587,7 +2622,7 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                 },
             },
         },
-        "10": {
+        "12": {
             "label": "Cenários do Processo: Telemedicina",
             "scenarios": {
                 "1": {

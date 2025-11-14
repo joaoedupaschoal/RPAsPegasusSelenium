@@ -113,6 +113,31 @@ def finalizar_relatorio():
     subprocess.run(["start", "winword", nome_arquivo], shell=True)
     driver.quit()
 
+
+
+def abrir_menu():
+            termo_pesquisa = "Pacotes"
+            # Tenta abrir a busca rápida com F2; se falhar, tenta apenas focar o campo de busca
+            try:
+                driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2)
+            except Exception:
+                # não é crítico — apenas continue para localizar o campo de busca
+                pass
+
+            campo = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']")))
+            campo.click()
+            try:
+                campo.clear()
+            except Exception:
+                # alguns inputs não suportam clear(); ignora se houver erro
+                pass
+            campo.send_keys(termo_pesquisa)
+            # usa normalize-space para evitar problemas com espaços e garantir correspondência exata do texto
+            wait.until(EC.element_to_be_clickable((By.XPATH, f"//li[a[normalize-space(text())='{termo_pesquisa}']]"))).click()
+            time.sleep(2)
+
+
+
 def rolar_ate_dependentes_contemplados():
     campo_dependentes_contemplados = WebDriverWait(driver, 10).until(
         EC.element_to_be_clickable((By.CSS_SELECTOR, '#fmod_2 > div.wdTelas > div.telaCadastro.clearfix.telaCadastroPacote > div.catWrapper > div > div.cat_parametrosGerais.categoriaHolder > div.groupHolder.clearfix.grupo_dependentesContemplados > div.group_dependentesContemplados.clearfix.grupoHolder.lista > div > div > select'))
@@ -226,12 +251,10 @@ try:
     ))
 
     safe_action(doc, "Abrindo menu Pacotes", lambda: (
-        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2),
-        time.sleep(1),
-        wait.until(EC.visibility_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']"))).send_keys("Pacotes", Keys.ENTER),
-        wait.until(EC.visibility_of_element_located((By.XPATH, "/html/body/div[17]/div[2]/ul/li[28]/a"))).click()
-
+        time.sleep(5),
+        abrir_menu()
     ))
+
 
     safe_action(doc, "Clicando em Cadastrar", lambda: (
         time.sleep(2),

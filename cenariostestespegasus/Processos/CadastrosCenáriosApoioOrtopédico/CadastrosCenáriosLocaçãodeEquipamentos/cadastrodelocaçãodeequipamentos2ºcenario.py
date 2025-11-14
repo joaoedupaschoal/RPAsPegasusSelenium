@@ -6,7 +6,7 @@ import time                           # usar para time.sleep(...)
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver import ActionChains
-from selenium.common.exceptions import TimeoutException, StaleElementReferenceException, JavascriptException
+from selenium.common.exceptions import TimeoutException, WebDriverException, StaleElementReferenceException, JavascriptException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -159,6 +159,1329 @@ def safe_action(doc, descricao, func, max_retries=3):
 
 
 
+
+# ==== SISTEMA ANTI-TIMEOUT JAVASCRIPT ====
+class JSTimeoutHandler:
+    """Sistema robusto para lidar com timeouts JavaScript no Selenium"""
+    
+    def __init__(self, driver, doc, timeout_padrao=10, max_retries=3):
+        self.driver = driver
+        self.doc = doc
+        self.timeout_padrao = timeout_padrao
+        self.max_retries = max_retries
+        self.last_error = None
+        
+    def log_timeout(self, msg, level="INFO"):
+        """Log com timestamp"""
+
+        prefix = {
+            "INFO": "ℹ️ ",
+            "WARN": "⚠️ ",
+            "ERROR": "❌ ",
+            "SUCCESS": "✅ "
+        }.get(level, "📝 ")
+        
+        print(f" {prefix} {msg}")
+        if hasattr(self.doc, 'add_paragraph'):
+            self.doc.add_paragraph(f"{msg}")
+    
+    def execute_js_safe(self, script, *args, timeout=None, fallback_result=None):
+        """Executa JavaScript com proteção contra timeouts"""
+        timeout = timeout or self.timeout_padrao
+        
+        original_timeout = self.driver.timeouts.script
+        self.driver.set_script_timeout(timeout)
+        
+        for tentativa in range(1, self.max_retries + 1):
+            try:
+                if tentativa > 1:
+                    self.log_timeout(f"Tentativa {tentativa}/{self.max_retries}", "INFO")
+                
+                result = self.driver.execute_script(script, *args)
+                self.driver.set_script_timeout(original_timeout)
+                
+                if tentativa > 1:
+                    self.log_timeout("JavaScript executado com sucesso", "SUCCESS")
+                return result
+                
+            except JavascriptException as e:
+                self.last_error = e
+                self.log_timeout(f"Erro JavaScript: {str(e)[:150]}", "ERROR")
+                self._limpar_estado_js()
+                
+                if tentativa < self.max_retries:
+                    time.sleep(1 + tentativa * 0.5)
+                    continue
+                    
+            except TimeoutException as e:
+                self.last_error = e
+                self.log_timeout(f"Timeout JavaScript ({timeout}s)", "ERROR")
+                self._forcar_parada_js()
+                
+                if tentativa < self.max_retries:
+                    time.sleep(2 + tentativa)
+                    continue
+                    
+            except WebDriverException as e:
+                self.last_error = e
+                self.log_timeout(f"Erro WebDriver: {str(e)[:150]}", "ERROR")
+                
+                if tentativa < self.max_retries:
+                    time.sleep(1.5)
+                    continue
+                    
+            except Exception as e:
+                self.last_error = e
+                self.log_timeout(f"Erro inesperado: {str(e)[:150]}", "ERROR")
+                break
+        
+        try:
+            self.driver.set_script_timeout(original_timeout)
+        except:
+            pass
+            
+        if fallback_result is not None:
+            self.log_timeout(f"Usando valor fallback: {fallback_result}", "WARN")
+        return fallback_result
+    
+    def _limpar_estado_js(self):
+        """Limpa estado JavaScript do browser"""
+        try:
+            cleanup_script = """
+                if (window.__cleanupTimers) {
+                    window.__cleanupTimers.forEach(clearTimeout);
+                    window.__cleanupTimers.forEach(clearInterval);
+                }
+                if (typeof jQuery !== 'undefined') {
+                    jQuery.active = 0;
+                }
+                window.__pendingRequests = 0;
+                return true;
+            """
+            self.driver.execute_script(cleanup_script)
+            time.sleep(0.5)
+        except Exception:
+            pass
+    
+    def _forcar_parada_js(self):
+        """Força parada de JavaScript travado"""
+        try:
+            self.driver.execute_script("window.stop();")
+            time.sleep(0.3)
+        except Exception:
+            pass
+
+
+
+# ==== JS FORCE ENGINE COM PROTEÇÃO ANTI-TIMEOUT ====
+class JSForceEngine:
+    """Motor de execução JavaScript forçado com proteção contra timeouts"""
+    
+    def __init__(self, driver, wait, doc, timeout_padrao=10, max_retries=3):
+        self.driver = driver
+        self.wait = wait
+        self.doc = doc
+        self.timeout_handler = JSTimeoutHandler(driver, doc, timeout_padrao, max_retries)
+    
+    def execute_js(self, script, *args, timeout=None, fallback_result=None):
+        """Executa JavaScript com proteção contra timeout"""
+        return self.timeout_handler.execute_js_safe(
+            script, *args, timeout=timeout, fallback_result=fallback_result
+        )
+    
+    def wait_ajax_complete(self, timeout=15):
+        """Aguarda AJAX completar com proteção contra timeout"""
+        script = """
+            var jQueryOk = (typeof jQuery==='undefined') || (jQuery.active===0);
+            var fetchOk = !window.__pendingRequests || window.__pendingRequests===0;
+            var overlays = document.querySelectorAll(
+                '.blockScreen, .blockUI, .loading, .overlay, [class*="loading"], [class*="spinner"]'
+            );
+            var overlayOk = true;
+            for (var i=0; i<overlays.length; i++){
+                var s=window.getComputedStyle(overlays[i]);
+                if(s.display!=='none' && s.visibility!=='hidden' && parseFloat(s.opacity||1)>0.01){
+                    overlayOk=false;
+                    break;
+                }
+            }
+            return jQueryOk && fetchOk && overlayOk;
+        """
+        
+        end = time.time() + timeout
+        while time.time() < end:
+            try:
+                done = self.execute_js(script, timeout=5, fallback_result=True)
+                if done:
+                    return True
+            except:
+                pass
+            time.sleep(0.2)
+        return True
+    
+    def scroll_into_view(self, target, padding=100):
+        """
+        Faz scroll até um WebElement (ou seletor XPath/CSS).
+        padding: desloca um pouco pra cima pra não ficar colado no topo.
+        """
+        try:
+            el = target
+            # Se vier como string, tenta resolver
+            if isinstance(target, str):
+                try:
+                    el = self.driver.find_element("xpath", target)
+                except Exception:
+                    el = self.driver.find_element("css selector", target)
+
+            # Estratégia principal via JS
+            self.driver.execute_script("""
+                const el = arguments[0], pad = arguments[1] || 0;
+                if (!el) return;
+                el.scrollIntoView({block:'center', inline:'center'});
+                try { window.scrollBy(0, -pad); } catch(e) {}
+            """, el, padding)
+            time.sleep(0.2)
+            return True
+        except Exception:
+            # Fallback ActionChains
+            try:
+                ActionChains(self.driver).move_to_element(el).perform()
+                time.sleep(0.2)
+                return True
+            except Exception:
+                return False
+
+    def click_element(self, el, wait_after=0.4):
+        """
+        Clica com múltiplas estratégias em um WebElement já localizado.
+        """
+        try:
+            # 1) Clique padrão
+            el.click()
+            time.sleep(wait_after)
+            self.wait_ajax_complete(min(10, int(wait_after*10)) or 3)
+            return True
+        except Exception:
+            pass
+
+        try:
+            # 2) Clique via JS
+            self.driver.execute_script("arguments[0].click();", el)
+            time.sleep(wait_after)
+            self.wait_ajax_complete(min(10, int(wait_after*10)) or 3)
+            return True
+        except Exception:
+            pass
+
+        try:
+            # 3) Sequência de eventos de mouse
+            self.execute_js("""
+                const e = arguments[0];
+                const rect = e.getBoundingClientRect();
+                const x = rect.left + 5, y = rect.top + 5;
+                ['mouseover','mouseenter','mousemove','mousedown','mouseup','click'].forEach(t=>{
+                    e.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,view:window,clientX:x,clientY:y}));
+                });
+                if (typeof e.click==='function') e.click();
+                return true;
+            """, el, timeout=5, fallback_result=True)
+            time.sleep(wait_after)
+            self.wait_ajax_complete(min(10, int(wait_after*10)) or 3)
+            return True
+        except Exception:
+            pass
+
+        # 4) Último recurso: ActionChains
+        try:
+            ActionChains(self.driver).move_to_element(el).pause(0.05).click().perform()
+            time.sleep(wait_after)
+            self.wait_ajax_complete(min(10, int(wait_after*10)) or 3)
+            return True
+        except Exception:
+            pass
+
+        raise Exception("Não foi possível clicar no elemento com as estratégias disponíveis.")
+    
+    def force_click(self, selector, by_xpath=False, max_attempts=5):
+        """Clique forçado com proteção contra timeout"""
+        log(self.doc, f"🎯 Clique forçado em: {selector}")
+        
+        for attempt in range(max_attempts):
+            try:
+                strategies = [
+                    self._click_strategy_2,
+                    self._click_strategy_1,
+                    self._click_strategy_3,
+                    self._click_strategy_4,
+                    self._click_strategy_5,
+                ]
+                
+                for i, strategy in enumerate(strategies, 1):
+                    try:
+                        if attempt > 0 or i > 1:
+                            log(self.doc, f"   Tentativa {attempt + 1}.{i}...")
+                        
+                        result = self.execute_js(
+                            self._get_strategy_script(strategy, selector, by_xpath),
+                            selector,
+                            by_xpath,
+                            timeout=5,
+                            fallback_result=False
+                        )
+                        
+                        if result:
+                            log(self.doc, f"✅ Clique bem-sucedido (estratégia {i})")
+                            time.sleep(0.5)
+                            self.wait_ajax_complete(10)
+                            return True
+                            
+                    except Exception as e:
+                        if i == 1 and attempt == 0:
+                            pass  # Silencia primeiro erro
+                        else:
+                            log(self.doc, f"   Estratégia {i} falhou: {str(e)[:80]}")
+                        continue
+                
+                if attempt < max_attempts - 1:
+                    time.sleep(1 + attempt * 0.5)
+                    
+            except Exception as e:
+                log(self.doc, f"⚠️ Tentativa {attempt + 1} falhou: {e}")
+                if attempt < max_attempts - 1:
+                    time.sleep(1.5)
+        
+        raise Exception(f"Falha ao clicar após {max_attempts} tentativas: {selector}")
+    
+    def _get_strategy_script(self, strategy_func, selector, by_xpath):
+        """Retorna o script JavaScript para cada estratégia"""
+        base_locator = """
+            var selector = arguments[0];
+            var byXPath = arguments[1];
+            var element;
+            
+            if (byXPath) {
+                var result = document.evaluate(selector, document, null, 
+                    XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                element = result.singleNodeValue;
+            } else {
+                element = document.querySelector(selector);
+            }
+            
+            if (!element) throw new Error('Elemento não encontrado');
+        """
+        
+        if strategy_func == self._click_strategy_1:
+            return base_locator + """
+                element.style.pointerEvents = 'auto';
+                element.style.display = 'block';
+                element.style.visibility = 'visible';
+                element.style.opacity = '1';
+                element.removeAttribute('disabled');
+                element.scrollIntoView({behavior: 'smooth', block: 'center'});
+                setTimeout(function() { element.click(); }, 300);
+                return true;
+            """
+        elif strategy_func == self._click_strategy_2:
+            return base_locator + """
+                element.style.pointerEvents = 'auto';
+                element.removeAttribute('disabled');
+                element.scrollIntoView({block: 'center'});
+                
+                var events = ['mouseover', 'mouseenter', 'mousemove', 'mousedown', 'mouseup', 'click'];
+                events.forEach(function(eventType) {
+                    var evt = new MouseEvent(eventType, {
+                        bubbles: true, cancelable: true, view: window, detail: 1,
+                        clientX: element.getBoundingClientRect().left + 5,
+                        clientY: element.getBoundingClientRect().top + 5
+                    });
+                    element.dispatchEvent(evt);
+                });
+                
+                if (typeof element.click === 'function') element.click();
+                return true;
+            """
+        elif strategy_func == self._click_strategy_3:
+            return base_locator + """
+                element.style.display = 'block';
+                element.style.visibility = 'visible';
+                element.style.opacity = '1';
+                element.style.pointerEvents = 'auto';
+                element.focus();
+                element.click();
+                element.dispatchEvent(new Event('click', {bubbles: true, cancelable: true}));
+                return true;
+            """
+        elif strategy_func == self._click_strategy_4:
+            return base_locator + """
+                element.removeAttribute('disabled');
+                element.removeAttribute('readonly');
+                element.style.pointerEvents = 'auto !important';
+                element.style.display = 'block !important';
+                element.style.visibility = 'visible !important';
+                element.style.opacity = '1 !important';
+                
+                var overlays = document.querySelectorAll('.modal, .overlay, .blockUI, [role="dialog"]');
+                overlays.forEach(function(overlay) {
+                    overlay.style.display = 'none';
+                    overlay.style.visibility = 'hidden';
+                });
+                
+                element.focus();
+                element.click();
+                
+                var clickEvent = new MouseEvent('click', {
+                    view: window, bubbles: true, cancelable: true
+                });
+                element.dispatchEvent(clickEvent);
+                
+                if (typeof jQuery !== 'undefined') jQuery(element).trigger('click');
+                return true;
+            """
+        else:  # strategy_5
+            return base_locator + """
+                var rect = element.getBoundingClientRect();
+                var x = rect.left + rect.width / 2;
+                var y = rect.top + rect.height / 2;
+                
+                var evt = document.createEvent('MouseEvents');
+                evt.initMouseEvent('click', true, true, window, 1, x, y, x, y, false, false, false, false, 0, null);
+                element.dispatchEvent(evt);
+                
+                if (element.onclick) element.onclick();
+                
+                var parent = element.parentElement;
+                while (parent && parent !== document.body) {
+                    if (parent.onclick) {
+                        parent.onclick();
+                        break;
+                    }
+                    parent = parent.parentElement;
+                }
+                return true;
+            """
+    
+    def _click_strategy_1(self, selector, by_xpath):
+        pass  # Implementado via _get_strategy_script
+    
+    def _click_strategy_2(self, selector, by_xpath):
+        pass
+    
+    def _click_strategy_3(self, selector, by_xpath):
+        pass
+    
+    def _click_strategy_4(self, selector, by_xpath):
+        pass
+    
+    def _click_strategy_5(self, selector, by_xpath):
+        pass
+    
+    def force_fill(self, selector, value, by_xpath=False, max_attempts=5):
+        """Preenchimento forçado com proteção contra timeout"""
+        log(self.doc, f"✏️ Preenchimento forçado: {selector} = '{value}'")
+        
+        for attempt in range(max_attempts):
+            try:
+                strategies = [
+                    self._fill_strategy_1,
+                    self._fill_strategy_2,
+                    self._fill_strategy_3,
+                    self._fill_strategy_4,
+                ]
+                
+                for i, strategy in enumerate(strategies, 1):
+                    try:
+                        if attempt > 0 or i > 1:
+                            log(self.doc, f"   Tentativa {attempt + 1}.{i}...")
+                        
+                        result = self.execute_js(
+                            self._get_fill_script(strategy, selector, value, by_xpath),
+                            selector,
+                            value,
+                            by_xpath,
+                            timeout=5,
+                            fallback_result=None
+                        )
+                        
+                        time.sleep(0.3)
+                        if self._validate_fill(selector, value, by_xpath):
+                            log(self.doc, f"✅ Campo preenchido (estratégia {i})")
+                            return True
+                    except Exception as e:
+                        if i == 1 and attempt == 0:
+                            pass
+                        else:
+                            log(self.doc, f"   Estratégia {i} falhou: {str(e)[:80]}")
+                        continue
+                
+                if attempt < max_attempts - 1:
+                    time.sleep(1 + attempt * 0.5)
+                    
+            except Exception as e:
+                log(self.doc, f"⚠️ Tentativa {attempt + 1} falhou: {e}")
+        
+        raise Exception(f"Falha ao preencher após {max_attempts} tentativas: {selector}")
+
+    def _get_fill_script(self, strategy_func, selector, value, by_xpath):
+        """Retorna o script de preenchimento"""
+        base_locator = """
+            var selector = arguments[0];
+            var value = arguments[1];
+            var byXPath = arguments[2];
+            var element;
+            
+            if (byXPath) {
+                var result = document.evaluate(selector, document, null, 
+                    XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                element = result.singleNodeValue;
+            } else {
+                element = document.querySelector(selector);
+            }
+            
+            if (!element) throw new Error('Campo não encontrado');
+        """
+        
+        if strategy_func == self._fill_strategy_1:
+            return base_locator + """
+                element.removeAttribute('disabled');
+                element.removeAttribute('readonly');
+                element.style.display = 'block';
+                element.style.visibility = 'visible';
+                element.scrollIntoView({block: 'center'});
+                element.focus();
+                element.dispatchEvent(new Event('focus', {bubbles: true}));
+                element.value = '';
+                element.value = value;
+                ['input', 'change', 'blur', 'keyup'].forEach(function(evt) {
+                    element.dispatchEvent(new Event(evt, {bubbles: true}));
+                });
+                return element.value;
+            """
+        elif strategy_func == self._fill_strategy_2:
+            return base_locator + """
+                var nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                    window.HTMLInputElement.prototype, 'value'
+                ).set;
+                if (nativeInputValueSetter) {
+                    nativeInputValueSetter.call(element, value);
+                } else {
+                    element.value = value;
+                }
+                element.dispatchEvent(new Event('input', {bubbles: true}));
+                element.dispatchEvent(new Event('change', {bubbles: true}));
+                element.dispatchEvent(new KeyboardEvent('keydown', {bubbles: true}));
+                element.dispatchEvent(new KeyboardEvent('keyup', {bubbles: true}));
+                element.dispatchEvent(new Event('blur', {bubbles: true}));
+                return element.value;
+            """
+        elif strategy_func == self._fill_strategy_3:
+            return base_locator + """
+                element.value = value;
+                if (typeof jQuery !== 'undefined') {
+                    jQuery(element).val(value).trigger('input').trigger('change').trigger('blur');
+                }
+                ['focus', 'input', 'change', 'blur'].forEach(function(evt) {
+                    element.dispatchEvent(new Event(evt, {bubbles: true}));
+                });
+                return element.value;
+            """
+        else:  # strategy_4
+            return base_locator + """
+                element.removeAttribute('disabled');
+                element.removeAttribute('readonly');
+                element.removeAttribute('maxlength');
+                element.value = '';
+                element.setAttribute('value', value);
+                element.value = value;
+                element.style.color = element.style.color;
+                
+                var events = ['focus', 'click', 'input', 'change', 'keydown', 'keypress', 
+                              'keyup', 'blur', 'paste', 'textInput'];
+                events.forEach(function(evt) {
+                    try {
+                        element.dispatchEvent(new Event(evt, {bubbles: true, cancelable: true}));
+                    } catch(e) {}
+                });
+                
+                if (element.oninput) element.oninput();
+                if (element.onchange) element.onchange();
+                return element.value;
+            """
+    
+    def _fill_strategy_1(self, selector, value, by_xpath):
+        pass
+    
+    def _fill_strategy_2(self, selector, value, by_xpath):
+        pass
+    
+    def _fill_strategy_3(self, selector, value, by_xpath):
+        pass
+    
+    def _fill_strategy_4(self, selector, value, by_xpath):
+        pass
+    
+    def _validate_fill(self, selector, expected_value, by_xpath):
+        """Valida preenchimento"""
+        script = """
+            var selector = arguments[0];
+            var expected = arguments[1];
+            var byXPath = arguments[2];
+            var element;
+            
+            if (byXPath) {
+                var result = document.evaluate(selector, document, null, 
+                    XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                element = result.singleNodeValue;
+            } else {
+                element = document.querySelector(selector);
+            }
+            
+            if (!element) return false;
+            var actual = element.value || '';
+            return actual.trim() === expected.trim() || actual.includes(expected);
+        """
+        try:
+            return self.execute_js(script, selector, expected_value, by_xpath, timeout=3, fallback_result=False)
+        except:
+            return False
+        
+import time
+
+def clicar_finalizar_e_verificar_alerta(js_engine, doc, timeout=5, pausa=0.5):
+    """
+    Clica no botão 'Finalizar', aguarda 0,5s e procura mensagens de alerta.
+    Usa safe_action e js_engine.force_click().
+    """
+    safe_action(doc, "Clicando em 'Finalizar'", lambda:
+        js_engine.force_click(
+            "//a[@class='btModel btGray btyes' and normalize-space()='Finalizar']",
+            by_xpath=True
+        )
+    )
+
+    time.sleep(pausa)
+    log(doc, "🔍 Verificando mensagens de alerta após o clique em 'Finalizar'...")
+    return encontrar_mensagem_alerta()
+
+
+import time
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import (
+    TimeoutException,
+    StaleElementReferenceException,
+    ElementClickInterceptedException,
+    NoSuchElementException,
+    ElementNotInteractableException
+)
+from selenium.webdriver import ActionChains
+
+class LOVHandler:
+    """
+    Handler ultra-robusto para manipulação de LOV (List of Values) com:
+    - 10 estratégias diferentes de clique
+    - Detecção automática de iframes
+    - Retry inteligente com backoff exponencial
+    - Reforço automático de cliques
+    - Logs detalhados de cada tentativa
+    """
+    
+    def __init__(self, js_engine, doc, max_retries=5, timeout=10):
+        self.js = js_engine
+        self.doc = doc
+        self.driver = js_engine.driver
+        self.max_retries = max_retries
+        self.timeout = timeout
+
+        # índice para seleção sequencial das linhas do LOV
+        self.selecao_sequencial_index = 0
+
+    def resetar_selecao_sequencial(self, indice_inicial: int = 0):
+        """
+        Reseta o índice usado na seleção sequencial de linhas do LOV.
+        Usa 0 como padrão (primeira linha).
+        """
+        try:
+            indice = int(indice_inicial)
+        except Exception:
+            indice = 0
+
+        if indice < 0:
+            indice = 0
+
+        self.selecao_sequencial_index = indice
+        self._log(
+            f"🔁 Índice de seleção sequencial resetado para {self.selecao_sequencial_index}",
+            "INFO"
+        )
+
+    def _log(self, msg, level="INFO"):
+        """Log padronizado com níveis"""
+        prefixes = {
+            "INFO": "ℹ️",
+            "SUCCESS": "✅",
+            "WARNING": "⚠️",
+            "ERROR": "❌",
+            "DEBUG": "🔍"
+        }
+        prefix = prefixes.get(level, "📝")
+        log(self.doc, f"{prefix} {msg}")
+
+    def _select_result_sequencial(self):
+        """Seleciona a próxima linha disponível da tabela do LOV, sem repetir."""
+        try:
+            # Garante que o atributo exista
+            if not hasattr(self, "selecao_sequencial_index"):
+                self.selecao_sequencial_index = 0
+
+            linhas = self.driver.find_elements(By.XPATH, "//table//tr[td]")
+
+            if not linhas:
+                self._log("Nenhuma linha encontrada no LOV.")
+                return None
+
+            if self.selecao_sequencial_index >= len(linhas):
+                self._log("⚠️ Índice passou do limite, usando última linha disponível.", "WARNING")
+                self.selecao_sequencial_index = len(linhas) - 1
+
+            linha_alvo = linhas[self.selecao_sequencial_index]
+
+            self._log(f"Selecionando linha Nº {self.selecao_sequencial_index + 1}", "INFO")
+
+            if self._advanced_click(linha_alvo):
+                self._log("Linha selecionada com sucesso!", "SUCCESS")
+                self.selecao_sequencial_index += 1
+                return get_xpath(linha_alvo)
+
+            return None
+
+        except Exception as e:
+            self._log(f"Erro ao selecionar linha sequencial: {e}", "ERROR")
+            return None
+
+
+
+    def _wait_element(self, locator_type, locator_value, timeout=None, condition="clickable"):
+        """Aguarda elemento com diferentes condições"""
+        timeout = timeout or self.timeout
+        conditions = {
+            "present": EC.presence_of_element_located,
+            "visible": EC.visibility_of_element_located,
+            "clickable": EC.element_to_be_clickable
+        }
+        
+        try:
+            cond = conditions.get(condition, conditions["clickable"])
+            return WebDriverWait(self.driver, timeout).until(
+                cond((locator_type, locator_value))
+            )
+        except TimeoutException:
+            return None
+    
+    def _is_element_visible(self, element):
+        """Verifica se elemento está realmente visível"""
+        try:
+            if not element:
+                return False
+            if not element.is_displayed():
+                return False
+            
+            # Verifica via JavaScript também
+            is_visible = self.driver.execute_script("""
+                const el = arguments[0];
+                if (!el) return false;
+                const style = window.getComputedStyle(el);
+                return (
+                    style.display !== 'none' &&
+                    style.visibility !== 'hidden' &&
+                    parseFloat(style.opacity || 1) > 0.01 &&
+                    el.offsetParent !== null
+                );
+            """, element)
+            
+            return is_visible
+        except:
+            return False
+    
+    def _force_element_visible(self, element):
+        """Força elemento a ficar visível e interativo"""
+        try:
+            self.driver.execute_script("""
+                const el = arguments[0];
+                el.style.display = 'block';
+                el.style.visibility = 'visible';
+                el.style.opacity = '1';
+                el.style.pointerEvents = 'auto';
+                el.removeAttribute('disabled');
+                el.removeAttribute('readonly');
+                
+                // Remove overlays que podem bloquear
+                const overlays = document.querySelectorAll(
+                    '.modal-backdrop, .overlay, .blockUI, [class*="loading"]'
+                );
+                overlays.forEach(o => {
+                    o.style.display = 'none';
+                    o.style.visibility = 'hidden';
+                });
+            """, element)
+            return True
+        except:
+            return False
+    
+    def _detect_and_enter_iframe(self, iframe_xpath=None):
+        """Detecta e entra no iframe automaticamente"""
+        try:
+            # Primeiro volta para o contexto principal
+            self.driver.switch_to.default_content()
+            
+            # Se foi fornecido um xpath específico
+            if iframe_xpath:
+                try:
+                    frame = self._wait_element("xpath", iframe_xpath, timeout=3)
+                    if frame:
+                        self.driver.switch_to.frame(frame)
+                        self._log(f"Entrou no iframe: {iframe_xpath}", "SUCCESS")
+                        return True
+                except:
+                    pass
+            
+            # Detecção automática de iframes
+            iframe_selectors = [
+                "//iframe[contains(@class,'LOV') or contains(@id,'LOV') or contains(@id,'lov')]",
+                "//iframe[contains(@class,'modal') or contains(@class,'popup')]",
+                "//iframe[contains(@src,'lov') or contains(@src,'LOV')]",
+                "(//iframe)[last()]"  # Último iframe (geralmente o modal)
+            ]
+            
+            for selector in iframe_selectors:
+                try:
+                    frames = self.driver.find_elements(By.XPATH, selector)
+                    for frame in frames:
+                        if self._is_element_visible(frame):
+                            self.driver.switch_to.frame(frame)
+                            self._log(f"Iframe detectado automaticamente: {selector}", "SUCCESS")
+                            return True
+                except:
+                    continue
+            
+            return False
+        except Exception as e:
+            self._log(f"Erro ao detectar iframe: {e}", "WARNING")
+            return False
+    
+    def _click_strategy_1_standard(self, element):
+        """Estratégia 1: Clique padrão do Selenium"""
+        element.click()
+        return True
+    
+    def _click_strategy_2_javascript_simple(self, element):
+        """Estratégia 2: JavaScript simples"""
+        self.driver.execute_script("arguments[0].click();", element)
+        return True
+    
+    def _click_strategy_3_javascript_advanced(self, element):
+        """Estratégia 3: JavaScript com eventos completos"""
+        self.driver.execute_script("""
+            const el = arguments[0];
+            const rect = el.getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            
+            const events = ['mouseover', 'mouseenter', 'mousemove', 'mousedown', 'mouseup', 'click'];
+            events.forEach(eventType => {
+                const evt = new MouseEvent(eventType, {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    detail: 1,
+                    clientX: x,
+                    clientY: y
+                });
+                el.dispatchEvent(evt);
+            });
+            
+            if (typeof el.click === 'function') el.click();
+        """, element)
+        return True
+    
+    def _click_strategy_4_action_chains(self, element):
+        """Estratégia 4: ActionChains com pause"""
+        ActionChains(self.driver)\
+            .move_to_element(element)\
+            .pause(0.1)\
+            .click()\
+            .perform()
+        return True
+    
+    def _click_strategy_5_action_chains_offset(self, element):
+        """Estratégia 5: ActionChains com offset"""
+        ActionChains(self.driver)\
+            .move_to_element_with_offset(element, 5, 5)\
+            .pause(0.05)\
+            .click()\
+            .perform()
+        return True
+    
+    def _click_strategy_6_force_visible_then_click(self, element):
+        """Estratégia 6: Força visibilidade e clica"""
+        self._force_element_visible(element)
+        time.sleep(0.2)
+        element.click()
+        return True
+    
+    def _click_strategy_7_scroll_and_click(self, element):
+        """Estratégia 7: Scroll suave até elemento"""
+        self.driver.execute_script("""
+            arguments[0].scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+                inline: 'center'
+            });
+        """, element)
+        time.sleep(0.3)
+        element.click()
+        return True
+    
+    def _click_strategy_8_remove_overlays(self, element):
+        """Estratégia 8: Remove todos os overlays e clica"""
+        self.driver.execute_script("""
+            // Remove todos os overlays possíveis
+            const overlays = document.querySelectorAll(`
+                .modal-backdrop, .overlay, .blockUI, .blockScreen,
+                [class*="loading"], [class*="spinner"], [class*="overlay"],
+                [style*="z-index: 9999"], [style*="position: fixed"]
+            `);
+            overlays.forEach(o => {
+                o.style.display = 'none';
+                o.style.visibility = 'hidden';
+                o.remove();
+            });
+            
+            const el = arguments[0];
+            el.style.zIndex = '999999';
+            el.click();
+        """, element)
+        return True
+    
+    def _click_strategy_9_jquery_trigger(self, element):
+        """Estratégia 9: jQuery trigger (se disponível)"""
+        self.driver.execute_script("""
+            const el = arguments[0];
+            if (typeof jQuery !== 'undefined') {
+                jQuery(el).trigger('click');
+            } else {
+                el.click();
+            }
+        """, element)
+        return True
+    
+    def _click_strategy_10_nuclear_option(self, element):
+        """Estratégia 10: Opção nuclear - força tudo"""
+        self.driver.execute_script("""
+            const el = arguments[0];
+            
+            // Remove TODOS os atributos que podem bloquear
+            el.removeAttribute('disabled');
+            el.removeAttribute('readonly');
+            el.style.pointerEvents = 'auto !important';
+            el.style.display = 'block !important';
+            el.style.visibility = 'visible !important';
+            el.style.opacity = '1 !important';
+            el.style.zIndex = '999999 !important';
+            
+            // Remove TODOS os overlays da página
+            document.querySelectorAll('*').forEach(elem => {
+                const style = window.getComputedStyle(elem);
+                if (
+                    style.position === 'fixed' &&
+                    parseInt(style.zIndex) > 1000 &&
+                    elem !== el &&
+                    !elem.contains(el)
+                ) {
+                    elem.style.display = 'none';
+                }
+            });
+            
+            // Foca no elemento
+            el.focus();
+            
+            // Dispara TODOS os eventos possíveis
+            const allEvents = [
+                'focus', 'focusin', 'mouseover', 'mouseenter', 'mousemove',
+                'mousedown', 'mouseup', 'click', 'dblclick'
+            ];
+            
+            allEvents.forEach(eventType => {
+                try {
+                    const evt = new MouseEvent(eventType, {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    });
+                    el.dispatchEvent(evt);
+                } catch(e) {}
+            });
+            
+            // Clique direto
+            if (typeof el.click === 'function') el.click();
+            
+            // jQuery se disponível
+            if (typeof jQuery !== 'undefined') {
+                jQuery(el).trigger('click');
+            }
+            
+            // Tenta onclick manual
+            if (el.onclick) el.onclick();
+            
+            return true;
+        """, element)
+        return True
+    
+    def _advanced_click(self, element, max_attempts=10):
+        """
+        Sistema avançado de clique com 10 estratégias diferentes
+        Tenta cada estratégia até uma funcionar
+        """
+        strategies = [
+            ("Clique Padrão", self._click_strategy_1_standard),
+            ("JavaScript Simples", self._click_strategy_2_javascript_simple),
+            ("JavaScript Avançado", self._click_strategy_3_javascript_advanced),
+            ("ActionChains", self._click_strategy_4_action_chains),
+            ("ActionChains Offset", self._click_strategy_5_action_chains_offset),
+            ("Força Visível", self._click_strategy_6_force_visible_then_click),
+            ("Scroll e Clique", self._click_strategy_7_scroll_and_click),
+            ("Remove Overlays", self._click_strategy_8_remove_overlays),
+            ("jQuery Trigger", self._click_strategy_9_jquery_trigger),
+            ("Opção Nuclear", self._click_strategy_10_nuclear_option)
+        ]
+        
+        for attempt in range(1, max_attempts + 1):
+            for strategy_name, strategy_func in strategies:
+                try:
+                    self._log(f"Tentativa {attempt}/{max_attempts}: {strategy_name}", "DEBUG")
+                    
+                    # Tenta executar a estratégia
+                    strategy_func(element)
+                    time.sleep(0.3)
+                    
+                    self._log(f"✓ {strategy_name} funcionou!", "SUCCESS")
+                    return True
+                    
+                except StaleElementReferenceException:
+                    self._log(f"Elemento ficou stale, tentando recarregar...", "WARNING")
+                    return False  # Precisa recarregar elemento
+                    
+                except (ElementClickInterceptedException, 
+                        ElementNotInteractableException) as e:
+                    self._log(f"✗ {strategy_name}: {str(e)[:50]}", "DEBUG")
+                    continue
+                    
+                except Exception as e:
+                    self._log(f"✗ {strategy_name}: {str(e)[:50]}", "DEBUG")
+                    continue
+            
+            if attempt < max_attempts:
+                time.sleep(0.5 * attempt)  # Backoff exponencial
+        
+        return False
+        
+    def _select_filter_option(self, option_text):
+        """
+        Seleciona um valor no <select class='tipoFiltro'> ANTES da pesquisa.
+        """
+        try:
+            self._log(f"Selecionando filtro: {option_text}", "INFO")
+
+            # Localiza o SELECT
+            select_el = self._wait_element(
+                By.CSS_SELECTOR, "select.tipoFiltro",
+                timeout=5, condition="visible"
+            )
+
+            if not select_el:
+                raise Exception("Elemento <select class='tipoFiltro'> não encontrado")
+
+            self._force_element_visible(select_el)
+            time.sleep(0.3)
+
+            # Seleciona opção pelo texto visível
+            Select(select_el).select_by_visible_text(option_text)
+
+            self._log(f"Filtro selecionado: {option_text}", "SUCCESS")
+            time.sleep(0.4)
+            return True
+
+        except Exception as e:
+            self._log(f"Erro ao selecionar filtro '{option_text}': {e}", "ERROR")
+            return False
+
+    
+    def _fill_search_fields(self, search_text, max_fields=10):
+        """Preenche TODOS os campos de pesquisa encontrados"""
+        if not search_text:
+            return 0
+        
+        search_field_xpaths = [
+            "//input[@id='txtPesquisa']",
+            "//input[contains(@class,'pesquisa')]",
+            "//input[contains(@class,'nomePesquisa')]",
+            "//input[contains(translate(@name,'PESQUISA','pesquisa'),'pesquisa')]",
+            "//input[@type='text' and contains(@style,'width:210px')]",
+            "//input[@type='text' and not(@disabled)]",
+        ]
+        
+        filled_count = 0
+        for xpath in search_field_xpaths:
+            try:
+                fields = self.driver.find_elements(By.XPATH, xpath)
+                for field in fields[:max_fields]:
+                    try:
+                        if not self._is_element_visible(field):
+                            continue
+                        
+                        # Limpa e preenche
+                        self._force_element_visible(field)
+                        field.clear()
+                        field.click()
+                        field.send_keys(search_text)
+                        filled_count += 1
+                        
+                    except:
+                        continue
+            except:
+                continue
+        
+        if filled_count > 0:
+            self._log(f"Preenchidos {filled_count} campos de pesquisa", "SUCCESS")
+        else:
+            self._log("Nenhum campo de pesquisa encontrado", "WARNING")
+        
+        return filled_count
+    
+    def _click_search_button(self):
+        """Clica no botão Pesquisar com múltiplas estratégias"""
+        search_button_xpaths = [
+            "//a[contains(@class,'btPesquisar') and contains(normalize-space(.),'Pesquisar')]",
+            "//button[contains(normalize-space(.),'Pesquisar')]",
+            "//input[@type='button' and contains(@value,'Pesquisar')]",
+            "//a[contains(@class,'lpFind')]",
+            "//a[contains(@onclick,'pesquisar')]"
+        ]
+        
+        # Fallback: ENTER no campo ativo
+        try:
+            self._log("Tentando ENTER no campo de pesquisa", "DEBUG")
+            ActionChains(self.driver).send_keys(Keys.ENTER).perform()
+            return True
+        except Exception:
+            pass
+        
+        for xpath in search_button_xpaths:
+            try:
+                btn = self._wait_element("xpath", xpath, timeout=2)
+                if btn and self._is_element_visible(btn):
+                    if self._advanced_click(btn):
+                        self._log("Botão 'Pesquisar' clicado", "SUCCESS")
+                        return True
+            except:
+                pass
+        
+        self._log("Não foi possível clicar em 'Pesquisar'", "WARNING")
+        return False
+    
+    def _select_result(self, result_text=""):
+        """Seleciona o resultado da pesquisa"""
+        result_xpaths = []
+        
+        if result_text:
+            result_xpaths = [
+                f"//td[contains(normalize-space(.),'{result_text}')]",
+                f"//span[contains(normalize-space(.),'{result_text}')]",
+                f"//div[contains(normalize-space(.),'{result_text}')]",
+                f"//tr[contains(normalize-space(.),'{result_text}')]//td[1]",
+                f"//li[contains(normalize-space(.),'{result_text}')]"
+            ]
+        else:
+            result_xpaths = [
+                "(//table//tr[1]/td[1])[1]",
+                "(//tr[contains(@class,'ui-widget-content')][1])[1]",
+                "(//tr[contains(@class,'rich-table-row')][1])[1]",
+                "(//li[@class='ui-autocomplete-item'])[1]"
+            ]
+        
+        for xpath in result_xpaths:
+            try:
+                result = self._wait_element("xpath", xpath, timeout=3)
+                if result and self._is_element_visible(result):
+                    if self._advanced_click(result):
+                        self._log(f"Resultado selecionado: {result_text or 'primeiro'}", "SUCCESS")
+                        return xpath  # Retorna xpath usado
+            except:
+                continue
+        
+        self._log(f"Não foi possível selecionar: {result_text or 'primeiro resultado'}", "ERROR")
+        return None
+    
+    def _reinforce_click_on_result(self, result_xpath, max_reclick=5):
+        """
+        Reforça o clique no resultado SEMPRE, independente do modal
+        Clica repetidamente até max_reclick vezes
+        """
+        if not result_xpath:
+            return
+        
+        self._log(f"🔁 Reforçando clique no resultado ({max_reclick}x)", "INFO")
+        
+        for attempt in range(1, max_reclick + 1):
+            try:
+                time.sleep(0.35)
+                
+                # Tenta localizar o resultado novamente
+                result = self.driver.find_element(By.XPATH, result_xpath)
+                
+                # Clica usando sistema avançado
+                self._log(f"Reforço {attempt}/{max_reclick}", "DEBUG")
+                self._advanced_click(result)
+                
+            except StaleElementReferenceException:
+                self._log(f"Elemento stale no reforço {attempt}", "WARNING")
+                try:
+                    # Tenta recarregar o elemento
+                    result = self.driver.find_element(By.XPATH, result_xpath)
+                    self._advanced_click(result)
+                except:
+                    continue
+                    
+            except Exception as e:
+                self._log(f"Erro no reforço {attempt}: {str(e)[:50]}", "WARNING")
+                continue
+        
+        self._log("✅ Reforço de cliques concluído", "SUCCESS")
+
+    def open_and_select(
+        self,
+        btn_index=None,
+        btn_xpath=None,
+        btn_css=None,
+        search_text="",
+        result_text="",      # agora só pra log
+        filter_option=None,
+        iframe_xpath=None,
+        auto_detect_iframe=True,
+        reinforce_clicks=5,
+        wait_after=0.5
+    ):
+        """
+        Método principal: abre LOV, aplica filtro/pesquisa e seleciona
+        SEMPRE de forma SEQUENCIAL (1ª vez = 1ª linha, 2ª = 2ª, etc.).
+        """
+
+        self._log(
+            f"🔍 LOV sequencial | filtro='{filter_option}' | pesquisa='{search_text}' | índice atual={self.selecao_sequencial_index}",
+            "INFO"
+        )
+
+        for retry in range(1, self.max_retries + 1):
+            try:
+                # ===== PASSO 1: volta p/ contexto principal =====
+                try:
+                    self.driver.switch_to.default_content()
+                except Exception:
+                    pass
+
+                # ===== PASSO 2: localizar botão do LOV =====
+                btn_selector = None
+                by_type = None
+
+                if btn_index is not None:
+                    # índice é 0-based aqui, então soma 1 no XPath
+                    btn_selector = f"(//a[@class='sprites sp-openLov'])[{btn_index + 1}]"
+                    by_type = "xpath"
+                elif btn_xpath:
+                    btn_selector = btn_xpath
+                    by_type = "xpath"
+                elif btn_css:
+                    btn_selector = btn_css
+                    by_type = "css"
+                else:
+                    raise ValueError("Forneça btn_index, btn_xpath ou btn_css para abrir o LOV.")
+
+                self._log(f"🔎 Localizando botão LOV: {btn_selector}", "DEBUG")
+                lov_button = self._wait_element(by_type, btn_selector, timeout=5)
+
+                if not lov_button:
+                    raise Exception(f"Botão LOV não encontrado: {btn_selector}")
+
+                self._log("ℹ️ Abrindo LOV...", "INFO")
+                if not self._advanced_click(lov_button):
+                    raise Exception("Falha ao clicar no botão LOV")
+
+                time.sleep(0.8)
+
+                # ===== PASSO 3: entra no iframe, se houver =====
+                if iframe_xpath or auto_detect_iframe:
+                    self._detect_and_enter_iframe(iframe_xpath)
+                    time.sleep(0.3)
+
+                # ===== PASSO 4: aplica filtro e preenche pesquisa =====
+                if filter_option:
+                    self._select_filter_option(filter_option)
+                    time.sleep(0.3)
+
+                if search_text:
+                    self._fill_search_fields(search_text)
+                    time.sleep(0.3)
+
+                # ===== PASSO 5: clicar em Pesquisar / ENTER =====
+                self._click_search_button()
+                time.sleep(0.8)
+
+                # ===== PASSO 6: seleção SEQUENCIAL SEMPRE =====
+                result_xpath = self._select_result_sequencial()
+                if not result_xpath:
+                    raise Exception("Nenhuma linha foi selecionada pelo modo sequencial.")
+
+                # ===== PASSO 7: reforça o clique na linha =====
+                if reinforce_clicks > 0:
+                    self._reinforce_click_on_result(result_xpath, reinforce_clicks)
+
+                # ===== PASSO 8: volta do iframe p/ contexto principal =====
+                try:
+                    self.driver.switch_to.default_content()
+                except Exception:
+                    pass
+
+                time.sleep(wait_after)
+                self._log(
+                    f"✅ LOV concluído com sucesso (linha índice {self.selecao_sequencial_index})",
+                    "SUCCESS"
+                )
+                return True
+
+            except Exception as e:
+                self._log(f"Tentativa {retry} falhou: {str(e)[:120]}", "ERROR")
+
+                try:
+                    self.driver.switch_to.default_content()
+                except Exception:
+                    pass
+
+                if retry < self.max_retries:
+                    time.sleep(2 * retry)  # backoff
+                    continue
+
+        self._log(f"❌ LOV falhou após {self.max_retries} tentativas.", "ERROR")
+        return False
+
+
+
+def selecionar_opcao_xpath(xpath, texto):
+    def acao():
+        select_element = wait.until(EC.presence_of_element_located((By.XPATH, xpath)))
+        Select(select_element).select_by_visible_text(texto)
+    return acao
+
 def abrir_modal_e_selecionar_robusto(btn_selector, pesquisa_selector, termo_pesquisa, btn_pesquisar_selector, resultado_xpath):
     """Versão robusta da função de modal"""
     global driver, wait, doc
@@ -235,6 +1558,7 @@ def encontrar_mensagem_alerta():
 
     log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
+
 
 def ajustar_zoom():
     global driver, doc
@@ -748,6 +2072,8 @@ def click_wizard_by_icon(driver, wait, icon_class, expect_selector=None, timeout
     if expect_selector:
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, expect_selector)))
 
+
+
 # ==== DRIVER ====
 def inicializar_driver():
     global driver, wait
@@ -772,6 +2098,12 @@ def executar_teste():
     try:
         if not inicializar_driver():
             return False
+        
+        # Cria engine JS forçado COM PROTEÇÃO ANTI-TIMEOUT
+        js_engine = JSForceEngine(driver, wait, doc, timeout_padrao=10, max_retries=3)
+        lov_handler = LOVHandler(js_engine, doc)
+        
+        lov_handler.resetar_selecao_sequencial()
 
         # Sanidade: garantir que time é módulo
         assert hasattr(time, "sleep"), f"time virou {time!r}"
@@ -812,106 +2144,57 @@ def executar_teste():
 
 
         safe_action(doc, "Preenchendo Observações", lambda:
-            preencher_textarea_por_indice(1,
+            preencher_textarea_por_indice(0,
                  "TESTE OBSERVAÇÃO SELENIUM AUTOMATIZADO (Automação de Testes): Teste de observação longa para validar o campo textarea no sistema. "))
 
         safe_action(doc, "Avançando para a aba: 'Adicionar Equipamentos'", lambda:
             wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, '#gsApoioOrtopedico > div.wdTelas > div.wdWizard.clearfix.telaConsulta > div.btnHolder > a:nth-child(3)'))).click()
         )
 
-
-        safe_action(doc, "Abrindo Lov de Equipamentos", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "//*[@id='gsApoioOrtopedico']/div[2]/div[2]/div[2]/div/div[2]/div/div[1]/ul/li[1]/div/div/div/a"))).click(),
-
-    
-)
-
-
-
-        safe_action(doc, "Preenchendo Equipamento", lambda:
-                    preencher_campo_xpath_com_retry(
-                        driver, wait, "/html/body/div[18]/div[2]/div[1]/div[1]/div[2]/input",
-                        "EQUIPAMENTO SELENIUM 07"
-                    ))
-
-
-        safe_action(doc, "Pesquisando equipamento", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[18]/div[2]/div[1]/div[1]/div[3]/a"))).click(),
-         
-
+        safe_action(doc, "Selecionando Equipamento", lambda:
+            lov_handler.open_and_select(
+                btn_index=3,
+                filter_option="Status",               # <<< AQUI
+                search_text="Disponível",
+                result_text="Disponível"
+            )
         )
+        time.sleep(3)
 
-        safe_action(doc, "Selecionando equipamento", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "//tr[td[1][normalize-space()='EQUIPAMENTO SELENIUM 07']]"))).click()
+
+        safe_action(doc, "Adicionando Equipamento", lambda:
+            js_engine.force_click("//a[@class='sprites sp-addVerde']", by_xpath=True)
         )
+        time.sleep(3)
 
-
-        safe_action(doc, "Adicionando equipamento", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "//*[@id='gsApoioOrtopedico']/div[2]/div[2]/div[2]/div/div[2]/div/div[1]/ul/li[1]/div/a"))).click(),
-
+        safe_action(doc, "Selecionando Equipamento", lambda:
+            lov_handler.open_and_select(
+                btn_index=3,
+                filter_option="Status",               # <<< AQUI
+                search_text="Disponível",
+            )
         )
+        time.sleep(3)
 
-
-        safe_action(doc, "Abrindo Lov de Equipamentos", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "//*[@id='gsApoioOrtopedico']/div[2]/div[2]/div[2]/div/div[2]/div/div[1]/ul/li[1]/div/div/div/a"))).click(),
-
-
+        safe_action(doc, "Adicionando Equipamento", lambda:
+            js_engine.force_click("//a[@class='sprites sp-addVerde']", by_xpath=True)
         )
+        time.sleep(3)
 
-        safe_action(doc, "Preenchendo Equipamento", lambda:
-                    preencher_campo_xpath_com_retry(
-                        driver, wait, "/html/body/div[19]/div[2]/div[1]/div[1]/div[2]/input",
-                        "EQUIPAMENTO SELENIUM 08"
-                    ))
 
-        safe_action(doc, "Pesquisando equipamento", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[19]/div[2]/div[1]/div[1]/div[3]/a"))).click(),
-         
-
+        safe_action(doc, "Selecionando Equipamento", lambda:
+            lov_handler.open_and_select(
+                btn_index=3,
+                filter_option="Status",               # <<< AQUI
+                search_text="Disponível",
+            )
         )
+        time.sleep(3)
 
-        safe_action(doc, "Selecionando equipamento", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "//tr[td[1][normalize-space()='EQUIPAMENTO SELENIUM 08']]"))).click()
+        safe_action(doc, "Adicionando Equipamento", lambda:
+            js_engine.force_click("//a[@class='sprites sp-addVerde']", by_xpath=True)
         )
-
-
-        safe_action(doc, "Adicionando equipamento", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "//*[@id='gsApoioOrtopedico']/div[2]/div[2]/div[2]/div/div[2]/div/div[1]/ul/li[1]/div/a"))).click(),
-
-        )
-
-
-
-
-
-        safe_action(doc, "Abrindo Lov de Equipamentos", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "//*[@id='gsApoioOrtopedico']/div[2]/div[2]/div[2]/div/div[2]/div/div[1]/ul/li[1]/div/div/div/a"))).click(),
-
-
-        )
-
-        safe_action(doc, "Preenchendo Equipamento", lambda:
-                    preencher_campo_xpath_com_retry(
-                        driver, wait, "/html/body/div[19]/div[2]/div[1]/div[1]/div[2]/input",
-                        "EQUIPAMENTO SELENIUM 09"
-                    ))
-
-        safe_action(doc, "Pesquisando equipamento", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[19]/div[2]/div[1]/div[1]/div[3]/a"))).click(),
-         
-
-        )
-
-        safe_action(doc, "Selecionando equipamento", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "//tr[td[1][normalize-space()='EQUIPAMENTO SELENIUM 09']]"))).click()
-        )
-
-        safe_action(doc, "Adicionando equipamento", lambda: 
-            wait.until(EC.element_to_be_clickable((By.XPATH, "//*[@id='gsApoioOrtopedico']/div[2]/div[2]/div[2]/div/div[2]/div/div[1]/ul/li[1]/div/a"))).click(),
-
-        )
-
-
+        time.sleep(3)
 
 
 
@@ -922,8 +2205,6 @@ def executar_teste():
         safe_action(doc, "Cancelando cadastro", lambda:
             wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, '#gsApoioOrtopedico > div.wdTelas > div.wdWizard.clearfix.telaConsulta > div.btnHolder > a:nth-child(1)'))).click()
         )
-
-
 
         safe_action(doc, "Fechando modal Apoio Ortopédico", lambda:
             clicar_elemento_robusto(driver, wait, '#gsApoioOrtopedico > div.wdTop.ui-draggable-handle > div > a')

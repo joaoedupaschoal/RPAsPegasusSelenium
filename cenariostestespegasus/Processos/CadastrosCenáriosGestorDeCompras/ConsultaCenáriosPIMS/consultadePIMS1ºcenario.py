@@ -18,6 +18,7 @@ from faker.providers import BaseProvider
 import os
 import re
 import pyautogui
+import random 
 
 # Inicializações
 doc = Document()
@@ -27,7 +28,7 @@ doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 driver = None
 wait = None
 screenshot_registradas = set()
-
+fake = Faker
 def log(doc, msg):
     print(msg)
     doc.add_paragraph(msg)
@@ -417,7 +418,7 @@ def clicar_link_btsave_por_indice(indice, max_tentativas=5):
         while tentativa < max_tentativas:
             tentativa += 1
             try:
-                botoes = driver.find_elements(By.CSS_SELECTOR, "a.btModel.btGray.btsave")
+                botoes = driver.find_elements(By.XPATH, "//a[@class='btModel btGray btsave' and normalize-space()='Salvar' and span[@class='sprites sp-salvar']]")
                 if not botoes:
                     if tentativa < max_tentativas:
                         log(doc, f"⚠️ Nenhum botão 'Salvar' encontrado (tentativa {tentativa}/{max_tentativas})")
@@ -510,10 +511,7 @@ def executar_teste():
 
         time.sleep(5)
 
-        safe_action(doc, "Preenchendo Número do PIMS", lambda: preencher_campo_xpath_com_retry(driver, wait, "//*[@id='gsCompras']/div[2]/div[2]/div[1]/div/div[1]/input", "200848"))
-        safe_action(doc, "Preenchendo Data inicial", lambda: preencher_campo_xpath_com_retry(driver, wait, "//input[@type='text' and @class='hasDatepicker dataI' and @maxlength='10' and @style='width: 100px;' and @grupo='']", "06/10/2025"))
-        safe_action(doc, "Selecionando Centro de Custo", lambda: Select(wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#gsCompras > div.wdTelas > div.consultarPims.telaConsulta > div:nth-child(1) > div > div:nth-child(4) > select")))).select_by_visible_text("CENTRO DE CUSTO JOÃO"))
-        safe_action(doc, "Selecionando Departamento", lambda: Select(wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#gsCompras > div.wdTelas > div.consultarPims.telaConsulta > div:nth-child(1) > div > div:nth-child(5) > select")))).select_by_visible_text("Teste"))
+        safe_action(doc, "Preenchendo Data inicial", lambda: preencher_campo_xpath_com_retry(driver, wait, "//input[@type='text' and @class='hasDatepicker dataI' and @maxlength='10' and @style='width: 100px;' and @grupo='']", "06/10/1999"))
         safe_action(doc, "Selecionando Status", lambda: Select(wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#gsCompras > div.wdTelas > div.consultarPims.telaConsulta > div:nth-child(1) > div > div:nth-child(6) > select")))).select_by_visible_text("Solicitado"))
 
 
@@ -547,19 +545,22 @@ def executar_teste():
 
         # === ITEM 1: selecionar, preencher e salvar ===
         safe_action(doc, "Selecionando item 1", lambda: selecionar_linha_item_por_indice(1))
+        
+
+        quantidade_produto = str(random.randint(1, 1000))
 
         safe_action(doc, "Preenchendo quantidade do item 1", lambda:
             driver.execute_script("""
                 const el = document.querySelector("#gsCompras div.consultarPims li:nth-child(1) input.qtdProd");
                 if (!el) throw new Error("Input do item 1 não encontrado");
                 el.focus();
-                el.value = "1000";
-                // Evite input/change se o front replica p/ todos; deixe o submit ler o value
+                el.value = arguments[0];
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
                 el.blur();
-            """)
+            """, quantidade_produto)
         )
-        
-        time.sleep(2)
+
 
 
         safe_action(doc, "Desviando foco do campo", lambda:
@@ -569,22 +570,28 @@ def executar_teste():
 
 
         safe_action(doc, "Salvar alterações do item 1", clicar_link_btsave_por_indice(0))
-
+        time.sleep(7)
         # Reabrir modo de edição caso a tela volte para visualização
         safe_action(doc, "Reabrir Alterar PIMS", lambda: clicar_elemento_robusto(driver, wait, "span[title='Alterar PIMS']"))
         time.sleep(0.8)
 
         # === ITEM 2: selecionar, preencher e salvar ===
-        safe_action(doc, "Selecionando item 2", lambda: selecionar_linha_item_por_indice(2))
+        safe_action(doc, "Selecionando item 2", lambda: selecionar_linha_item_por_indice(1))
+
+
+
+        quantidade_produto = str(random.randint(1, 1000))
 
         safe_action(doc, "Preenchendo quantidade do item 2", lambda:
             driver.execute_script("""
                 const el = document.querySelector("#gsCompras div.consultarPims li:nth-child(2) input.qtdProd");
                 if (!el) throw new Error("Input do item 2 não encontrado");
                 el.focus();
-                el.value = "1000";
+                el.value = arguments[0];
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
                 el.blur();
-            """)
+            """, quantidade_produto)
         )
 
         safe_action(doc, "Desviando foco do campo", lambda:
@@ -605,7 +612,7 @@ def executar_teste():
 
         log(doc, "🔍 Verificando mensagens de alerta...")
         # Coloque uma função para verificar mensagens
-
+        time.sleep(7)
 
         safe_action(doc, "Alterando PIMS", lambda:
             clicar_elemento_robusto(driver, wait, "span[title='Alterar PIMS']")

@@ -108,9 +108,17 @@ driver = None
 wait = None
 
 # ==== UTILITÁRIOS ====
-def log(doc, msg):
+def log(doc, msg, level=None):
+    """
+    level é opcional ("INFO", "WARN", "ERROR" etc).
+    Se vier, só prefixa a mensagem.
+    """
+    if level:
+        msg = f"[{level}] {msg}"
+
     print(msg)
     doc.add_paragraph(msg)
+
 
 def _sanitize_filename(name: str) -> str:
     name = name.strip().lower()
@@ -1193,29 +1201,16 @@ def executar_teste():
         time.sleep(5)
 
 
-        safe_action(doc, "Preenchendo Data inicial", lambda: preencher_campo_xpath_com_retry(driver, wait, "//input[@type='text' and @class='hasDatepicker dataI' and @maxlength='10' and @style='width: 100px;' and @grupo='']", "06/01/2025"))
+        safe_action(doc, "Preenchendo Data inicial", lambda: preencher_campo_xpath_com_retry(driver, wait, "//input[@type='text' and @class='hasDatepicker dataI' and @maxlength='10' and @style='width: 100px;' and @grupo='']", "06/01/2024"))
 
 
-
-
-
-
-        safe_action(doc, "Selecionando Departamento", selecionar_opcao_xpath(
-            "/html/body/div[19]/div[1]/div[2]/div/div[5]/select",
-            "Comercial"
-        ))
-
-        safe_action(doc, "Selecionando Status", selecionar_opcao_xpath(
-            "/html/body/div[19]/div[1]/div[2]/div/div[6]/select",
-            "Solicitado"
-        ))
 
 
 
         safe_action(doc, "Pesquisando...", lambda:
             wait.until(EC.element_to_be_clickable((By.XPATH, '/html/body/div[19]/div[1]/div[2]/div/div[7]/a'))).click()
         )
-        time.sleep(10)
+        time.sleep(30)
 
 
         # Verificando lista de PIMS

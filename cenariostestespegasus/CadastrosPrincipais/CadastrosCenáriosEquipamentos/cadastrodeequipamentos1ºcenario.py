@@ -147,6 +147,30 @@ def encontrar_mensagem_alerta():
     log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
 
+
+def abrir_menu():
+            termo_pesquisa = "Equipamento"
+            # Tenta abrir a busca rápida com F2; se falhar, tenta apenas focar o campo de busca
+            try:
+                driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2)
+            except Exception:
+                # não é crítico — apenas continue para localizar o campo de busca
+                pass
+
+            campo = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']")))
+            campo.click()
+            try:
+                campo.clear()
+            except Exception:
+                # alguns inputs não suportam clear(); ignora se houver erro
+                pass
+            campo.send_keys(termo_pesquisa)
+            # usa normalize-space para evitar problemas com espaços e garantir correspondência exata do texto
+            wait.until(EC.element_to_be_clickable((By.XPATH, f"//li[a[normalize-space(text())='{termo_pesquisa}']]"))).click()
+            time.sleep(2)
+
+
+
 def ajustar_zoom():
     try:
         driver.execute_script("document.body.style.zoom='90%'")
@@ -172,14 +196,11 @@ try:
     time.sleep(3)
     safe_action(doc, "Ajustando zoom", lambda: ajustar_zoom())
 
-    safe_action(doc, "Abrindo menu Equipamento", lambda: (
-        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2),
-        time.sleep(1),
-        wait.until(EC.visibility_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']"))).send_keys("Equipamento")
-    ))
 
-    safe_action(doc, "Selecionando opção de Equipamento", lambda: (
-        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[15]/a"))).click()
+
+    safe_action(doc, "Abrindo menu Equipamento", lambda: (
+        time.sleep(5),
+        abrir_menu()
     ))
 
     safe_action(doc, "Clicando em Cadastrar", lambda: (
@@ -202,7 +223,7 @@ try:
     ))
 
     safe_action(doc, "Preenchendo nome do equipamento", lambda: (
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_dadosEquipamento.categoriaHolder > div > div > div > div:nth-child(4) > input"))).send_keys("EQUIPAMENTO SELENIUM 12")
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div.telaCadastro.clearfix > div.catWrapper > div > div.cat_dadosEquipamento.categoriaHolder > div > div > div > div:nth-child(4) > input"))).send_keys("EQUIPAMENTO SELENIUM 15")
     ))
 
     safe_action(doc, "Preenchendo observação", lambda: (

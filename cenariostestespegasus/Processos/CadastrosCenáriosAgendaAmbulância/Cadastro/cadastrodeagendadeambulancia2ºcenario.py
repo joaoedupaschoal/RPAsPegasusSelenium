@@ -246,7 +246,7 @@ def clicar_elemento_robusto(selector):
             raise Exception(f"Não foi possível clicar no elemento: {selector}")
     return acao
 
-def preencher_campo_com_retry(driver, wait, seletor, valor, max_tentativas=3):
+def preencher_campo_com_retry(driver, wait, seletor, valor, max_tentativas=5):
     """Tenta preencher o campo com diferentes métodos até conseguir"""
     global doc
     
@@ -361,6 +361,32 @@ def inicializar_driver():
         log(doc, f"❌ Erro ao inicializar driver: {e}")
         return False
 
+    
+def selecionar_terceiro_lov(driver, timeout=10):
+    wait = WebDriverWait(driver, timeout)
+
+    # 1. Clicar no terceiro botão LOV
+    xpath_terceiro_lov = "(//a[contains(@class,'sp-openLov')])[3]"
+    lov_btn = wait.until(
+        EC.element_to_be_clickable((By.XPATH, xpath_terceiro_lov))
+    )
+    lov_btn.click()
+    time.sleep(2)
+
+    # 2. Aguardar aparecer a listagem (terceiro <tr>)
+    xpath_primeira_linha = "(//tr[@style='cursor: pointer;'])[1]"
+
+    linha = wait.until(
+        EC.element_to_be_clickable((By.XPATH, xpath_primeira_linha))
+    )
+
+    # 3. Clicar na primeira linha
+    linha.click()
+    time.sleep(0.3)
+
+    return True
+
+
 # ==== EXECUÇÃO DO TESTE ====
 def executar_teste():
     global driver, wait, doc
@@ -396,30 +422,13 @@ def executar_teste():
             '#gsAgendaAmbulancia > div.wdTelas > div.wdWizard.clearfix.telaConsulta > div.wizardHolder > div > div.step1 > div > div.formCol.numero-contrato > div > input.fc.mandatory',
             '113056'
         ))
+        
 
-
-
-        safe_action(doc, "Abrindo lov do Solicitante", lambda: WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, '/html/body/div[16]/div[2]/div[2]/div[2]/div[2]/div/div[1]/div/div[3]/div/div/a'))
-        ).click())
-
-
-        xpath = "//tr[td[1][text()='TESTE TITULAR'] and td[2][text()='Física'] and td[3][text()='947.011.330-60'] and td[7][text()='04/08/2025']]"
-
-        safe_action(doc, "Clicando na linha do 'TESTE TITULAR'", lambda: WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, xpath))
-        ).click())
-
-        safe_action(doc, "Abrindo lov do Paciente", lambda: WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, '/html/body/div[16]/div[2]/div[2]/div[2]/div[2]/div/div[1]/div/div[4]/div/div/a'))
-        ).click())
-
-
-        xpath = "//tr[td[1][text()='TESTE TITULAR'] and td[2][text()='Física'] and td[3][text()='947.011.330-60'] and td[7][text()='04/08/2025']]"
-
-        safe_action(doc, "Clicando na linha do 'TESTE TITULAR'", lambda: WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, xpath))
-        ).click())
+        safe_action(
+            doc,
+            "Selecionando Paciente",
+            lambda: selecionar_terceiro_lov(driver)
+        )
 
 
         safe_action(doc, "Preenchendo Telefone", preencher_campo_robusto(
@@ -443,9 +452,18 @@ def executar_teste():
             wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, '#gsAgendaAmbulancia > div.wdTelas > div.wdWizard.clearfix.telaConsulta > div.wizardHolder > div > div.step2 > div:nth-child(1) > div:nth-child(1) > a'))).click()
         ))
 
-        safe_action(doc, "Selecionando Motorista", lambda: WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//td[normalize-space(text())='MOTORISTA TREINAMENTO']"))
-        ).click())
+        xpath_primeiro_motorista = "(//table[@class='horariosGrid']//tr[td[3] and normalize-space(td[3]) != ''])[1]/td[3]"
+
+        safe_action(
+            doc,
+            "Selecionando primeiro motorista da lista",
+            lambda: WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, xpath_primeiro_motorista))
+            ).click()
+        )
+
+
+
 
         safe_action(doc, "Preenchendo Nome do Acompanhante", preencher_campo_robusto(
             '#gsAgendaAmbulancia > div.wdTelas > div.wdWizard.clearfix.telaConsulta > div.wizardHolder > div > div.step2 > div:nth-child(2) > div:nth-child(6) > input[type=text]',

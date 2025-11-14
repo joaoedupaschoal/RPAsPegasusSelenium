@@ -134,6 +134,30 @@ def encontrar_mensagem_alerta():
     log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
 
+
+def abrir_menu():
+        termo_pesquisa = "Convênio"
+        # Tenta abrir a busca rápida com F2; se falhar, tenta apenas focar o campo de busca
+        try:
+            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2)
+        except Exception:
+            # não é crítico — apenas continue para localizar o campo de busca
+            pass
+
+        campo = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']")))
+        campo.click()
+        try:
+            campo.clear()
+        except Exception:
+            # alguns inputs não suportam clear(); ignora se houver erro
+            pass
+        campo.send_keys(termo_pesquisa)
+        # usa normalize-space para evitar problemas com espaços e garantir correspondência exata do texto
+        wait.until(EC.element_to_be_clickable((By.XPATH, f"//li[a[normalize-space(text())='{termo_pesquisa}']]"))).click()
+        time.sleep(2)
+
+
+
 def ajustar_zoom():
     try:
         driver.execute_script("document.body.style.zoom='90%'")
@@ -177,12 +201,9 @@ try:
         ajustar_zoom()
     ))
 
-    safe_action(doc, "Abrindo menu Convênio", lambda: (
-        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2),
-        time.sleep(1),
-        wait.until(EC.visibility_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']"))).send_keys("Convênio"),
-        wait.until(EC.visibility_of_element_located((By.XPATH, "/html/body/div[17]/ul/li[16]/a"))).click()
-
+    safe_action(doc, "Abrindo menu Convênios", lambda: (
+        time.sleep(5),
+        abrir_menu()
     ))
 
     safe_action(doc, "Clicando em Cadastrar", lambda: (

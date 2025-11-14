@@ -3842,6 +3842,8 @@ def selecionar_opcao_xpath(xpath, texto):
         select_element = wait.until(EC.presence_of_element_located((By.XPATH, xpath)))
         Select(select_element).select_by_visible_text(texto)
     return acao
+
+    
 def clicar_primeiro_sp_delete(js_engine, doc, timeout=5):
     """
     Localiza e clica no primeiro elemento <a class="sprites sp-delete"> visível na tela.

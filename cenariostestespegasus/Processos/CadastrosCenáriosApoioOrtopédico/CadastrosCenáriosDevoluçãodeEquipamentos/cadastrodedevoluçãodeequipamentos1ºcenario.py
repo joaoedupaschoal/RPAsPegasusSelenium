@@ -116,9 +116,14 @@ driver = None
 wait = None
 
 # ==== UTILITÁRIOS ====
-def log(doc, msg):
-    print(msg)
-    doc.add_paragraph(msg)
+def log(doc, msg, nivel='INFO'):
+    timestamp = datetime.now().strftime('%H:%M:%S')
+    formatted_msg = f"[{timestamp}] {msg}"
+    print(formatted_msg)
+    try:
+        doc.add_paragraph(formatted_msg)
+    except Exception as e:
+        print(f"Erro ao adicionar ao documento: {e}")
 
 def _sanitize_filename(name: str) -> str:
     name = name.strip().lower()
@@ -1015,52 +1020,6 @@ def executar_teste():
 
         time.sleep(5)
 
-        safe_action(doc, "Preenchendo o Número da Locação", lambda:
-                    preencher_campo_xpath_com_retry(
-                        driver, wait, "//input[@name='numeroLocacao']",
-                        "300"
-                    ))
-        
-        safe_action(doc, "Selecionando Pessoa", lambda:
-            abrir_modal_e_selecionar_robusto(
-                "#gsApoioOrtopedico > div.wdTelas > div.telaDevolucaoEquipamento.telaConsulta > div > div.formRow.filtrosConsulta > div:nth-child(2) > div > a",
-                "#txtPesquisa",
-                "TESTE TITULAR 233",
-                "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > a",
-                "//tr[td[2][normalize-space()='TESTE TITULAR 233']]"
-            ))
-
-             
-
-
-        safe_action(doc, "Abrindo Lov de Pessoas", lambda:
-            clicar_elemento_xpath_robusto(driver, "//a[contains(@class,'sp-openLov')]", timeout=TIMEOUT_DEFAULT)
-        )
-
-
-        safe_action(doc, "Preenchendo o Nome do Titular", lambda:
-                    preencher_campo_xpath_com_retry(
-                        driver, wait, "//input[@id='txtPesquisa']",
-                        "TESTE TITULAR 233"
-                    ))
-
-
-        safe_action(doc, "Pesquisando Titular", lambda:
-            clicar_elemento_xpath_robusto(driver, "//a[contains(@class,'lpFind')]")
-        )
-
-        safe_action(doc, "Selecionando Titular", lambda:
-            clicar_elemento_xpath_robusto(driver, "//tr[td[normalize-space()='TESTE TITULAR 233'] and td[normalize-space()='408.815.420-75']]")
-        )
-
-
-
-        safe_action(doc, "Preenchendo Número do Patrimônio", lambda:
-                    preencher_campo_xpath_com_retry(
-                        driver, wait, "//*[@id='gsApoioOrtopedico']/div[2]/div[2]/div/div[1]/div[4]/input",
-                        "¹²³²¹"
-                    ))
-
 
         safe_action(doc, "Realizando consulta", lambda: 
             wait.until(EC.element_to_be_clickable((By.XPATH, "//*[@id='gsApoioOrtopedico']/div[2]/div[2]/div/div[3]/a"))).click(),
@@ -1080,7 +1039,7 @@ def executar_teste():
         if not resultado_validacao or not resultado_validacao.get('encontrou_registros', False):
             log(doc, "ℹ️ Nenhum registro encontrado - Finalizando consulta", 'WARN')
             safe_action(doc, "Fechando tela (sem registros)", lambda:
-                clicar_elemento_css_robusto(driver, "#gsPet > div.wdTop.ui-draggable-handle > div > a")
+                clicar_elemento_css_robusto(driver, "#gsApoioOrtopedico > div.wdTop.ui-draggable-handle > div > a")
             )
 
             return True

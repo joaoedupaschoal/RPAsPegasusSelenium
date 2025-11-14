@@ -1451,51 +1451,6 @@ def executar_teste():
 
         time.sleep(5)
 
-        safe_action(doc, "Preenchendo o Número da Locação", lambda:
-                    preencher_campo_xpath_com_retry(
-                        driver, wait, "//input[@name='numeroLocacao']",
-                        "310"
-                    ))
-        
-        safe_action(doc, "Selecionando Pessoa", lambda:
-            abrir_modal_e_selecionar_robusto(
-                "#gsApoioOrtopedico > div.wdTelas > div.telaDevolucaoEquipamento.telaConsulta > div > div.formRow.filtrosConsulta > div:nth-child(2) > div > a",
-                "#txtPesquisa",
-                "TESTE TITULAR 233",
-                "body > div.modalHolder > div.modal.overflow > div:nth-child(1) > div.formRow.formLastLine > div:nth-child(2) > a",
-                "//tr[td[2][normalize-space()='TESTE TITULAR 233']]"
-            ))
-
-             
-
-
-        safe_action(doc, "Abrindo Lov de Pessoas", lambda:
-            clicar_elemento_xpath_robusto(driver, "//a[contains(@class,'sp-openLov')]", timeout=TIMEOUT_DEFAULT)
-        )
-
-
-        safe_action(doc, "Preenchendo o Nome do Titular", lambda:
-                    preencher_campo_xpath_com_retry(
-                        driver, wait, "//input[@id='txtPesquisa']",
-                        "TESTE TITULAR 233"
-                    ))
-
-
-        safe_action(doc, "Pesquisando Titular", lambda:
-            clicar_elemento_xpath_robusto(driver, "//a[contains(@class,'lpFind')]")
-        )
-
-        safe_action(doc, "Selecionando Titular", lambda:
-            clicar_elemento_xpath_robusto(driver, "//tr[td[normalize-space()='TESTE TITULAR 233'] and td[normalize-space()='408.815.420-75']]")
-        )
-
-
-
-        safe_action(doc, "Preenchendo Número do Patrimônio", lambda:
-                    preencher_campo_xpath_com_retry(
-                        driver, wait, "//*[@id='gsApoioOrtopedico']/div[2]/div[2]/div/div[1]/div[4]/input",
-                        "9865"
-                    ))
 
 
         safe_action(doc, "Realizando consulta", lambda: 

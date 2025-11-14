@@ -62,6 +62,29 @@ def finalizar_relatorio():
     subprocess.run(["start", "winword", nome_arquivo], shell=True)
     driver.quit()
 
+def abrir_menu():
+            termo_pesquisa = "Equipamento"
+            # Tenta abrir a busca rápida com F2; se falhar, tenta apenas focar o campo de busca
+            try:
+                driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2)
+            except Exception:
+                # não é crítico — apenas continue para localizar o campo de busca
+                pass
+
+            campo = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']")))
+            campo.click()
+            try:
+                campo.clear()
+            except Exception:
+                # alguns inputs não suportam clear(); ignora se houver erro
+                pass
+            campo.send_keys(termo_pesquisa)
+            # usa normalize-space para evitar problemas com espaços e garantir correspondência exata do texto
+            wait.until(EC.element_to_be_clickable((By.XPATH, f"//li[a[normalize-space(text())='{termo_pesquisa}']]"))).click()
+            time.sleep(2)
+
+
+
 def encontrar_mensagem_alerta():
     seletores = [
         (".alerts.salvo", "✅ Mensagem de Sucesso"),
@@ -105,13 +128,9 @@ try:
     safe_action(doc, "Ajustando zoom", lambda: ajustar_zoom())
 
     safe_action(doc, "Abrindo menu Equipamento", lambda: (
-        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.F2),
-        time.sleep(1),
-        wait.until(EC.visibility_of_element_located((By.XPATH, "//input[@placeholder='Busque um cadastro']"))).send_keys("Equipamento")
-    ))
-    safe_action(doc, "Selecionando opção de Equipamento", lambda: (
-        wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[17]/div[2]/ul/li[15]/a"))).click()
-    ))
+        time.sleep(5),
+        abrir_menu()
+    ))  
 
     safe_action(doc, "Clicando em Cadastrar", lambda: (
         wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fmod_10057 > div.wdTelas > div > ul > li:nth-child(1) > a > span"))).click()
