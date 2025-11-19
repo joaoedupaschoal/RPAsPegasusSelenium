@@ -5387,7 +5387,7 @@ def executar_teste():
 
         safe_action(doc, "Clicando em 'Alterar'", lambda:
             js_engine.force_click(
-                "(//a[.//span[contains(@class,'sp-edit')]])[1]",
+                "(//span[contains(@class,'sp-edit')])[1]",
                 by_xpath=True
             )
         )
@@ -5410,16 +5410,6 @@ def executar_teste():
         )
 
 
-        safe_action(doc, "Recusando digitalização de Documentos", lambda: (
-            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
-                "#BtNo"))).click(),
-        ))
-        time.sleep(2)
-
-        safe_action(doc, "Recusando geração de Ordem de Serviço", lambda: (
-            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR,
-                "#BtNo"))).click(),
-        ))
 
         log(doc, "🎉 Teste concluído com sucesso!")
         return True

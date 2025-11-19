@@ -3059,11 +3059,15 @@ def executar_menu_scripts(node: dict, breadcrumb: str = ""):
             print(f"Arquivo: {arquivo}\n")
 
             # chama executor tradicional (único)
+            idx = 1
+            total = 1
             rc, status, err_msg, full_log = _run_cenario_and_classify(
                 Path(arquivo),
-                index=1,
-                total=1
+                idx,
+                total
             )
+
+
 
             print("\nExecução finalizada.")
             input("\nPressione Enter para voltar...")
@@ -3080,7 +3084,10 @@ def menu_cadastros_principais(root: dict):
         print("[AVISO] Nenhum cadastro principal configurado.")
         input("\n<--- Voltar (X + Enter).")
         return
-    executar_menu_scripts({"label": "Cadastros Principais", **cad_principais}, "> Cadastros > Cadastros Principais")
+    executar_menu_scripts({
+        "label": "Cadastros Principais",
+        "groups": cad_principais  # <-- Agora exibe todos os cadastros corretamente
+    }, "> Cadastros > Cadastros Principais")
 
 def menu_cadastros_adicionais(root: dict):
     cad_adicionais = root.get("cadastros", {}).get("adicionais", {})
@@ -3089,7 +3096,10 @@ def menu_cadastros_adicionais(root: dict):
         print("[AVISO] Nenhum cadastro adicional configurado.")
         input("\n<--- Voltar (X + Enter)")
         return
-    executar_menu_scripts({"label": "Cadastros Adicionais", **cad_adicionais}, "> Cadastros > Cadastros Adicionais")
+    executar_menu_scripts({
+        "label": "Cadastros Adicionais",
+        "groups": cad_adicionais
+    }, "> Cadastros > Cadastros Adicionais")
 
 def mostrar_submenu_processos(titulo, scenarios):
     while True:
