@@ -4262,7 +4262,7 @@ try:
     )
 
 
-    safe_action(doc, "Selecionando 'Agregado' para todos os dependentes [MODO SEGURO]", lambda:
+    safe_action(doc, "Selecionando 'Agregado' para todos os dependentes", lambda:
         selecionar_agregado_todos_dependentes_seguro(
             js_engine, 
             doc, 

@@ -2303,7 +2303,54 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                 },    
             },
         },
-        "4": {
+        "4": {"label": "Cenários do Processo: Contratos",
+            "scenarios": {
+                "1": {
+                    "label": "Cenários de Cadastro de Contratos",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Preenchimento completo e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosContrato" / "ProcessoCadastros" / "cadastrodecontratos1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Preenchimento completo e cancelamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosContrato" / "ProcessoCadastros" / "cadastrodecontratos2ºcenario.py",
+                        },
+                        "3": {
+                            "label": "Cenário 3: Preenchimento completo e verificação de disparo de mensagens de alerta.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosContrato" / "ProcessoCadastros" / "cadastrodecontratos3ºcenario.py",
+                        },
+                    },
+                },
+                "2": {
+                    "label": "Cenários de Titulares e Dependentes",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Preenchimento completo e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosContrato" / "ProcessoTitularesDependentes" / "adicaodetitularesedependentes1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Preenchimento completo e cancelamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosContrato" / "ProcessoTitularesDependentes" / "adicaodetitularesedependentes2ºcenario.py",
+                        },
+                    },
+                },
+                "3": {
+                    "label": "Cenários da Aprovação Titulares e Dependentes",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Preenchimento completo e Aprovação da requisição.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosContrato" / "ProcessoAprovaçãodeTitulareseDependentes" / "aprovacaodetitularesedependentes1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Preenchimento completo e Negação da requisição.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosContrato" / "ProcessoAprovaçãodeTitulareseDependentes" / "aprovacaodetitularesedependentes2ºcenario.py",
+                        },
+                    },
+                },
+            },
+        },
+        "5": {
             "label": "Cenários do Processo: Caixa",
             "scenarios": {
                 "1": {
@@ -2338,7 +2385,7 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                 },
             },
         },
-        "5": {
+        "6": {
             "label": "Cenários do Processo: Rateio",
             "scenarios": {
                 "1": {
@@ -2369,7 +2416,7 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                 },
             },
         },
-        "6": {
+        "7": {
             "label": "Cenários do Processo: Callcenter",
             "scenarios": {
                 "1": {
@@ -2409,7 +2456,7 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                 },
             },
         },
-        "7": {
+        "8": {
             "label": "Cenários do Processo: Cremação",
             "scenarios": {
                 "1": {
@@ -2444,7 +2491,7 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                 },
             },
         },
-        "8": {
+        "9": {
             "label": "Cenários do Processo: Plano Empresa",
             "scenarios": {
                 "1": {
@@ -2500,7 +2547,7 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                 },
             },
         },
-        "9": {
+        "10": {
             "label": "Cenários do Processo: Apoio Ortopédico",
             "scenarios": {
                 "1": {
@@ -2557,7 +2604,7 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                 },
             },
         },
-        "10": {
+        "11": {
             "label": "Cenários do Processo: Agenda de Ambulância",
             "scenarios": {
                 "1": {
@@ -2583,7 +2630,7 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                 },
             },
         },
-        "11": {
+        "12": {
             "label": "Cenários do Processo: CRM",
             "scenarios": {
                 "1": {
@@ -2622,7 +2669,7 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                 },
             },
         },
-        "12": {
+        "13": {
             "label": "Cenários do Processo: Telemedicina",
             "scenarios": {
                 "1": {

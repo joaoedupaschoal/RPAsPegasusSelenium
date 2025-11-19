@@ -2776,6 +2776,88 @@ def clicar_todos_botoes_sim_visiveis(js_engine, doc, pausa_entre=0.0):
         return {"totalEncontrados": 0, "totalClicados": 0, "erro": str(e)}
 
 
+def clicar_todos_botoes_cancelar_visiveis(js_engine, doc, pausa_entre=0.0):
+    """Clica em TODOS os botões 'Cancelar' visíveis de uma vez."""
+    js = r"""
+    (function(){
+        const isVisible = el => {
+            if (!el) return false;
+            const s = getComputedStyle(el);
+            return el.offsetParent !== null &&
+                   s.display !== "none" &&
+                   s.visibility !== "hidden" &&
+                   parseFloat(s.opacity || 1) > 0.01;
+        };
+
+        // Seleciona TODOS os botões Cancelar no padrão Pegasus
+        const buttons = Array.from(
+            document.querySelectorAll("a.btModel.btGray.btcancel")
+        ).filter(isVisible)
+         .filter(b => (b.textContent || "").trim().toLowerCase().startsWith("cancelar"));
+
+        let clicked = 0;
+
+        buttons.forEach(b => {
+            try {
+                // Libera o botão caso esteja bloqueado
+                b.style.pointerEvents = "auto";
+                b.removeAttribute("disabled");
+                b.style.visibility = "visible";
+                b.style.display = "inline-block";
+
+                b.scrollIntoView({ block: "center" });
+
+                // Dispara todos os eventos possíveis
+                ["mouseover","mouseenter","mousemove","mousedown","mouseup","click"]
+                    .forEach(t => {
+                        b.dispatchEvent(new MouseEvent(t, {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window,
+                            detail: 1
+                        }));
+                    });
+
+                if (typeof b.click === "function") b.click();
+
+                if (window.jQuery) window.jQuery(b).trigger("click");
+
+                clicked++;
+            } catch(e){}
+        });
+
+        return { totalEncontrados: buttons.length, totalClicados: clicked };
+    })();
+    """
+
+    try:
+        res = js_engine.execute_js(
+            js,
+            timeout=5,
+            fallback_result={"totalEncontrados": 0, "totalClicados": 0}
+        )
+
+        # BLINDAGEM → se res vier None, vira dict vazio
+        if not isinstance(res, dict):
+            log(doc, f"⚠️ JS retornou valor inesperado: {res!r}. Fallback ativado.")
+            res = {"totalEncontrados": 0, "totalClicados": 0}
+
+        total = int(res.get("totalEncontrados", 0))
+        clic = int(res.get("totalClicados", 0))
+
+        log(doc, f"⚡ Botões 'Cancelar' encontrados: {total} | clicados: {clic}")
+
+        if pausa_entre and clic > 0:
+            time.sleep(pausa_entre)
+
+        return res
+
+    except Exception as e:
+        log(doc, f"❌ Erro ao clicar em todos os 'Cancelar': {e}")
+        return {"totalEncontrados": 0, "totalClicados": 0, "erro": str(e)}
+
+
+
 def clicar_nao_ate_sumir(js_engine, doc, index=0, timeout=15, pausa=0.5):
     """
     Clica repetidamente no botão 'Não' (BtNo) dentro de um modal de confirmação,
@@ -4262,7 +4344,7 @@ try:
     )
 
 
-    safe_action(doc, "Selecionando 'Agregado' para todos os dependentes [MODO SEGURO]", lambda:
+    safe_action(doc, "Selecionando 'Agregado' para todos os dependentes", lambda:
         selecionar_agregado_todos_dependentes_seguro(
             js_engine, 
             doc, 
@@ -4274,12 +4356,12 @@ try:
         )
     )
 
-    safe_action(doc, "Cancelando cadastro", lambda:
-        js_engine.force_click(
-            "//a[@class='btModel btGray btcancel']",
-            by_xpath=True
-        )
+    safe_action(
+        doc,
+        "Cancelando cadastro",
+        lambda: clicar_todos_botoes_cancelar_visiveis(js_engine, doc, pausa_entre=0.3)
     )
+
 
     time.sleep(2)
     encontrar_mensagem_alerta()
