@@ -2348,6 +2348,23 @@ SCRIPTS: Dict[str, Dict[str, Dict[str, object]]] = {
                         },
                     },
                 },
+                "4": {
+                    "label": "Cenários da Alteração de Pacotes",
+                    "scenarios": {
+                        "1": {
+                            "label": "Cenário 1: Preenchimento completo e salvamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosContrato" / "ProcessoAlteraçãodePacotes" / "alteracaodepacotes1ºcenario.py",
+                        },
+                        "2": {
+                            "label": "Cenário 2: Preenchimento completo e cancelamento.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosContrato" / "ProcessoAlteraçãodePacotes" / "alteracaodepacotes2ºcenario.py",
+                        },
+                        "3": {
+                            "label": "Cenário 3: Teste de disparo de mensagens de alerta.",
+                            "file": BASE_SCRIPTS / "Processos" / "CadastrosCenáriosContrato" / "ProcessoAlteraçãodePacotes" / "alteracaodepacotes3ºcenario.py",
+                        },
+                    },
+                },
             },
         },
         "5": {

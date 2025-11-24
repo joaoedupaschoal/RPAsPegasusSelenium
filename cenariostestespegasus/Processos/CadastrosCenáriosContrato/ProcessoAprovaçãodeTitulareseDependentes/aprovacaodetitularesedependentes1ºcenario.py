@@ -22,6 +22,7 @@ import random
 import string
 import re
 from selenium.common.exceptions import JavascriptException, TimeoutException, WebDriverException
+
 # ==== PROVIDERS CUSTOMIZADOS ====
 class BrasilProvider(BaseProvider):
     def rg(self):
