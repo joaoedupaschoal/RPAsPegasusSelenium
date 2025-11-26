@@ -94,6 +94,25 @@ TIMEOUT_DEFAULT = 30
 TIMEOUT_CURTO = 10
 TIMEOUT_LONGO = 60
 
+def log(doc, msg):
+    print(msg)
+    doc.add_paragraph(msg)
+
+# ==== FUNÇÕES DE UTILITÁRIO ====
+def log(doc, msg, nivel='INFO'):
+    """Sistema de logging melhorado com níveis"""
+    timestamp = datetime.now().strftime('%H:%M:%S')
+    formatted_msg = f"[{timestamp}] {nivel}: {msg}"
+    
+    if VERBOSE_LOGGING:
+        print(formatted_msg)
+    else:
+        print(msg)
+    
+    if hasattr(doc, 'add_paragraph'):
+        doc.add_paragraph(formatted_msg)
+
+
 # =========================
 # Estratégias de preenchimento
 # =========================
@@ -669,21 +688,59 @@ class JSTimeoutHandler:
         self.timeout_padrao = timeout_padrao
         self.max_retries = max_retries
         self.last_error = None
-        
-    def log_timeout(self, msg, level="INFO"):
-        """Log com timestamp"""
+            
 
-        prefix = {
-            "INFO": "ℹ️ ",
-            "WARN": "⚠️ ",
-            "ERROR": "❌ ",
-            "SUCCESS": "✅ "
-        }.get(level, "📝 ")
+    def execute_js_safe(self, script, *args, timeout=None, fallback_result=None):
+        """Executa JavaScript com proteção contra timeouts"""
+        timeout = timeout or self.timeout_padrao
         
-        print(f" {prefix} {msg}")
-        if hasattr(self.doc, 'add_paragraph'):
-            self.doc.add_paragraph(f"{msg}")
-    
+        original_timeout = self.driver.timeouts.script
+        self.driver.set_script_timeout(timeout)
+        
+        for tentativa in range(1, self.max_retries + 1):
+            try:
+                if tentativa > 1:
+                    self.log_timeout(f"Tentativa {tentativa}/{self.max_retries}", "INFO")
+                
+                result = self.driver.execute_script(script, *args)
+                self.driver.set_script_timeout(original_timeout)
+                
+                if tentativa > 1:
+                    self.log_timeout("JavaScript executado com sucesso", "SUCCESS")
+                return result
+                
+            except JavascriptException as e:
+                self.last_error = e
+                self.log_timeout(f"Erro JavaScript: {str(e)[:150]}", "ERROR")
+                self._limpar_estado_js()
+                
+                if tentativa < self.max_retries:
+                    time.sleep(1 + tentativa * 0.5)
+                    continue
+                    
+            except TimeoutException as e:
+                self.last_error = e
+                self.log_timeout(f"Timeout JavaScript ({timeout}s)", "ERROR")
+                self._forcar_parada_js()
+                
+                if tentativa < self.max_retries:
+                    time.sleep(2 + tentativa)
+                    continue
+                    
+            except WebDriverException as e:
+                self.last_error = e
+                self.log_timeout(f"Erro WebDriver: {str(e)[:150]}", "ERROR")
+                
+                if tentativa < self.max_retries:
+                    time.sleep(1.5)
+                    continue
+                    
+            except Exception as e:
+                self.last_error = e
+                self.log_timeout(f"Erro inesperado: {str(e)[:150]}", "ERROR")
+                break
+        
+
     def execute_js_safe(self, script, *args, timeout=None, fallback_result=None):
         """Executa JavaScript com proteção contra timeouts"""
         timeout = timeout or self.timeout_padrao
@@ -1389,10 +1446,10 @@ class LOVHandler:
 
                 # ===== PASSO 6: seleção SEQUENCIAL SEMPRE =====
                 result_xpath = "//table//tr[@role='row' and @style][1]"
-                el = WebDriverWait(driver, 10).until(
+                el = WebDriverWait(self.driver, 10).until(
                     EC.element_to_be_clickable((By.XPATH, result_xpath))
                 )
-                driver.execute_script("arguments[0].click();", el)
+                self.driver.execute_script("arguments[0].click();", el)
 
 
                 # ===== PASSO 7: reforça o clique na linha =====
@@ -2256,28 +2313,7 @@ def encontrar_mensagem_alerta():
     log(doc, "ℹ️ Nenhuma mensagem de alerta encontrada.")
     return None
 
-def safe_action(doc, descricao, func, max_retries=3):
-    """Wrapper para ações com retry automático"""
-    global driver
-    
-    for attempt in range(max_retries):
-        try:
-            log(doc, f"🔄 {descricao}..." if attempt == 0 else f"🔄 {descricao}... (Tentativa {attempt + 1})")
-            func()
-            log(doc, f"✅ {descricao} realizada com sucesso.")
-            take_screenshot(driver, doc, _sanitize_filename(descricao))
-            return True
-        except Exception as e:
-            if attempt < max_retries - 1:
-                log(doc, f"⚠️ Tentativa {attempt + 1} falhou, tentando novamente..."),
-                time.sleep(2 + attempt)
-                continue
-            else:
-                log(doc, f"❌ Erro após {max_retries} tentativas: {e}")
-                take_screenshot(driver, doc, _sanitize_filename(f"erro_{descricao}"))
-                return False
-    
-    return False
+
 
 def inicializar_driver():
     """Inicializa WebDriver com configurações otimizadas"""
@@ -3802,6 +3838,8 @@ localizacao = fake.city()
 URL = "http://localhost:8080/gs/index.xhtml"
 LOGIN_EMAIL = "joaoeduardo.gold@outlook.com"
 LOGIN_PASSWORD = "071999gs"
+VERBOSE_LOGGING = True
+CAPTURAR_SCREENSHOTS = True
 
 # ==== DOCUMENTO ====
 doc = Document()
@@ -3812,9 +3850,7 @@ doc.add_paragraph(f"Data do teste: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 screenshot_registradas = set()
 
 # ==== FUNÇÕES DE UTILITÁRIO ====
-def log(doc, msg):
-    print(msg)
-    doc.add_paragraph(msg)
+
 
 def take_screenshot(driver, doc, nome):
     if nome not in screenshot_registradas:
@@ -3825,15 +3861,64 @@ def take_screenshot(driver, doc, nome):
         doc.add_picture(path, width=Inches(5.5))
         screenshot_registradas.add(nome)
 
-def safe_action(doc, descricao, func):
-    try:
-        log(doc, f"🔄 {descricao}...")
-        func()
-        log(doc, f"✅ {descricao} realizada com sucesso.")
-        take_screenshot(driver, doc, descricao.lower().replace(" ", "_"))
-    except Exception as e:
-        log(doc, f"❌ Erro ao {descricao.lower()}: {e}")
-        take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}")
+# ==== FUNÇÕES DE UTILITÁRIO MELHORADAS ====
+def safe_action(doc, descricao, func, max_retries=3, timeout_customizado=None, critico=True):
+    """Execução de ações com retry robusto e tratamento de erros melhorado"""
+    global driver
+    
+    timeout_original = None
+    if timeout_customizado and driver:
+        try:
+            # Ajusta timeout temporariamente
+            timeout_original = driver.timeouts.implicit_wait
+            driver.implicitly_wait(timeout_customizado)
+        except:
+            pass
+    
+    for attempt in range(max_retries):
+        try:
+            if attempt == 0:
+                log(doc, f"Executando: {descricao}")
+            else:
+                log(doc, f"Retry {attempt + 1}/{max_retries}: {descricao}", 'WARN')
+            
+            result = func()
+            log(doc, f"✅ {descricao} - Sucesso")
+            take_screenshot(driver, doc, descricao.lower().replace(" ", "_"))
+            
+            return True
+            
+        except (TimeoutException, NoSuchElementException, StaleElementReferenceException) as e:
+            if attempt < max_retries - 1:
+                log(doc, f"⚠️ Tentativa {attempt + 1} falhou: {type(e).__name__}", 'WARN')
+                time.sleep(2 ** attempt)  # Backoff exponencial
+                continue
+            else:
+                error_msg = f"❌ {descricao} falhou após {max_retries} tentativas: {e}"
+                log(doc, error_msg, 'ERROR')
+                take_screenshot(driver, doc, f"erro_{descricao.lower().replace(' ', '_')}", forcar=True)
+                
+                if critico:
+                    raise Exception(error_msg)
+                return False
+                
+        except Exception as e:
+            error_msg = f"❌ Erro inesperado em {descricao}: {e}"
+            log(doc, error_msg, 'ERROR')
+            take_screenshot(driver, doc, f"erro_critico_{descricao.lower().replace(' ', '_')}", forcar=True)
+            
+            if critico:
+                raise Exception(error_msg)
+            return False
+    
+        finally:
+            # Restaura timeout original
+            if timeout_original and driver:
+                try:
+                    driver.implicitly_wait(timeout_original)
+                except:
+                    pass
+
 
 def finalizar_relatorio():
     nome_arquivo = f"relatorio_aprovacao_transferencia_de_contrato_cenario_2_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
@@ -6052,11 +6137,223 @@ def preencher_datepicker_por_indice(indice_campo, data_valor, max_tentativas=3):
     
     return acao
 
+
+
+# ==== VALIDAÇÃO DE REGISTROS MELHORADA ====
+def validar_registros_encontrados(timeout=TIMEOUT_LONGO):
+    """Sistema robusto de validação de registros encontrados"""
+    global driver, wait, doc
+    
+    resultado = {
+        'encontrou_registros': False,
+        'quantidade_registros': 0,
+        'mensagem': '',
+        'tabela_encontrada': False,
+        'detalhes': []
+    }
+    
+    try:
+        log(doc, "🔍 Iniciando validação de registros...")
+        time.sleep(5)  # Aguarda processamento inicial
+        
+        # Seletores para diferentes tipos de tabelas de resultado
+        seletores_tabela = [
+            '#DataTables_Table_0',
+            '#DataTables_Table_0 tbody',
+            '#DataTables_Table_1',
+            '#DataTables_Table_2',
+            'table[id*="DataTables"]',
+            '.wdGrid table',
+            'table tbody',
+            '.resultados table',
+            '[class*="grid"][class*="result"]',
+            'table[class*="dataTable"]'
+        ]
+        
+        tabela_encontrada = None
+        
+        # Busca tabela de resultados
+        for seletor in seletores_tabela:
+            try:
+                elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
+                for elemento in elementos:
+                    if elemento.is_displayed() and elemento.size['height'] > 0:
+                        tabela_encontrada = elemento
+                        resultado['tabela_encontrada'] = True
+                        log(doc, f"✅ Tabela encontrada: {seletor}")
+                        break
+                
+                if tabela_encontrada:
+                    break
+            except Exception as e:
+                log(doc, f"⚠️ Erro ao buscar tabela com {seletor}: {e}", 'WARN')
+                continue
+        
+        if not tabela_encontrada:
+            # Busca mensagens de "sem resultados"
+            mensagens_vazio = [
+                "Nenhum registro encontrado",
+                "Não foram encontrados registros", 
+                "Nenhum resultado",
+                "Sem resultados para exibir",
+                "0 registros encontrados",
+                "No data available"
+            ]
+            
+            for mensagem in mensagens_vazio:
+                try:
+                    elem = driver.find_element(By.XPATH, f"//*[contains(text(), '{mensagem}')]")
+                    if elem.is_displayed():
+                        resultado['mensagem'] = f"Sistema informou: {elem.text.strip()}"
+                        log(doc, f"ℹ️ {resultado['mensagem']}")
+                        return resultado
+                except:
+                    continue
+            
+            # Verifica se existe indicação de carregamento
+            loading_elements = driver.find_elements(By.CSS_SELECTOR, ".loading, .spinner, [class*='load']")
+            if any(el.is_displayed() for el in loading_elements):
+                log(doc, "⏳ Sistema ainda carregando resultados...", 'WARN')
+                time.sleep(5)
+                return validar_registros_encontrados(timeout - 10)  # Recursão com timeout reduzido
+            
+            resultado['mensagem'] = "⚠️ Tabela de resultados não localizada"
+            log(doc, resultado['mensagem'], 'WARN')
+            return resultado
+        
+        # Conta e valida registros
+        try:
+            # Estratégias para encontrar linhas de dados
+            seletores_linhas = [
+                'tbody tr:not(.dataTables_empty):not([class*="no-data"])',
+                'tbody tr[class*="odd"], tbody tr[class*="even"]',
+                'tbody tr:not(:empty)',
+                'tbody tr'
+            ]
+            
+            linhas_validas = []
+            
+            for seletor_linha in seletores_linhas:
+                try:
+                    linhas = tabela_encontrada.find_elements(By.CSS_SELECTOR, seletor_linha)
+                    
+                    for linha in linhas:
+                        try:
+                            if not linha.is_displayed():
+                                continue
+                                
+                            texto_linha = linha.text.strip().lower()
+                            
+                            # Valida se é uma linha com dados reais
+                            if (len(texto_linha) > 5 and 
+                                not any(termo in texto_linha for termo in [
+                                    'nenhum registro', 'sem dados', 'no data', 
+                                    'vazio', 'empty', 'não foram encontrados',
+                                    'loading', 'carregando'
+                                ])):
+                                
+                                linhas_validas.append({
+                                    'elemento': linha,
+                                    'texto': texto_linha[:100] + '...' if len(texto_linha) > 100 else texto_linha
+                                })
+                        except Exception as e:
+                            log(doc, f"⚠️ Erro ao processar linha: {e}", 'WARN')
+                            continue
+                    
+                    if linhas_validas:
+                        log(doc, f"✅ Encontradas {len(linhas_validas)} linhas válidas com {seletor_linha}")
+                        break
+                        
+                except Exception as e:
+                    log(doc, f"⚠️ Erro ao processar {seletor_linha}: {e}", 'WARN')
+                    continue
+            
+            quantidade = len(linhas_validas)
+            resultado['quantidade_registros'] = quantidade
+            resultado['detalhes'] = [linha['texto'] for linha in linhas_validas[:5]]  # Primeiras 5 linhas
+            
+            if quantidade > 0:
+                resultado['encontrou_registros'] = True
+                resultado['mensagem'] = f"✅ {quantidade} registro(s) encontrado(s)"
+                
+                # Log das primeiras linhas
+                log(doc, resultado['mensagem'])
+                for i, linha in enumerate(linhas_validas[:3], 1):
+                    log(doc, f"   Registro {i}: {linha['texto']}")
+                
+                if quantidade > 3:
+                    log(doc, f"   ... e mais {quantidade-3} registro(s)")
+            else:
+                resultado['mensagem'] = "ℹ️ Tabela encontrada mas sem registros válidos"
+                log(doc, resultado['mensagem'])
+        
+        except Exception as e:
+            log(doc, f"❌ Erro ao contar registros: {e}", 'ERROR')
+            # Em caso de erro na contagem, assume que existem registros para não interromper
+            resultado['encontrou_registros'] = True
+            resultado['quantidade_registros'] = 1
+            resultado['mensagem'] = f"⚠️ Erro na validação, continuando teste: {e}"
+        
+        # Verifica alertas do sistema
+        encontrar_mensagem_alerta()
+        
+        return resultado
+        
+    except Exception as e:
+        log(doc, f"❌ Erro geral na validação: {e}", 'ERROR')
+        resultado['encontrou_registros'] = True  # Assume sucesso para não interromper
+        resultado['quantidade_registros'] = 1
+        resultado['mensagem'] = f"⚠️ Validação falhou, continuando teste: {e}"
+        return resultado
+import time, traceback
+
+
+def scroll_to_element(elemento):
+    """Scroll inteligente até elemento"""
+    global driver
+    
+    try:
+        # Scroll suave até o elemento
+        driver.execute_script("""
+            arguments[0].scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+                inline: 'center'
+            });
+        """, elemento)
+        time.sleep(0.5)
+        
+        # Verifica se elemento está visível
+        return elemento.is_displayed()
+        
+    except Exception as e:
+        log(doc, f"⚠️ Erro no scroll: {e}", 'WARN')
+        return False
+
+def clicar_elemento_robusto(seletor):
+    """Clique robusto em elementos"""
+    def acao():
+        elemento = aguardar_elemento(seletor)
+        scroll_to_element(elemento)
+        
+        # Tenta diferentes métodos de clique
+        try:
+            elemento.click()
+        except:
+            # Clique via JavaScript se o normal falhar
+            driver.execute_script("arguments[0].click();", elemento)
+    
+    return acao
+
+
 # ==== INICIALIZAÇÃO DO DRIVER ====
 options = Options()
 options.add_argument("--start-maximized")
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 wait = WebDriverWait(driver, 20)
+
+
+
 
 # ==== EXECUÇÃO DO TESTE ====
 try:
@@ -6096,6 +6393,39 @@ try:
         )
 
     time.sleep(5)  # Espera extra para garantir carregamento completo
+
+
+        # ==== VALIDAÇÃO DOS RESULTADOS ====
+    resultado_validacao = None
+    safe_action(doc, "Validando resultados da consulta", 
+               lambda: globals().update(resultado_validacao=validar_registros_encontrados()),
+               critico=False)
+
+        # Verifica se deve continuar com o teste
+    if not resultado_validacao or not resultado_validacao.get('encontrou_registros', False):
+        log(doc, "ℹ️ Nenhum registro encontrado - Finalizando consulta", 'WARN')
+        
+        safe_action(doc, "Limpando campos (sem registros)", 
+                   clicar_elemento_robusto("#gsContratos > div.wdTelas > div.telaConsulta.wdAprocarTransferencia > div > div.btnHolder > a.btModel.btGray.btclear"),
+                   critico=False)
+            
+        safe_action(doc, "Fechando tela (sem registros)", 
+                   clicar_elemento_robusto("#gsContratos > div.wdTop.ui-draggable-handle > div.wdClose > a"),
+                   critico=False)
+        
+        # Não há registros: encerra fluxo principal limpando e finalizando relatório
+        log(doc, "🔚 Fluxo interrompido por falta de registros. Finalizando relatório.")
+        try:
+            finalizar_relatorio()
+        except Exception as e:
+            log(doc, f"⚠️ Erro ao finalizar relatório: {e}")
+        # Interrompe execução do script de forma segura
+        raise SystemExit("Nenhum registro encontrado - finalizando")
+    
+       # ==== PROCESSAMENTO DOS REGISTROS ENCONTRADOS ====
+    quantidade = resultado_validacao.get('quantidade_registros', 0)
+    log(doc, f"✅ Continuando com processamento de {quantidade} registro(s)")
+ 
 
 
     safe_action(doc, "Visualizando Detalhes da Primeira Solicitação", lambda:

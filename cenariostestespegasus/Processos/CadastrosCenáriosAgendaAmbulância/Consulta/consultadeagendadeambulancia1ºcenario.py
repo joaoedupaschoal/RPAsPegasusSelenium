@@ -89,6 +89,7 @@ def log(doc, msg, nivel='INFO'):
     if hasattr(doc, 'add_paragraph'):
         doc.add_paragraph(formatted_msg)
 
+
 def take_screenshot(driver, doc, nome, forcar=False):
     """Sistema de screenshots otimizado"""
     if not CAPTURAR_SCREENSHOTS and not forcar:
