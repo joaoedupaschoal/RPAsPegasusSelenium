@@ -6108,6 +6108,8 @@ options.add_argument("--start-maximized")
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 wait = WebDriverWait(driver, 20)
 
+
+
 # ==== EXECUÇÃO DO TESTE ====
 try:
     
@@ -6170,12 +6172,13 @@ try:
     if not resultado_validacao or not resultado_validacao.get('encontrou_registros', False):
         log(doc, "ℹ️ Nenhum registro encontrado - Finalizando consulta", 'WARN')
             
-        safe_action(doc, "Limpando campos (sem registros)", 
-                   clicar_elemento_robusto("#gsAgendaAmbulancia > div.wdTelas > div.telaConsulta.telaConsultaAgendaAmbulancia > div > div.btnHolder > a.btModel.btGray.btclear"),
-                   critico=False)
-            
-        safe_action(doc, "Fechando tela (sem registros)", 
-                    clicar_elemento_robusto("#gsAgendaAmbulancia > div.wdTop.ui-draggable-handle > div.wdClose > a"),
+
+        safe_action(doc, "Fechando tela da Separação de Entregas (sem registros)", 
+                    clicar_elemento_robusto("#gsControleEntrega > div.wdTop.ui-draggable-handle > div > a"),
+                       critico=False)
+        
+        safe_action(doc, "Fechando tela de Contratos (sem registros)", 
+                    clicar_elemento_robusto("#gsContratos > div.wdTop.ui-draggable-handle > div > a"),
                        critico=False)
             
         # Não é permitido usar `return` no nível do módulo; encerra o processo de forma segura.
